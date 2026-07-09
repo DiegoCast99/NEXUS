@@ -33,15 +33,18 @@
     }
   }
 
-  function hasActiveSession() {
-    // Usar Firebase si está disponible; sino, fallback a NexusAuth (localStorage)
-    if (window.NexusFirebaseAuth) {
-      return window.NexusFirebaseAuth.hasSession();
-    }
-    return window.NexusAuth.hasSession();
-  }
-
-  if (hasActiveSession()) {
+  // Guard de sesión en la landing:
+  // - Con Firebase: onAuthStateChanged redirige al dashboard cuando detecta al
+  //   usuario ya logueado (la restauración de sesión es asíncrona).
+  // - Sin Firebase (preview local sin CDN): chequeo síncrono de localStorage.
+  if (window.NexusFirebaseAuth) {
+    window.NexusFirebaseAuth.onAuthStateChanged(function (user) {
+      if (user) {
+        document.body.classList.remove("intro-boot", "intro-lock");
+        window.location.replace("./dashboard.html");
+      }
+    });
+  } else if (window.NexusAuth.hasSession()) {
     document.body.classList.remove("intro-boot", "intro-lock");
     window.location.replace("./dashboard.html");
     return;

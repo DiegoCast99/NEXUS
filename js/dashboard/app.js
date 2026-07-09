@@ -166,7 +166,10 @@
       scheduleCommerceRefresh();
       renderCommerceDashboard();
     });
-    elements.logoutButton?.addEventListener("click", () => {
+    elements.logoutButton?.addEventListener("click", async () => {
+      if (window.NexusFirebaseAuth) {
+        await window.NexusFirebaseAuth.logout();
+      }
       localStorage.removeItem(AUTH_KEY);
       window.location.href = "./index.html";
     });
@@ -227,13 +230,29 @@
     }
   }
 
-  if (!window.NexusAuth.hasSession()) {
-    window.location.replace("./index.html");
-    return;
-  }
-  init();
-
   Object.assign(S, {
     bindEvents, init,
   });
+
+  // Guard de sesión:
+  // - Con Firebase: onAuthStateChanged espera a que se restaure la sesión (async)
+  //   y arranca el dashboard; si no hay usuario, vuelve al login.
+  // - Sin Firebase (preview local sin CDN): chequeo síncrono de localStorage.
+  if (window.NexusFirebaseAuth) {
+    let started = false;
+    window.NexusFirebaseAuth.onAuthStateChanged(function (user) {
+      if (user) {
+        if (!started) {
+          started = true;
+          init();
+        }
+      } else {
+        window.location.replace("./index.html");
+      }
+    });
+  } else if (!window.NexusAuth.hasSession()) {
+    window.location.replace("./index.html");
+  } else {
+    init();
+  }
 })();
