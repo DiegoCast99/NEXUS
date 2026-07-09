@@ -20,9 +20,18 @@
   }
 
   .sidebar-status,
-  .landing-link,
-  .logout-button {
+  .landing-link {
     display: none;
+  }
+
+  /* El logout SÍ debe verse en móvil/tablet: antes quedaba en display:none y
+     no había ninguna forma de cerrar sesión. Se muestra como botón visible. */
+  .logout-button {
+    justify-content: center;
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: rgba(243, 243, 248, 0.82);
   }
 
   .dashboard-main {
