@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nexus Dashboard - Centro de Control</title>
+    <meta
+      name="description"
+      content="Dashboard de Nexus para gestionar finanzas personales, Meta Ads y negocios e-commerce desde un centro operativo."
+    />
+    <script>
+      (() => {
+        try {
+          if (sessionStorage.getItem("nexus.dashboard.reveal.v1") === "soft") {
+            document.documentElement.classList.add("nexus-dashboard-reveal-pending");
+          }
+        } catch (error) {}
+      })();
+    </script>
+    <link rel="stylesheet" href="./dashboard.css?v=20260707-nexus-os-v1" />
+  </head>
+  <body>
+    <div class="dashboard-shell">
+      <aside class="sidebar" aria-label="Navegacion de Nexus">
+        <a class="app-brand" href="./index.html" aria-label="Volver a la landing de Nexus">
+          <span>NEXUS</span>
+          <small>centro de control</small>
+        </a>
+
+        <nav class="module-nav" aria-label="Modulos principales">
+          <button class="module-link is-active" type="button" data-view="welcome">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 12h16" />
+              <path d="M12 4v16" />
+              <path d="M7 7h10v10H7z" />
+            </svg>
+            <span>
+              <b>Centro de Control</b>
+              <small>Inicio operativo</small>
+            </span>
+          </button>
+          <button class="module-link" type="button" data-view="finance">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 19V5" />
+              <path d="M4 19h16" />
+              <path d="M8 16V9" />
+              <path d="M12 16V6" />
+              <path d="M16 16v-4" />
+            </svg>
+            <span>
+              <b>Finanzas Personales</b>
+              <small>Balance, gastos y ahorro</small>
+            </span>
+          </button>
+          <button class="module-link" type="button" data-view="meta">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 14c3.5-7 6.5-7 10 0" />
+              <path d="M10 14c3.5 7 6.5 7 10 0" />
+              <path d="M5 14h14" />
+            </svg>
+            <span>
+              <b>Meta Ads</b>
+              <small>API, pixel y ROAS</small>
+            </span>
+          </button>
+          <button class="module-link" type="button" data-view="ecommerce">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 8h12l-1 11H7L6 8Z" />
+              <path d="M9 8a3 3 0 0 1 6 0" />
+              <path d="M9 13h6" />
+            </svg>
+            <span>
+              <b>E-Commerce</b>
+              <small>Kairos, Billion y KiwiFi</small>
+            </span>
+          </button>
+        </nav>
+
+        <div class="sidebar-status">
+          <span></span>
+          <p>Centro operativo activo</p>
+          <b>Datos locales seguros</b>
+        </div>
+
+        <a class="landing-link" href="./index.html?landing=1">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          Volver a la landing
+        </a>
+        <button class="logout-button" type="button" data-logout>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M10 6H6v12h4" />
+            <path d="M14 8l4 4-4 4" />
+            <path d="M8 12h10" />
+          </svg>
+          Cerrar sesion
+        </button>
+      </aside>
+
+      <main class="dashboard-main">
+        <header class="topbar">
+          <div>
+            <span class="eyebrow">Nexus / centro de control</span>
+            <h1 id="viewTitle">Hola, Diego!</h1>
+            <p id="viewDescription">
+              ¿Con qué quieres trabajar hoy?
+            </p>
+          </div>
+          <div class="topbar-actions is-hidden">
+            <div class="chart-view-toggle" id="chartViewToggle" aria-label="Cambiar vista de graficos">
+              <button type="button" data-chart-mode="2d">Vista 2D</button>
+              <button type="button" data-chart-mode="3d">Vista 3D</button>
+            </div>
+            <button class="ghost-button" type="button" id="chartResetButton">Resetear vista</button>
+            <div class="finance-tools" id="financeTools">
+              <label class="field compact-field">
+                <span>Mes</span>
+                <select id="monthFilter"></select>
+              </label>
+              <button class="ghost-button" type="button" id="seedDataButton">Cargar ejemplo</button>
+            </div>
+          </div>
+        </header>
+
+        <section class="view-panel is-active" data-panel="welcome" aria-label="Bienvenida de Nexus">
+          <div class="welcome-grid">
+            <article class="welcome-card" data-welcome-view="finance">
+              <span>01</span>
+              <h3>Finanzas Personales</h3>
+              <p>Balance, gastos, ingresos y ahorro disponible.</p>
+              <button class="primary-button" type="button">Entrar</button>
+            </article>
+            <article class="welcome-card" data-welcome-view="meta">
+              <span>02</span>
+              <h3>Meta Ads</h3>
+              <p>Campañas, pixel, inversión, conversiones y ROAS por plataforma.</p>
+              <button class="primary-button" type="button">Entrar</button>
+            </article>
+            <article class="welcome-card" data-welcome-view="ecommerce">
+              <span>03</span>
+              <h3>E-Commerce</h3>
+              <p>Kairos, Billion, KiwiFi y plataformas de venta.</p>
+              <button class="primary-button" type="button">Entrar</button>
+            </article>
+          </div>
+          <div class="welcome-status panel">
+            <div>
+              <span></span>
+              <b>Centro operativo activo</b>
+            </div>
+            <p>Datos locales seguros, módulos independientes y estructura preparada para nuevas integraciones.</p>
+          </div>
+        </section>
+
+        <section class="view-panel" data-panel="finance" aria-label="Dashboard de Finanzas Personales">
+          <div class="metric-grid">
+            <article class="metric-card featured">
+              <span>Balance total</span>
+              <strong id="balanceValue">$0</strong>
+              <small id="balanceHint">Segun filtros activos</small>
+            </article>
+            <article class="metric-card">
+              <span>Ingresos</span>
+              <strong id="incomeValue">$0</strong>
+              <small id="incomeHint">0 movimientos</small>
+            </article>
+            <article class="metric-card">
+              <span>Gastos</span>
+              <strong id="expenseValue">$0</strong>
+              <small id="expenseHint">0 movimientos</small>
+            </article>
+            <article class="metric-card">
+              <span>Ahorro disponible</span>
+              <strong id="savingValue">$0</strong>
+              <small id="savingHint">0% de tus ingresos</small>
+            </article>
+          </div>
+
+          <div class="finance-layout">
+            <section class="panel chart-panel wide-panel" aria-label="Grafico de ingresos contra gastos">
+              <div class="panel-heading">
+                <div>
+                  <span>Evolucion mensual</span>
+                  <h2>Ingresos vs gastos</h2>
+                </div>
+                <div class="chart-legend" aria-hidden="true">
+                  <span><i class="income-dot"></i>Ingresos</span>
+                  <span><i class="expense-dot"></i>Gastos</span>
+                </div>
+              </div>
+              <canvas id="cashflowChart" height="220"></canvas>
+            </section>
+
+            <section class="panel chart-panel" aria-label="Distribucion de gastos por categoria">
+              <div class="panel-heading">
+                <div>
+                  <span>Distribucion</span>
+                  <h2>Gastos por categoria</h2>
+                </div>
+              </div>
+              <canvas id="categoryChart" height="210"></canvas>
+              <div class="category-legend" id="categoryLegend"></div>
+            </section>
+
+            <section class="panel movement-form-panel" aria-label="Formulario para registrar movimientos">
+              <div class="panel-heading">
+                <div>
+                  <span>Nuevo registro</span>
+                  <h2 id="formTitle">Agregar movimiento</h2>
+                </div>
+              </div>
+              <form id="movementForm" class="movement-form">
+                <input type="hidden" id="movementId" />
+                <label class="field">
+                  <span>Tipo</span>
+                  <select id="movementType" required>
+                    <option value="income">Ingreso</option>
+                    <option value="expense">Gasto</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Monto</span>
+                  <input id="movementAmount" type="number" min="0.01" step="0.01" placeholder="0.00" required />
+                </label>
+                <label class="field">
+                  <span>Fecha</span>
+                  <input id="movementDate" type="date" required />
+                </label>
+                <label class="field">
+                  <span>Categoria</span>
+                  <select id="movementCategory" required></select>
+                </label>
+                <label class="field full-field">
+                  <span>Descripcion</span>
+                  <input id="movementDescription" type="text" maxlength="80" placeholder="Ej: Suscripcion, sueldo, compra..." required />
+                </label>
+                <div class="form-actions">
+                  <button class="primary-button" type="submit" id="saveMovementButton">Guardar movimiento</button>
+                  <button class="ghost-button is-hidden" type="button" id="cancelEditButton">Cancelar edicion</button>
+                </div>
+              </form>
+            </section>
+
+            <section class="panel movements-panel wide-panel" aria-label="Listado de movimientos">
+              <div class="panel-heading movement-heading">
+                <div>
+                  <span>Historial</span>
+                  <h2>Movimientos recientes</h2>
+                </div>
+                <div class="filters">
+                  <label class="field compact-field">
+                    <span>Tipo</span>
+                    <select id="typeFilter">
+                      <option value="all">Todos</option>
+                      <option value="income">Ingresos</option>
+                      <option value="expense">Gastos</option>
+                    </select>
+                  </label>
+                  <label class="field compact-field">
+                    <span>Categoria</span>
+                    <select id="categoryFilter">
+                      <option value="all">Todas</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Descripcion</th>
+                      <th>Categoria</th>
+                      <th>Tipo</th>
+                      <th>Monto</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody id="movementsTable"></tbody>
+                </table>
+                <div class="empty-state" id="emptyState">
+                  <span></span>
+                  <h3>No hay movimientos para mostrar</h3>
+                  <p>Agrega tu primer ingreso o gasto para activar metricas, graficos y filtros del dashboard.</p>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view-panel" data-panel="meta" aria-label="Dashboard de Meta Ads">
+          <div class="meta-platform-selector" id="metaPlatformSelector">
+            <div class="integration-hero">
+              <div>
+                <span class="eyebrow">Nexus / Meta Ads</span>
+                <h2>Seleccionar plataforma</h2>
+                <p>
+                  Elige el negocio que quieres conectar, monitorear y optimizar desde Meta Ads.
+                  Cada plataforma guarda su pixel, cuenta, token, periodo, metricas y datos propios.
+                </p>
+              </div>
+              <span class="source-pill">multi-plataforma</span>
+            </div>
+            <div class="meta-platform-grid" id="metaPlatformCards"></div>
+          </div>
+
+          <div class="meta-platform-workspace is-hidden" id="metaPlatformWorkspace">
+            <button class="ghost-button platform-back-button" type="button" id="metaBackButton">
+              ← Volver a plataformas
+            </button>
+          <div class="integration-hero meta-control-hero">
+            <div>
+              <span class="eyebrow" id="metaPlatformEyebrow">Meta Ads / centro de performance</span>
+              <h2 id="metaPlatformTitle">Campanas, pixel y rentabilidad en una sola vista.</h2>
+              <p id="metaPlatformDescription">
+                Conecta tu cuenta publicitaria para leer inversion, impresiones, clics, conversiones,
+                CPC, CTR y ROAS desde Meta Marketing API.
+              </p>
+            </div>
+            <div class="meta-status-card" id="metaConnectionStatus">
+              <span class="status-dot"></span>
+              <b id="metaStatusTitle">Sin conexion</b>
+              <small id="metaStatusDetail">Agrega Pixel ID, cuenta publicitaria y token.</small>
+            </div>
+          </div>
+
+          <form class="panel meta-config-panel" id="metaConfigForm">
+            <div class="panel-heading">
+              <div>
+                <span>Conexion</span>
+                <h2>Credenciales de Meta</h2>
+              </div>
+              <span class="source-pill" id="metaDataSource">Datos locales</span>
+            </div>
+            <div class="meta-config-grid">
+              <label class="field">
+                <span>Pixel ID</span>
+                <input id="metaPixelId" type="text" inputmode="numeric" placeholder="Ej: 123456789012345" />
+              </label>
+              <label class="field">
+                <span>Cuenta publicitaria</span>
+                <input id="metaAdAccountId" type="text" placeholder="act_1234567890" />
+              </label>
+              <label class="field">
+                <span>Version API</span>
+                <input id="metaApiVersion" type="text" value="v23.0" placeholder="v23.0" />
+              </label>
+              <label class="field">
+                <span>Periodo</span>
+                <select id="metaDatePreset">
+                  <option value="today">Hoy</option>
+                  <option value="yesterday">Ayer</option>
+                  <option value="last_7d">Ultimos 7 dias</option>
+                  <option value="last_14d">Ultimos 14 dias</option>
+                  <option value="last_30d" selected>Ultimos 30 dias</option>
+                  <option value="this_month">Este mes</option>
+                  <option value="last_month">Mes anterior</option>
+                </select>
+              </label>
+              <label class="field token-field">
+                <span>Access Token</span>
+                <input id="metaAccessToken" type="password" autocomplete="off" placeholder="Pega tu token de Meta" />
+              </label>
+              <label class="field">
+                <span>Actualizacion</span>
+                <select id="metaRefreshInterval">
+                  <option value="0">Manual</option>
+                  <option value="60">Cada 60 segundos</option>
+                  <option value="300">Cada 5 minutos</option>
+                </select>
+              </label>
+            </div>
+            <div class="meta-sync-actions">
+              <button class="primary-button" type="submit" id="metaSaveButton">Guardar conexion</button>
+              <button class="ghost-button" type="button" id="metaSyncButton">Sincronizar ahora</button>
+              <button class="ghost-button" type="button" id="metaDemoButton">Cargar demo</button>
+              <button class="ghost-button danger-button" type="button" id="metaClearButton">Limpiar</button>
+            </div>
+            <p class="meta-message" id="metaMessage"></p>
+          </form>
+
+          <div class="ads-metric-grid">
+            <article class="metric-card">
+              <span>Inversion</span>
+              <strong id="metaSpendValue">$0</strong>
+              <small id="metaSpendHint">Sin datos sincronizados</small>
+            </article>
+            <article class="metric-card">
+              <span>Impresiones</span>
+              <strong id="metaImpressionsValue">0</strong>
+              <small id="metaImpressionsHint">Alcance operativo</small>
+            </article>
+            <article class="metric-card">
+              <span>Clics</span>
+              <strong id="metaClicksValue">0</strong>
+              <small id="metaCtrHint">CTR 0.00%</small>
+            </article>
+            <article class="metric-card">
+              <span>CPC</span>
+              <strong id="metaCpcValue">$0.00</strong>
+              <small>Costo por clic</small>
+            </article>
+            <article class="metric-card">
+              <span>Conversiones</span>
+              <strong id="metaConversionsValue">0</strong>
+              <small id="metaConversionsHint">Eventos atribuidos</small>
+            </article>
+            <article class="metric-card featured">
+              <span>ROAS</span>
+              <strong id="metaRoasValue">0.0x</strong>
+              <small id="metaRoasHint">Retorno publicitario</small>
+            </article>
+          </div>
+
+          <div class="meta-layout">
+            <section class="panel wide-panel">
+              <div class="panel-heading">
+                <div>
+                  <span>Rendimiento</span>
+                  <h2>ROAS e inversion por semana</h2>
+                </div>
+                <div class="chart-legend" aria-hidden="true">
+                  <span><i class="cyan-dot"></i>Inversion</span>
+                  <span><i class="expense-dot"></i>ROAS</span>
+                </div>
+              </div>
+              <canvas id="metaTrendChart" height="230"></canvas>
+            </section>
+            <section class="panel">
+              <div class="panel-heading">
+                <div>
+                  <span>Cuenta</span>
+                  <h2>Estado de conexion</h2>
+                </div>
+              </div>
+              <div class="connection-facts">
+                <div><span>Pixel</span><b id="metaPixelLabel">No configurado</b></div>
+                <div><span>Cuenta</span><b id="metaAccountLabel">No configurada</b></div>
+                <div><span>Ultima sincronizacion</span><b id="metaLastSync">Sin sincronizar</b></div>
+                <div><span>Fuente</span><b id="metaSourceLabel">Local</b></div>
+              </div>
+            </section>
+            <section class="panel wide-panel">
+              <div class="panel-heading">
+                <div>
+                  <span>Campanas</span>
+                  <h2>Vista operacional</h2>
+                </div>
+              </div>
+              <div class="table-wrap meta-table-wrap">
+                <table class="meta-table">
+                  <thead>
+                    <tr>
+                      <th>Campana</th>
+                      <th>Inversion</th>
+                      <th>Impresiones</th>
+                      <th>Clics</th>
+                      <th>CTR</th>
+                      <th>CPC</th>
+                      <th>Conv.</th>
+                      <th>ROAS</th>
+                    </tr>
+                  </thead>
+                  <tbody id="metaCampaignTable"></tbody>
+                </table>
+                <div class="empty-state" id="metaEmptyState">
+                  <span></span>
+                  <h3>Meta Ads sin datos</h3>
+                  <p>Conecta credenciales reales o carga demo para activar campanas, metricas y graficos.</p>
+                </div>
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-heading">
+                <div>
+                  <span>Eventos</span>
+                  <h2>Pixel y conversiones</h2>
+                </div>
+              </div>
+              <div class="event-list" id="metaEventList"></div>
+            </section>
+          </div>
+          </div>
+        </section>
+
+        <section class="view-panel" data-panel="ecommerce" aria-label="Dashboard de E-Commerce">
+          <div class="integration-hero ecommerce-hero">
+            <div>
+              <span class="eyebrow">E-Commerce / negocios conectados</span>
+              <h2>Gestiona Kairos, Billion y KiwiFi desde una sola interfaz.</h2>
+              <p>
+                Cada negocio puede guardar su pixel, endpoint de tienda y token para traer ventas,
+                pedidos, trafico y rentabilidad en tiempo real dentro de Nexus.
+              </p>
+            </div>
+            <div class="ecommerce-switcher" id="commerceAppSwitcher" aria-label="Seleccionar negocio e-commerce"></div>
+          </div>
+
+          <form class="panel commerce-config-panel" id="commerceConfigForm">
+            <div class="panel-heading">
+              <div>
+                <span>Conexion</span>
+                <h2 id="commerceConfigTitle">Configurar negocio</h2>
+              </div>
+              <span class="source-pill" id="commerceDataSource">Datos locales</span>
+            </div>
+            <div class="meta-config-grid commerce-config-grid">
+              <label class="field">
+                <span>Pixel ID</span>
+                <input id="commercePixelId" type="text" inputmode="numeric" placeholder="Pixel de Meta o tracking ID" />
+              </label>
+              <label class="field">
+                <span>Endpoint de datos</span>
+                <input id="commerceApiUrl" type="url" placeholder="https://api.tutienda.com/nexus" />
+              </label>
+              <label class="field token-field">
+                <span>API Token</span>
+                <input id="commerceApiToken" type="password" autocomplete="off" placeholder="Token privado del negocio" />
+              </label>
+              <label class="field">
+                <span>Actualizacion</span>
+                <select id="commerceRefreshInterval">
+                  <option value="0">Manual</option>
+                  <option value="60">Cada 60 segundos</option>
+                  <option value="300">Cada 5 minutos</option>
+                </select>
+              </label>
+            </div>
+            <div class="meta-sync-actions">
+              <button class="primary-button" type="submit" id="commerceSaveButton">Guardar negocio</button>
+              <button class="ghost-button" type="button" id="commerceSyncButton">Sincronizar ahora</button>
+              <button class="ghost-button" type="button" id="commerceDemoButton">Cargar demo</button>
+              <button class="ghost-button danger-button" type="button" id="commerceClearButton">Limpiar negocio</button>
+            </div>
+            <p class="meta-message" id="commerceMessage"></p>
+          </form>
+
+          <div class="ads-metric-grid commerce-metric-grid">
+            <article class="metric-card featured">
+              <span>Ventas</span>
+              <strong id="commerceRevenueValue">$0</strong>
+              <small id="commerceRevenueHint">Sin datos sincronizados</small>
+            </article>
+            <article class="metric-card">
+              <span>Pedidos</span>
+              <strong id="commerceOrdersValue">0</strong>
+              <small id="commerceOrdersHint">Ordenes del periodo</small>
+            </article>
+            <article class="metric-card">
+              <span>Ticket promedio</span>
+              <strong id="commerceAovValue">$0</strong>
+              <small>Valor medio por pedido</small>
+            </article>
+            <article class="metric-card">
+              <span>Conversion</span>
+              <strong id="commerceConversionValue">0.0%</strong>
+              <small id="commerceTrafficHint">0 sesiones</small>
+            </article>
+            <article class="metric-card">
+              <span>Margen</span>
+              <strong id="commerceMarginValue">$0</strong>
+              <small id="commerceMarginHint">Rentabilidad estimada</small>
+            </article>
+            <article class="metric-card">
+              <span>Estado</span>
+              <strong id="commerceStatusValue">Offline</strong>
+              <small id="commerceStatusHint">Conecta datos o demo</small>
+            </article>
+          </div>
+
+          <div class="meta-layout commerce-layout">
+            <section class="panel wide-panel">
+              <div class="panel-heading">
+                <div>
+                  <span>Ventas</span>
+                  <h2>Ingresos y pedidos por dia</h2>
+                </div>
+                <div class="chart-legend" aria-hidden="true">
+                  <span><i class="income-dot"></i>Ventas</span>
+                  <span><i class="cyan-dot"></i>Pedidos</span>
+                </div>
+              </div>
+              <canvas id="commerceTrendChart" height="230"></canvas>
+            </section>
+            <section class="panel">
+              <div class="panel-heading">
+                <div>
+                  <span>Negocio</span>
+                  <h2>Conexion activa</h2>
+                </div>
+              </div>
+              <div class="connection-facts">
+                <div><span>App</span><b id="commerceActiveLabel">Kairos</b></div>
+                <div><span>Pixel</span><b id="commercePixelLabel">No configurado</b></div>
+                <div><span>Endpoint</span><b id="commerceEndpointLabel">No configurado</b></div>
+                <div><span>Ultima sincronizacion</span><b id="commerceLastSync">Sin sincronizar</b></div>
+              </div>
+            </section>
+            <section class="panel wide-panel">
+              <div class="panel-heading">
+                <div>
+                  <span>Pedidos</span>
+                  <h2>Operaciones recientes</h2>
+                </div>
+              </div>
+              <div class="table-wrap meta-table-wrap">
+                <table class="meta-table">
+                  <thead>
+                    <tr>
+                      <th>Pedido</th>
+                      <th>Cliente</th>
+                      <th>Producto</th>
+                      <th>Estado</th>
+                      <th>Total</th>
+                      <th>Margen</th>
+                    </tr>
+                  </thead>
+                  <tbody id="commerceOrdersTable"></tbody>
+                </table>
+                <div class="empty-state" id="commerceEmptyState">
+                  <span></span>
+                  <h3>E-Commerce sin datos</h3>
+                  <p>Selecciona un negocio, conecta su fuente de datos o carga demo para activar esta vista.</p>
+                </div>
+              </div>
+            </section>
+            <section class="panel">
+              <div class="panel-heading">
+                <div>
+                  <span>Productos</span>
+                  <h2>Top rendimiento</h2>
+                </div>
+              </div>
+              <div class="event-list" id="commerceProductList"></div>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="chart-tooltip" id="chartTooltip" role="status" aria-live="polite"></div>
+
+    <script src="./dashboard.js?v=20260707-nexus-os-v1"></script>
+  </body>
+</html>

@@ -1,0 +1,14 @@
+# Sistema
+.DS_Store
+**/.DS_Store
+Thumbs.db
+
+# Dependencias (si algún día se agregan)
+node_modules/
+
+# Entorno / secretos
+.env
+.env.*
+
+# Logs
+*.log

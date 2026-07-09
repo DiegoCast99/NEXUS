@@ -1,0 +1,444 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nexus - Sistema operativo para negocios digitales</title>
+    <meta
+      name="description"
+      content="Nexus centraliza e-commerce, dropshipping, infoproductos, afiliados, publicidad, CRM, automatizaciones, IA, analítica y finanzas en una sola interfaz."
+    />
+    <link rel="stylesheet" href="./styles.css?v=20260707-nexus-os-v1" />
+  </head>
+  <body class="intro-boot">
+    <div class="nexus-intro" id="nexusIntro" aria-hidden="true">
+      <canvas id="introCanvas" class="intro-canvas" aria-hidden="true"></canvas>
+      <div class="intro-noise" aria-hidden="true"></div>
+      <div class="intro-counter" id="introCounter">000%</div>
+      <div class="intro-copy" aria-live="polite">
+        <strong id="introBrand">Nexus</strong>
+        <p id="introText"></p>
+      </div>
+      <div class="intro-system-line" aria-hidden="true">
+        <span>boot sequence</span>
+        <span>ecosystem sync</span>
+        <span>command center</span>
+      </div>
+    </div>
+
+    <canvas id="ambientCanvas" class="ambient-canvas" aria-hidden="true"></canvas>
+
+    <header class="site-header" data-header>
+      <div class="nav-shell">
+        <nav class="nav-bar" aria-label="Navegación principal">
+          <a class="brand" href="#top" aria-label="Inicio de Nexus">
+            <span class="brand-word">NEXUS</span>
+            <svg class="brand-dots" viewBox="0 0 120 14" aria-hidden="true">
+              <circle cx="6" cy="7" r="3.4" />
+              <circle cx="32" cy="7" r="3.4" />
+              <circle cx="58" cy="7" r="3.4" />
+              <circle cx="84" cy="7" r="3.4" />
+              <circle class="accent-fill" cx="110" cy="7" r="3.4" />
+            </svg>
+          </a>
+
+          <ul class="desktop-nav">
+            <li class="has-menu mega-trigger">
+              <a href="#services" aria-expanded="false">Módulos <span>▾</span></a>
+              <div class="mega-menu services-menu" aria-label="Menú de módulos">
+                <div class="menu-topline">
+                  <span>mapa del ecosistema</span>
+                  <a href="#services">todos los módulos &rarr;</a>
+                </div>
+                <div class="service-columns">
+                  <section class="service-column">
+                    <p>canales de venta</p>
+                    <a class="service-card" style="--tile-x: 0%; --tile-y: 0%;" href="#services">
+                      <span class="service-copy"><b>01</b><span>E-commerce</span><small>Tiendas, pedidos, inventario y clientes.</small></span>
+                      <span class="service-media" aria-hidden="true"></span>
+                    </a>
+                    <a class="service-card is-highlight" style="--tile-x: 33.333%; --tile-y: 0%;" href="#services">
+                      <span class="service-copy"><b>02</b><span>Dropshipping</span><small>Productos, proveedores, márgenes y fulfillment.</small></span>
+                      <span class="service-media" aria-hidden="true"></span>
+                    </a>
+                    <a class="service-card" style="--tile-x: 0%; --tile-y: 50%;" href="#services">
+                      <span class="service-copy"><b>03</b><span>Infoproductos</span><small>Hotmart, Kiwify, Braip, Eduzz y lanzamientos.</small></span>
+                      <span class="service-media" aria-hidden="true"></span>
+                    </a>
+                  </section>
+                  <section class="service-column">
+                    <p>crecimiento</p>
+                    <a class="service-card" style="--tile-x: 66.666%; --tile-y: 0%;" href="#services">
+                      <span class="service-copy"><b>04</b><span>Ads Hub</span><small>Meta Ads, Google Ads y próximos canales pagos.</small></span>
+                      <span class="service-media" aria-hidden="true"></span>
+                    </a>
+                    <a class="service-card" style="--tile-x: 66.666%; --tile-y: 50%;" href="#services">
+                      <span class="service-copy"><b>05</b><span>Afiliados</span><small>Ofertas, comisiones, links, UTMs y conversiones.</small></span>
+                      <span class="service-media" aria-hidden="true"></span>
+                    </a>
+                    <a class="service-card" style="--tile-x: 66.666%; --tile-y: 100%;" href="#services">
+                      <span class="service-copy"><b>06</b><span>Embudos con IA <em>&#10022;</em></span><small>Contenido, automatizaciones y señales de mejora.</small></span>
+                      <span class="service-media" aria-hidden="true"></span>
+                    </a>
+                  </section>
+                  <section class="service-column">
+                    <p>operación central</p>
+                    <a class="service-card" style="--tile-x: 100%; --tile-y: 0%;" href="#services">
+                      <span class="service-copy"><b>07</b><span>CRM unificado</span><small>Leads, clientes, compras, tickets y relaciones.</small></span>
+                      <span class="service-media" aria-hidden="true"></span>
+                    </a>
+                    <a class="service-card" style="--tile-x: 33.333%; --tile-y: 50%;" href="#services">
+                      <span class="service-copy"><b>08</b><span>Automatizaciones</span><small>Flujos entre ventas, campañas, clientes y tareas.</small></span>
+                      <span class="service-media" aria-hidden="true"></span>
+                    </a>
+                    <a class="service-card" style="--tile-x: 0%; --tile-y: 100%;" href="#services">
+                      <span class="service-copy"><b>09</b><span>Analítica <em>&#10022;</em></span><small>Métricas, cohortes, tendencias y reportes.</small></span>
+                      <span class="service-media" aria-hidden="true"></span>
+                    </a>
+                  </section>
+                  <section class="service-column">
+                    <p>control financiero</p>
+                    <a class="service-card" style="--tile-x: 100%; --tile-y: 50%;" href="#services">
+                      <span class="service-copy"><b>10</b><span>Finanzas personales</span><small>Gastos, metas, patrimonio y flujo personal.</small></span>
+                      <span class="service-media" aria-hidden="true"></span>
+                    </a>
+                    <a class="service-card" style="--tile-x: 33.333%; --tile-y: 100%;" href="#services">
+                      <span class="service-copy"><b>11</b><span>Finanzas por negocio <em>&#10022;</em></span><small>Caja, costos, rentabilidad y escenarios.</small></span>
+                      <span class="service-media" aria-hidden="true"></span>
+                    </a>
+                    <a class="service-card" style="--tile-x: 100%; --tile-y: 100%;" href="#services">
+                      <span class="service-copy"><b>12</b><span>Rentabilidad global</span><small>Ventas, ads, comisiones, impuestos y margen real.</small></span>
+                      <span class="service-media" aria-hidden="true"></span>
+                    </a>
+                  </section>
+                </div>
+              </div>
+            </li>
+            <li><a href="#method">Arquitectura</a></li>
+            <li class="has-menu case-trigger">
+              <a href="#cases" aria-expanded="false">Ecosistema <span>▾</span></a>
+              <div class="mega-menu case-menu" aria-label="Menú de ecosistema">
+                <div>
+                  <span class="case-media" style="--tile-x: 0%; --tile-y: 0%;" aria-hidden="true"></span>
+                  <p>Comercio</p>
+                  <a href="#cases">Alpha Fitness</a>
+                  <a href="#cases">Tiendas e-commerce</a>
+                  <a href="#cases">Dropshipping</a>
+                  <a href="#cases">Inventario y pedidos</a>
+                </div>
+                <div>
+                  <span class="case-media" style="--tile-x: 33.333%; --tile-y: 100%;" aria-hidden="true"></span>
+                  <p>Infoproductos</p>
+                  <a href="#cases">Hotmart</a>
+                  <a href="#cases">Kiwify</a>
+                  <a href="#cases">Braip y Eduzz</a>
+                  <a href="#cases">Afiliados</a>
+                </div>
+                <div>
+                  <span class="case-media" style="--tile-x: 100%; --tile-y: 100%;" aria-hidden="true"></span>
+                  <p>Growth stack</p>
+                  <a href="#cases">Meta Ads</a>
+                  <a href="#cases">Google Ads</a>
+                  <a href="#cases">CRM y leads</a>
+                  <a href="#cases">Automatizaciones &rarr;</a>
+                </div>
+              </div>
+            </li>
+            <li class="has-menu compact-trigger">
+              <button type="button" aria-expanded="false">Herramientas <span>▾</span></button>
+              <div class="compact-menu tools-menu" aria-label="Menú de herramientas">
+                <a style="--tile-x: 66.666%; --tile-y: 50%;" href="#audit"><span class="compact-thumb" aria-hidden="true"></span><span>Mapa de ecosistema</span><em>&#10022;</em></a>
+                <a style="--tile-x: 33.333%; --tile-y: 100%;" href="#audit"><span class="compact-thumb" aria-hidden="true"></span><span>Centro de campañas</span><em>&#10022;</em></a>
+                <a style="--tile-x: 100%; --tile-y: 50%;" href="#audit"><span class="compact-thumb" aria-hidden="true"></span><span>Automatizaciones IA</span></a>
+              </div>
+            </li>
+            <li class="has-menu compact-trigger">
+              <button type="button" aria-expanded="false">Más <span>▾</span></button>
+              <div class="compact-menu" aria-label="Menú adicional">
+                <a href="#about">Visión</a>
+                <a href="#contact">Contacto</a>
+                <a href="#method">Roadmap</a>
+              </div>
+            </li>
+          </ul>
+
+          <div class="nav-actions">
+            <form class="search-form" role="search">
+              <button class="icon-button search-toggle" type="submit" aria-label="Buscar">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="11" cy="11" r="6.4" />
+                  <path d="M16 16l4 4" />
+                </svg>
+              </button>
+              <input aria-label="Consulta de búsqueda" type="search" placeholder="Buscar integración..." />
+            </form>
+            <a class="talk-button" href="./dashboard.html" data-login-trigger>INGRESAR</a>
+            <button class="menu-button" type="button" aria-label="Abrir menú" aria-expanded="false">
+              <span></span><span></span><span></span>
+            </button>
+          </div>
+        </nav>
+
+        <div class="mobile-panel" aria-hidden="true">
+          <a href="#services">módulos</a>
+          <a href="#method">arquitectura</a>
+          <a href="#cases">ecosistema</a>
+          <a href="#audit">herramientas</a>
+          <a href="#about">visión</a>
+          <a href="#contact">contacto</a>
+          <a class="mobile-talk" href="./dashboard.html" data-login-trigger>INGRESAR</a>
+        </div>
+      </div>
+    </header>
+
+    <aside class="scroll-meter" aria-hidden="true">
+      <span class="meter-line"></span>
+      <span id="scrollPercent">000%</span>
+    </aside>
+
+    <main id="top">
+      <section class="hero-section dark-grid">
+        <div class="online-pill"><span></span> ecosistema digital <b>&middot;</b> centro operativo</div>
+        <canvas id="globeCanvas" class="globe-canvas" aria-hidden="true"></canvas>
+        <div class="hero-copy">
+          <h1>Nexus Infinite Network &amp; Commerce</h1>
+          <p>
+            Nexus reúne tiendas, dropshipping, infoproductos, afiliados, publicidad,
+            CRM, automatizaciones, IA, analítica y finanzas en una sola interfaz para
+            conectar, organizar y controlar todos tus negocios digitales.
+          </p>
+        </div>
+        <div class="metric-row">
+          <span>todos tus negocios</span>
+          <span>1 centro operativo</span>
+          <span>ads + ventas + finanzas</span>
+          <span><b>*</b> ecosistema conectado</span>
+        </div>
+        <span id="services" class="section-anchor" aria-hidden="true"></span>
+        <div class="logo-marquee" aria-label="Franja de módulos de Nexus">
+          <div>
+            <span>ECOMMERCE</span><span>DROPSHIPPING</span><span>HOTMART</span><span>KIWIFY</span><span>BRAIP</span><span>EDUZZ</span>
+            <span>META ADS</span><span>GOOGLE ADS</span><span>CRM</span><span>IA</span><span>FINANZAS</span><span>ANALITICA</span>
+          </div>
+        </div>
+        <span id="cases" class="section-anchor" aria-hidden="true"></span>
+        <div class="review-marquee" id="reviews">
+          <div class="review-track">
+            <article class="review-card">
+              <span class="review-source">e-commerce</span>
+              <strong>*****</strong>
+              <p>"Tus tiendas, pedidos, inventario, clientes y campañas viven en una vista operativa común."</p>
+              <a href="#reviews">ver canal &rarr;</a>
+              <footer><span class="avatar a1"></span>Tiendas &middot; pedidos &middot; clientes</footer>
+            </article>
+            <article class="review-card">
+              <span class="review-source">infoproductos</span>
+              <strong>*****</strong>
+              <p>"Hotmart, Kiwify, Braip, Eduzz y afiliados se conectan para leer ventas, comisiones y embudos."</p>
+              <a href="#reviews">ver integraciones &rarr;</a>
+              <footer><span class="avatar a2"></span>Productos &middot; afiliados &middot; payouts</footer>
+            </article>
+            <article class="review-card">
+              <span class="review-source">growth</span>
+              <strong>*****</strong>
+              <p>"Meta Ads, Google Ads, funnels y CRM se leen juntos para entender qué mueve el negocio."</p>
+              <a href="#reviews">ver centro de control &rarr;</a>
+              <footer><span class="avatar a3"></span>Ads &middot; CRM &middot; tracking</footer>
+            </article>
+            <article class="review-card">
+              <span class="review-source">control global</span>
+              <strong>*****</strong>
+              <p>"El objetivo no es abrir más herramientas: es dirigir todo el ecosistema desde una sola interfaz."</p>
+              <a href="#reviews">ver visión &rarr;</a>
+              <footer><span class="avatar a4"></span>Nexus &middot; comando central</footer>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="method-section" id="method">
+        <div class="method-sticky">
+          <div class="method-intro">
+            <span>[ arquitectura nexus ]</span>
+            <h2>Del caos al centro operativo.</h2>
+            <p>
+              Nexus está diseñado como una capa central entre tus negocios, tus herramientas
+              y tus decisiones. Cada módulo conecta una parte del ecosistema y la convierte en control operativo.
+            </p>
+            <b>mapear &middot; conectar &middot; unificar &middot; automatizar &middot; escalar</b>
+          </div>
+          <div class="method-track">
+            <article class="phase">
+              <span class="phase-number">01</span>
+              <h2>Mapear.</h2>
+              <p>Todo ecosistema necesita un mapa claro antes de poder controlarse.</p>
+              <ul>
+                <li>negocios, canales de venta, plataformas y fuentes de datos</li>
+                <li>e-commerce, dropshipping, infoproductos, afiliados y servicios</li>
+                <li>prioridades por etapa: operar, medir, automatizar o escalar</li>
+              </ul>
+            </article>
+            <article class="phase">
+              <span class="phase-number">02</span>
+              <h2>Conectar.</h2>
+              <p>Las herramientas dejan de ser islas cuando sus datos entran al mismo sistema.</p>
+              <ul>
+                <li>Meta Ads, Google Ads, tiendas, CRMs y plataformas de venta</li>
+                <li>Hotmart, Kiwify, Braip, Eduzz y nuevas integraciones futuras</li>
+                <li>APIs, cargas manuales y conectores preparados para crecer</li>
+              </ul>
+            </article>
+            <article class="phase">
+              <span class="phase-number">03</span>
+              <h2>Unificar.</h2>
+              <p>Ventas, campañas, clientes y finanzas se convierten en una sola lectura.</p>
+              <ul>
+                <li>métricas por negocio, canal, producto, campaña y cliente</li>
+                <li>rentabilidad real cruzando ventas, costos, ads y comisiones</li>
+                <li>dashboards ejecutivos para decidir sin saltar de plataforma</li>
+              </ul>
+            </article>
+            <article class="phase">
+              <span class="phase-number">04</span>
+              <h2>Automatizar.</h2>
+              <p>Cuando el sistema entiende el ecosistema, puede ejecutar tareas repetitivas.</p>
+              <ul>
+                <li>alertas, reportes, recordatorios y movimientos entre herramientas</li>
+                <li>IA para detectar anomalías, oportunidades y cuellos de botella</li>
+                <li>flujos para clientes, campañas, finanzas y operaciones</li>
+              </ul>
+            </article>
+            <article class="phase">
+              <span class="phase-number">05</span>
+              <h2>Escalar.</h2>
+              <p>Nexus debe crecer con el emprendedor, no obligarlo a empezar de cero.</p>
+              <ul>
+                <li>módulos independientes para sumar nuevos negocios y herramientas</li>
+                <li>permisos, vistas y reportes preparados para equipos</li>
+                <li>una arquitectura lista para años de expansión digital</li>
+              </ul>
+            </article>
+          </div>
+          <div class="phase-nav" aria-hidden="true">
+            <span>M<small>mapear</small></span>
+            <span>C<small>conectar</small></span>
+            <span>U<small>unificar</small></span>
+            <span>A<small>automatizar</small></span>
+            <span>E<small>escalar</small></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="audit-section dark-grid" id="audit">
+        <div class="audit-heading">
+          <span>[ señales del ecosistema ]</span>
+          <h2>¿Qué parte de tu operación está <em>desconectada?</em></h2>
+          <p>Nombra la fricción. Nexus la convierte en módulo, integración, métrica o automatización dentro del centro operativo.</p>
+          <b><span id="frictionCount">183</span>+ conexiones listas para mapear</b>
+        </div>
+        <div class="friction-cloud" aria-hidden="true">
+          <span style="--x: 8%; --y: 20%;">mis tiendas viven separadas 4 &nearr;</span>
+          <span style="--x: 55%; --y: 28%;">no sé qué negocio es rentable 9 &nearr;</span>
+          <span style="--x: 18%; --y: 42%;">mis afiliados no tienen tracking 11 &nearr;</span>
+          <span style="--x: 4%; --y: 58%;">mis campañas están dispersas 7 &nearr;</span>
+          <span style="--x: 49%; --y: 62%;">mis clientes no llegan al CRM 14 &nearr;</span>
+          <span style="--x: 28%; --y: 76%;">repito tareas que deberían ser automáticas 22 &nearr;</span>
+        </div>
+      </section>
+
+      <section class="contact-section dark-grid" id="contact">
+        <p class="ribbon-text">un centro operativo para negocios digitales</p>
+        <span class="section-label">[ construir nexus ]</span>
+        <div class="contact-grid">
+          <a href="mailto:hola@nexus.app">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16v12H4z" /><path d="M4 7l8 6 8-6" /></svg>
+            <b>correo</b>
+            <span>cuéntanos qué ecosistema quieres conectar &middot; hola@nexus.app</span>
+            <em>&rarr;</em>
+          </a>
+          <a href="#">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 19l1-4a7 7 0 1 1 3 2z" /><path d="M9 8c1 3 3 5 6 6" /></svg>
+            <b>whatsapp</b>
+            <span>mapear módulos e integraciones &middot; +00 000 000 000</span>
+            <em>&rarr;</em>
+          </a>
+          <a href="#">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8c4-2 8-2 12 0l1 8c-5 2-9 2-14 0z" /><path d="M9 13h.1M15 13h.1" /></svg>
+            <b>discord</b>
+            <span>comunidad de builders &middot; Nexus</span>
+            <em>&rarr;</em>
+          </a>
+        </div>
+      </section>
+
+      <section class="closing-section dark-grid" id="about">
+        <span>[ la visión ]</span>
+        <div class="particle-ring" aria-hidden="true"></div>
+        <h2>Un solo lugar para gestionar todo tu <em>ecosistema digital.</em></h2>
+      </section>
+
+      <footer class="site-footer dark-grid">
+        <section class="follow-row" aria-label="Redes sociales">
+          <span>[ síguenos ]</span>
+          <a href="#">linkedin</a>
+          <a href="#">instagram</a>
+          <a href="#">facebook</a>
+          <a href="#">tiktok</a>
+        </section>
+          <section class="footer-links">
+          <div>
+            <p>Arquitectura Nexus</p>
+            <a href="#services">E-commerce</a>
+            <a href="#services">Dropshipping <em>&#10022;</em></a>
+            <a href="#services">Infoproductos</a>
+            <a href="#services">Afiliados <em>&#10022;</em></a>
+            <a href="#services">Ads Hub</a>
+            <a href="#services">Todos los módulos &rarr;</a>
+          </div>
+          <div>
+            <p>Producto</p>
+            <a href="#services">Módulos</a>
+            <a href="#cases">Ecosistema</a>
+            <a href="#about">Visión</a>
+            <a href="#method">Arquitectura</a>
+            <a href="#audit">Automatizaciones</a>
+            <a href="#contact">Contacto</a>
+          </div>
+          <div>
+            <p>Accesos rápidos</p>
+            <a href="#reviews">Alpha Fitness</a>
+            <a href="#audit">Hotmart y Kiwify <em>&#10022;</em></a>
+            <a href="#audit">Meta Ads y Google Ads</a>
+            <a href="#audit">CRM central</a>
+            <a href="#">Roadmap</a>
+          </div>
+        </section>
+      </footer>
+    </main>
+
+    <div class="login-overlay" data-login-overlay aria-hidden="true">
+      <div class="login-backdrop" data-login-close></div>
+      <section class="login-card" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+        <button class="login-close" type="button" data-login-close aria-label="Cerrar acceso">×</button>
+        <span class="login-eyebrow">acceso privado</span>
+        <h2 id="loginTitle">Entrar a Nexus</h2>
+        <p>Ingresa tus credenciales para abrir el centro operativo.</p>
+        <form class="login-form" data-login-form>
+          <label>
+            <span>Usuario</span>
+            <input type="text" name="user" autocomplete="username" placeholder="Usuario" required />
+          </label>
+          <label>
+            <span>Contraseña</span>
+            <input type="password" name="password" autocomplete="current-password" placeholder="Contraseña" required />
+          </label>
+          <p class="login-error" data-login-error aria-live="polite"></p>
+          <button type="submit">Ingresar</button>
+        </form>
+      </section>
+    </div>
+
+    <script src="./world-countries.js"></script>
+    <script src="./script.js?v=20260707-nexus-os-v1"></script>
+  </body>
+</html>
