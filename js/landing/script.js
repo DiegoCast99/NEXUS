@@ -14,10 +14,9 @@
   const loginOverlay = document.querySelector("[data-login-overlay]");
   const loginForm = document.querySelector("[data-login-form]");
   const loginError = document.querySelector("[data-login-error]");
-  const loginUser = "DiegoCast99";
+  const loginUser = window.NexusAuth.USER;
   const loginUserKey = loginUser.toLowerCase();
   const loginPassword = "0000";
-  const authKey = "nexus.private.session.v1";
   const dashboardRevealKey = "nexus.dashboard.reveal.v1";
   const introSeenKey = "nexus_intro_seen";
   const SHOW_INTRO_ON_EVERY_REFRESH = false;
@@ -35,12 +34,7 @@
   }
 
   function hasActiveSession() {
-    try {
-      const session = JSON.parse(localStorage.getItem(authKey) || "null");
-      return session?.user === loginUser;
-    } catch (error) {
-      return false;
-    }
+    return window.NexusAuth.hasSession();
   }
 
   if (hasActiveSession()) {
@@ -353,7 +347,7 @@
   }
 
   function createSession() {
-    localStorage.setItem(authKey, JSON.stringify({ user: loginUser, startedAt: Date.now() }));
+    window.NexusAuth.createSession();
   }
 
   function enterDashboard() {

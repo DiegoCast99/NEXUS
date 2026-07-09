@@ -1,6 +1,6 @@
 (function () {
-  const AUTH_KEY = "nexus.private.session.v1";
-  const AUTH_USER = "DiegoCast99";
+  const AUTH_KEY = window.NexusAuth.KEY;
+  const AUTH_USER = window.NexusAuth.USER;
   const DASHBOARD_REVEAL_KEY = "nexus.dashboard.reveal.v1";
   const STORAGE_KEY = "nexus.personalFinance.movements.v1";
   const MONTH_FILTER_KEY = "nexus.personalFinance.monthFilter.v1";
@@ -128,12 +128,7 @@
   ];
 
   function hasSession() {
-    try {
-      const session = JSON.parse(localStorage.getItem(AUTH_KEY) || "null");
-      return session?.user === AUTH_USER;
-    } catch (error) {
-      return false;
-    }
+    return window.NexusAuth.hasSession();
   }
 
   if (!hasSession()) {
