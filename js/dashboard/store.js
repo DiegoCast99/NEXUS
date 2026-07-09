@@ -26,7 +26,7 @@
   // el usuario nunca pierda datos en silencio creyendo que se guardaron.
   function safeSetItem(key, value) {
     try {
-      safeSetItem(key, value);
+      localStorage.setItem(key, value);
       return true;
     } catch (error) {
       console.error("Nexus: no se pudo guardar en localStorage:", key, error);

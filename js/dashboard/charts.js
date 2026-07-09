@@ -224,7 +224,10 @@
   }
 
   function roundedRect(ctx, x, y, width, height, radius) {
-    const safeRadius = Math.min(radius, width / 2, Math.max(0, height) / 2);
+    // safeRadius nunca puede ser negativo: si el canvas aún no tiene tamaño real
+    // (p.ej. panel oculto en el init), width/height pueden ser <= 0 y arcTo
+    // rechaza radios negativos con IndexSizeError.
+    const safeRadius = Math.max(0, Math.min(radius, width / 2, height / 2));
     ctx.beginPath();
     ctx.moveTo(x + safeRadius, y);
     ctx.arcTo(x + width, y, x + width, y + height, safeRadius);
