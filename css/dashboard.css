@@ -56,6 +56,7 @@ html.nexus-dashboard-reveal-pending .module-link,
 html.nexus-dashboard-reveal-pending .sidebar-status,
 html.nexus-dashboard-reveal-pending .landing-link,
 html.nexus-dashboard-reveal-pending .logout-button,
+html.nexus-dashboard-reveal-pending .data-tools,
 html.nexus-dashboard-reveal-pending .topbar > div,
 html.nexus-dashboard-reveal-pending .view-panel.is-active .metric-card,
 html.nexus-dashboard-reveal-pending .view-panel.is-active .integration-hero,
@@ -73,6 +74,7 @@ html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .module-link,
 html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .sidebar-status,
 html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .landing-link,
 html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .logout-button,
+html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .data-tools,
 html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .topbar > div,
 html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .view-panel.is-active .metric-card,
 html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .view-panel.is-active .integration-hero,
@@ -114,6 +116,10 @@ html.nexus-dashboard-reveal-pending .landing-link {
 
 html.nexus-dashboard-reveal-pending .logout-button {
   transition-delay: 730ms;
+}
+
+html.nexus-dashboard-reveal-pending .data-tools {
+  transition-delay: 700ms;
 }
 
 html.nexus-dashboard-reveal-pending .topbar > div:first-child {
@@ -386,6 +392,47 @@ th {
 .logout-button:hover,
 .landing-link:hover {
   color: var(--text);
+}
+
+/* Respaldo de datos (Exportar / Importar) */
+.data-tools {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0 2px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.data-tool-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  color: rgba(243, 243, 248, 0.62);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease, color 180ms ease;
+}
+
+.data-tool-button svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.data-tool-button:hover {
+  color: var(--text);
+  border-color: rgba(255, 26, 157, 0.35);
+  background: rgba(255, 26, 157, 0.08);
 }
 
 .dashboard-main {

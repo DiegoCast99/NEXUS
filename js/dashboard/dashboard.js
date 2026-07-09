@@ -12,6 +12,94 @@
   const COMMERCE_DATA_KEY = "nexus.ecommerce.snapshot.v1";
   const CHART_VIEW_MODE_KEY = "nexus_chart_view_mode";
 
+  // === Persistencia segura + respaldo (Ola 0) ================================
+  // Claves que NO entran al respaldo: sesión y flags transitorios de UI.
+  const NON_DATA_KEYS = new Set([AUTH_KEY, DASHBOARD_REVEAL_KEY]);
+
+  // Escribe en localStorage capturando el error de cuota llena (~5MB), para que
+  // el usuario nunca pierda datos en silencio creyendo que se guardaron.
+  function safeSetItem(key, value) {
+    try {
+      safeSetItem(key, value);
+      return true;
+    } catch (error) {
+      console.error("Nexus: no se pudo guardar en localStorage:", key, error);
+      if (error && (error.name === "QuotaExceededError" || error.code === 22)) {
+        window.alert(
+          "El almacenamiento local está lleno y no se pudo guardar el último cambio.\n\n" +
+          'Usá "Exportar datos" para respaldar y liberá espacio para no perder información.'
+        );
+      }
+      return false;
+    }
+  }
+
+  // Junta todas las claves de datos de Nexus (finanzas, Meta, e-commerce).
+  function collectNexusData() {
+    const data = {};
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || NON_DATA_KEYS.has(key) || key.indexOf("nexus") !== 0) continue;
+      data[key] = localStorage.getItem(key);
+    }
+    return data;
+  }
+
+  // Descarga un respaldo JSON con todos los datos.
+  function exportNexusData() {
+    const payload = {
+      app: "nexus",
+      type: "backup",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      data: collectNexusData()
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "nexus-backup-" + stamp + ".json";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  // Restaura un respaldo JSON previamente exportado y recarga la app.
+  function importNexusData(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      let parsed;
+      try {
+        parsed = JSON.parse(String(reader.result || "null"));
+      } catch (error) {
+        window.alert("El archivo no es un respaldo válido de Nexus (no es JSON).");
+        return;
+      }
+      const data = parsed && typeof parsed.data === "object" && parsed.data ? parsed.data : null;
+      const keys = data
+        ? Object.keys(data).filter((k) => k.indexOf("nexus") === 0 && !NON_DATA_KEYS.has(k))
+        : [];
+      if (!keys.length) {
+        window.alert("El archivo no tiene el formato de respaldo de Nexus.");
+        return;
+      }
+      const ok = window.confirm(
+        "Se van a restaurar " + keys.length + " conjuntos de datos y se REEMPLAZARÁN los actuales.\n\n¿Continuar?"
+      );
+      if (!ok) return;
+      keys.forEach((k) => {
+        if (typeof data[k] === "string") safeSetItem(k, data[k]);
+      });
+      window.alert("Datos restaurados. La página se va a recargar.");
+      window.location.reload();
+    };
+    reader.onerror = () => window.alert("No se pudo leer el archivo.");
+    reader.readAsText(file);
+  }
+
   const mainSections = [
     {
       id: "finance",
@@ -288,7 +376,10 @@
     commerceProductList: document.getElementById("commerceProductList"),
     commerceTrendChart: document.getElementById("commerceTrendChart"),
     chartTooltip: document.getElementById("chartTooltip"),
-    logoutButton: document.querySelector("[data-logout]")
+    logoutButton: document.querySelector("[data-logout]"),
+    exportButton: document.querySelector("[data-export]"),
+    importButton: document.querySelector("[data-import]"),
+    importInput: document.querySelector("[data-import-input]")
   };
 
   const state = {
@@ -323,7 +414,7 @@
 
   if (!commerceApps.some((app) => app.id === state.commerce.activeApp)) {
     state.commerce.activeApp = commerceApps[0].id;
-    localStorage.setItem("nexus.ecommerce.activeApp.v1", state.commerce.activeApp);
+    safeSetItem("nexus.ecommerce.activeApp.v1", state.commerce.activeApp);
   }
 
   const chartTargets = new Map();
@@ -367,7 +458,7 @@
   }
 
   function saveMovements() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.movements));
+    safeSetItem(STORAGE_KEY, JSON.stringify(state.movements));
   }
 
   function defaultMetaConfig() {
@@ -395,7 +486,7 @@
       persistActiveMetaPlatform();
       return;
     }
-    localStorage.setItem(META_CONFIG_KEY, JSON.stringify(state.meta.config));
+    safeSetItem(META_CONFIG_KEY, JSON.stringify(state.meta.config));
   }
 
   function loadMetaSnapshot() {
@@ -413,7 +504,7 @@
       persistActiveMetaPlatform();
       return;
     }
-    localStorage.setItem(META_DATA_KEY, JSON.stringify(snapshot));
+    safeSetItem(META_DATA_KEY, JSON.stringify(snapshot));
   }
 
   function defaultMetaPlatformState(platform) {
@@ -459,7 +550,7 @@
   }
 
   function saveMetaPlatforms() {
-    localStorage.setItem(META_PLATFORMS_KEY, JSON.stringify(state.meta.platforms));
+    safeSetItem(META_PLATFORMS_KEY, JSON.stringify(state.meta.platforms));
   }
 
   function getMetaPlatform(id = state.meta.selectedPlatform) {
@@ -557,7 +648,7 @@
   }
 
   function saveCommerceConfigs() {
-    localStorage.setItem(COMMERCE_CONFIG_KEY, JSON.stringify(state.commerce.configs));
+    safeSetItem(COMMERCE_CONFIG_KEY, JSON.stringify(state.commerce.configs));
   }
 
   function loadCommerceSnapshots() {
@@ -570,7 +661,7 @@
   }
 
   function saveCommerceSnapshots() {
-    localStorage.setItem(COMMERCE_DATA_KEY, JSON.stringify(state.commerce.snapshots));
+    safeSetItem(COMMERCE_DATA_KEY, JSON.stringify(state.commerce.snapshots));
   }
 
   function getCommerceApp(id = state.commerce.activeApp) {
@@ -662,7 +753,7 @@
     const platform = getMetaPlatform(id);
     if (!platform) return;
     state.meta.selectedPlatform = id;
-    localStorage.setItem(META_ACTIVE_PLATFORM_KEY, id);
+    safeSetItem(META_ACTIVE_PLATFORM_KEY, id);
     loadActiveMetaPlatform();
     setMetaMessage("", "");
     populateMetaConfigForm();
@@ -1706,7 +1797,7 @@
     } else {
       state.movements = [payload, ...state.movements];
       state.filters.month = movementMonth(payload);
-      localStorage.setItem(MONTH_FILTER_KEY, state.filters.month);
+      safeSetItem(MONTH_FILTER_KEY, state.filters.month);
     }
 
     saveMovements();
@@ -1768,7 +1859,7 @@
     });
     state.movements = [...seeded, ...state.movements.filter((movement) => !movement.id.startsWith("demo-"))];
     state.filters.month = currentMonth();
-    localStorage.setItem(MONTH_FILTER_KEY, state.filters.month);
+    safeSetItem(MONTH_FILTER_KEY, state.filters.month);
     saveMovements();
     renderAll();
   }
@@ -1839,7 +1930,7 @@
       state.meta.refreshTimer = 0;
     } else if (normalized.metaPlatform) {
       state.meta.selectedPlatform = normalized.metaPlatform;
-      localStorage.setItem(META_ACTIVE_PLATFORM_KEY, normalized.metaPlatform);
+      safeSetItem(META_ACTIVE_PLATFORM_KEY, normalized.metaPlatform);
       loadActiveMetaPlatform();
     } else {
       state.meta.selectedPlatform = null;
@@ -2099,7 +2190,7 @@
     elements.chartModeButtons.forEach((button) => {
       button.addEventListener("click", () => {
         state.chartMode = button.dataset.chartMode === "3d" ? "3d" : "2d";
-        localStorage.setItem(CHART_VIEW_MODE_KEY, state.chartMode);
+        safeSetItem(CHART_VIEW_MODE_KEY, state.chartMode);
         applyChartMode();
         if (state.activeView === "meta") renderMetaDashboard();
         else if (state.activeView === "ecommerce") renderCommerceDashboard();
@@ -2126,7 +2217,7 @@
 
     elements.monthFilter.addEventListener("change", () => {
       state.filters.month = elements.monthFilter.value;
-      localStorage.setItem(MONTH_FILTER_KEY, state.filters.month);
+      safeSetItem(MONTH_FILTER_KEY, state.filters.month);
       renderAll();
     });
 
@@ -2192,7 +2283,7 @@
       const button = event.target.closest("[data-commerce-app]");
       if (!button) return;
       state.commerce.activeApp = button.dataset.commerceApp;
-      localStorage.setItem("nexus.ecommerce.activeApp.v1", state.commerce.activeApp);
+      safeSetItem("nexus.ecommerce.activeApp.v1", state.commerce.activeApp);
       setCommerceMessage("", "");
       scheduleCommerceRefresh();
       renderCommerceDashboard();
@@ -2233,6 +2324,14 @@
     elements.logoutButton?.addEventListener("click", () => {
       localStorage.removeItem(AUTH_KEY);
       window.location.href = "./index.html";
+    });
+
+    elements.exportButton?.addEventListener("click", exportNexusData);
+    elements.importButton?.addEventListener("click", () => elements.importInput?.click());
+    elements.importInput?.addEventListener("change", (event) => {
+      const file = event.target.files && event.target.files[0];
+      importNexusData(file);
+      event.target.value = "";
     });
 
     elements.movementsTable.addEventListener("click", (event) => {

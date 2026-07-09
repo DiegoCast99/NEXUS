@@ -88,6 +88,17 @@
           </svg>
           Volver a la landing
         </a>
+        <div class="data-tools" role="group" aria-label="Respaldo de datos">
+          <button class="data-tool-button" type="button" data-export title="Descargar un respaldo JSON de todos tus datos">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12" /><path d="M8 11l4 4 4-4" /><path d="M5 21h14" /></svg>
+            Exportar datos
+          </button>
+          <button class="data-tool-button" type="button" data-import title="Restaurar desde un respaldo JSON">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3" /><path d="M8 7l4-4 4 4" /><path d="M5 21h14" /></svg>
+            Importar datos
+          </button>
+          <input type="file" accept="application/json,.json" data-import-input hidden />
+        </div>
         <button class="logout-button" type="button" data-logout>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M10 6H6v12h4" />
