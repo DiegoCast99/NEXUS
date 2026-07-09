@@ -6,7 +6,7 @@
    ============================================================ */
 (function () {
   const firebaseConfig = {
-    apiKey: "AIzaSyDLIXaVVhwI-cRzaqzuZQ6HKL5gSb6cRYA",
+    apiKey: "AIzaSyDlIXaVYhwT-cRzaqzuZQ6HKL5gSb6cRYA",
     authDomain: "nexus-systems-17a5b.firebaseapp.com",
     projectId: "nexus-systems-17a5b",
     storageBucket: "nexus-systems-17a5b.firebasestorage.app",
