@@ -1,0 +1,229 @@
+/* ============================================================
+   NEXUS · Landing · Modal de login + transición portal
+   ============================================================ */
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 420ms ease, visibility 420ms ease;
+}
+
+.login-overlay.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.login-backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 24%, rgba(255, 26, 157, 0.12), transparent 34%),
+    radial-gradient(circle at 52% 50%, rgba(92, 225, 255, 0.045), transparent 36%),
+    rgba(3, 3, 5, 0.62);
+  backdrop-filter: blur(4px);
+}
+
+.login-card {
+  position: relative;
+  width: min(420px, calc(100vw - 32px));
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 520ms ease 180ms, transform 520ms ease 180ms;
+}
+
+.login-overlay.is-open .login-card {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.login-close {
+  position: fixed;
+  top: 26px;
+  right: 28px;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(240, 240, 248, 0.76);
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.login-eyebrow {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  color: var(--accent);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.login-eyebrow::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 14px rgba(255, 26, 157, 0.72);
+}
+
+.login-card h2 {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.login-card > p {
+  display: none;
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.login-form {
+  display: grid;
+  gap: 16px;
+  margin-top: 0;
+}
+
+.login-form label {
+  display: grid;
+  gap: 0;
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 560ms ease, transform 560ms ease;
+}
+
+.login-overlay.is-open .login-form label:nth-of-type(1) {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 260ms;
+}
+
+.login-overlay.is-open .login-form label:nth-of-type(2) {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 380ms;
+}
+
+.login-form label span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.login-form input {
+  width: 100%;
+  height: 58px;
+  border: 0.5px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(9, 9, 12, 0.56);
+  color: var(--fg);
+  outline: 0;
+  padding: 0 18px;
+  box-shadow:
+    0 20px 54px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  backdrop-filter: blur(10px);
+}
+
+.login-form input::placeholder {
+  color: rgba(240, 240, 248, 0.42);
+}
+
+.login-form input:focus {
+  border-color: rgba(255, 26, 157, 0.72);
+  box-shadow: 0 0 0 3px rgba(255, 26, 157, 0.1);
+}
+
+.login-form button[type="submit"] {
+  opacity: 0;
+  transform: translateY(18px);
+  height: 48px;
+  border: 0.5px solid rgba(255, 26, 157, 0.52);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 26, 157, 0.96), rgba(178, 77, 255, 0.58)),
+    var(--accent);
+  color: white;
+  cursor: pointer;
+  font-weight: 800;
+  transition: opacity 560ms ease 500ms, transform 560ms ease 500ms, border-color 180ms ease;
+}
+
+.login-overlay.is-open .login-form button[type="submit"] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.login-form button[type="submit"]:disabled {
+  cursor: default;
+  opacity: 0.76;
+}
+
+.login-error {
+  min-height: 18px;
+  margin: -2px 0 0;
+  color: #ff6b93;
+  font-size: 12px;
+  text-align: center;
+}
+
+body.login-lock {
+  overflow: hidden;
+}
+
+body.portal-entering {
+  overflow: hidden;
+}
+
+body.portal-entering .site-header,
+body.portal-entering .scroll-meter,
+body.portal-entering .hero-copy,
+body.portal-entering .metric-row,
+body.portal-entering .logo-marquee,
+body.portal-entering .review-marquee,
+body.portal-entering .online-pill,
+body.portal-entering main > section:not(.hero-section) {
+  opacity: 0;
+  transition: opacity 320ms ease;
+}
+
+.login-overlay.is-authorizing {
+  pointer-events: none;
+}
+
+.login-overlay.is-authorizing .login-card {
+  opacity: 0;
+  transform: translateY(-12px) scale(0.98);
+}
+
+.login-overlay.is-authorizing .login-backdrop {
+  background:
+    radial-gradient(circle at center, rgba(255, 26, 157, 0.08), transparent 28%),
+    rgba(4, 4, 6, 0.42);
+  backdrop-filter: none;
+}

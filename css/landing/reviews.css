@@ -1,0 +1,83 @@
+/* ============================================================
+   NEXUS · Landing · Reviews + avatars
+   ============================================================ */
+.review-marquee {
+  margin-top: 120px;
+  overflow: hidden;
+}
+
+.review-track {
+  width: max-content;
+  display: flex;
+  gap: 40px;
+  padding: 0 0 48px;
+  animation: marquee-right 42s linear infinite;
+}
+
+.review-card {
+  width: 405px;
+  min-height: 238px;
+  padding: 27px;
+  border: 0.5px solid var(--border);
+  border-radius: 8px;
+  background: rgba(24, 24, 24, 0.68);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.review-source {
+  display: block;
+  margin-bottom: 18px;
+  color: rgba(240, 240, 248, 0.44);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.review-card strong {
+  color: #f8cb45;
+  font-size: 13px;
+}
+
+.review-card p {
+  min-height: 72px;
+  color: rgba(240, 240, 248, 0.82);
+  font-size: 14px;
+  line-height: 1.55;
+  font-style: italic;
+}
+
+.review-card a {
+  color: var(--accent);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.review-card footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+  color: rgba(240, 240, 248, 0.52);
+  font-size: 12px;
+}
+
+.avatar {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e4007c, #66e4ff);
+}
+
+.a2 { background: linear-gradient(135deg, #f5bc42, #ae6bff); }
+.a3 { background: linear-gradient(135deg, #54e3a6, #335fff); }
+.a4 { background: linear-gradient(135deg, #f07b48, #fff0b3); }
+
+@keyframes marquee-left {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes marquee-right {
+  from { transform: translateX(-28%); }
+  to { transform: translateX(0); }
+}

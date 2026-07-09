@@ -1,0 +1,268 @@
+/* ============================================================
+   NEXUS · Dashboard · Finanzas Personales (tabla, form, charts)
+   ============================================================ */
+.finance-layout,
+.meta-layout {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.panel {
+  min-height: auto;
+  padding: 18px;
+}
+
+.chart-panel {
+  min-height: 300px;
+  overflow: hidden;
+}
+
+.wide-panel {
+  grid-column: span 8;
+}
+
+.chart-panel:not(.wide-panel),
+.movement-form-panel,
+.meta-layout .panel:not(.wide-panel) {
+  grid-column: span 4;
+}
+
+.movement-form-panel {
+  min-height: auto;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.panel-heading h2 {
+  margin: 4px 0 0;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.chart-legend i {
+  width: 8px;
+  height: 8px;
+  display: block;
+  border-radius: 999px;
+}
+
+.income-dot {
+  background: var(--green);
+  box-shadow: 0 0 12px rgba(49, 230, 173, 0.55);
+}
+
+.expense-dot {
+  background: var(--accent);
+  box-shadow: 0 0 12px rgba(255, 26, 157, 0.55);
+}
+
+.cyan-dot {
+  background: var(--cyan);
+  box-shadow: 0 0 12px rgba(82, 225, 255, 0.5);
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+}
+
+#cashflowChart {
+  height: 220px;
+}
+
+#categoryChart {
+  height: 210px;
+}
+
+#metaTrendChart {
+  height: 230px;
+}
+
+#commerceTrendChart {
+  height: 230px;
+}
+
+.category-legend {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.legend-row {
+  display: grid;
+  grid-template-columns: 12px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  color: rgba(243, 243, 248, 0.78);
+  font-size: 12px;
+}
+
+.legend-row i {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.legend-row small {
+  color: var(--muted);
+}
+
+.movement-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.full-field,
+.form-actions {
+  grid-column: 1 / -1;
+}
+
+.form-actions {
+  align-items: stretch;
+}
+
+.form-actions button {
+  flex: 1 1 180px;
+}
+
+.is-hidden {
+  display: none;
+}
+
+.movements-panel {
+  min-height: 430px;
+}
+
+.movement-heading {
+  align-items: flex-end;
+}
+
+.table-wrap {
+  position: relative;
+  min-height: 260px;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 14px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  text-align: left;
+  white-space: nowrap;
+}
+
+td {
+  color: rgba(243, 243, 248, 0.82);
+  font-size: 12px;
+}
+
+td:nth-child(2) {
+  min-width: 210px;
+  white-space: normal;
+}
+
+.type-pill {
+  display: inline-flex;
+  min-width: 78px;
+  justify-content: center;
+  padding: 5px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.type-pill.income {
+  border-color: rgba(49, 230, 173, 0.36);
+  color: var(--green);
+}
+
+.type-pill.expense {
+  border-color: rgba(255, 26, 157, 0.36);
+  color: var(--accent);
+}
+
+.amount-income {
+  color: var(--green);
+}
+
+.amount-expense {
+  color: var(--danger);
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.table-action {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 11px;
+}
+
+.delete-action:hover {
+  border-color: rgba(255, 107, 147, 0.58);
+  color: var(--danger);
+}
+
+.empty-state {
+  display: none;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  min-height: 260px;
+  padding: 32px;
+  text-align: center;
+}
+
+.empty-state.is-visible {
+  display: grid;
+}
+
+.empty-state span {
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(255, 26, 157, 0.42);
+  border-radius: 999px;
+  box-shadow:
+    inset 0 0 22px rgba(255, 26, 157, 0.16),
+    0 0 32px rgba(255, 26, 157, 0.16);
+}
+
+.empty-state h3 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.empty-state p {
+  max-width: 480px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}

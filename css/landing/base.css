@@ -1,0 +1,65 @@
+/* ============================================================
+   NEXUS · Landing · Tokens (:root) + reset + base
+   ============================================================ */
+:root {
+  --bg: #171717;
+  --bg-soft: #202023;
+  --fg: #f0f0f8;
+  --muted: rgba(240, 240, 248, 0.56);
+  --faint: rgba(240, 240, 248, 0.2);
+  --ink: #171719;
+  --paper: #f7f7f6;
+  --accent: #e4007c;
+  --violet: #b24dff;
+  --hot-pink: #ff1a9d;
+  --border: rgba(255, 255, 255, 0.12);
+  --dark-border: rgba(0, 0, 0, 0.12);
+  --mono: "JetBrains Mono", "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --display: "Geist Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--mono);
+  overflow-x: hidden;
+  letter-spacing: 0;
+}
+
+body.intro-lock {
+  overflow: hidden;
+}
+
+body.intro-boot {
+  overflow: hidden;
+  background: #020204;
+}
+
+body.intro-boot .site-header,
+body.intro-boot .scroll-meter,
+body.intro-boot main {
+  opacity: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+}

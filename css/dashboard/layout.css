@@ -1,0 +1,217 @@
+/* ============================================================
+   NEXUS · Dashboard · Shell + sidebar + navegación de módulos
+   ============================================================ */
+.dashboard-shell {
+  display: flex;
+  min-height: 100svh;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  width: 282px;
+  height: 100svh;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 24px 18px;
+  border-right: 1px solid var(--border);
+  background:
+    linear-gradient(180deg, rgba(19, 19, 23, 0.98), rgba(12, 12, 15, 0.94)),
+    rgba(12, 12, 15, 0.96);
+  box-shadow: 28px 0 70px rgba(0, 0, 0, 0.28);
+}
+
+.app-brand {
+  display: grid;
+  gap: 6px;
+  padding: 12px 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.055), transparent 54%),
+    rgba(255, 255, 255, 0.025);
+}
+
+.app-brand span {
+  font-size: 22px;
+  font-weight: 850;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.app-brand span::after {
+  content: "";
+  display: block;
+  width: 54px;
+  height: 3px;
+  margin-top: 9px;
+  background: linear-gradient(90deg, var(--text) 0 14%, transparent 14% 24%, var(--text) 24% 38%, transparent 38% 48%, var(--text) 48% 62%, transparent 62% 72%, var(--accent) 72%);
+  border-radius: 99px;
+}
+
+.app-brand small,
+.module-link small,
+.sidebar-status b,
+.landing-link,
+.logout-button,
+.eyebrow,
+.field span,
+.metric-card span,
+.metric-card small,
+.panel-heading span,
+th {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.module-nav {
+  display: grid;
+  gap: 10px;
+}
+
+.module-link {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+
+.module-link:hover,
+.module-link.is-active {
+  border-color: rgba(255, 26, 157, 0.35);
+  background:
+    linear-gradient(135deg, rgba(255, 26, 157, 0.13), transparent 58%),
+    rgba(255, 255, 255, 0.045);
+}
+
+.module-link:hover {
+  transform: translateX(2px);
+}
+
+.module-link svg,
+.landing-link svg,
+.logout-button svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.module-link svg {
+  justify-self: center;
+  color: rgba(243, 243, 248, 0.7);
+}
+
+.module-link.is-active svg {
+  color: var(--accent);
+  filter: drop-shadow(0 0 12px rgba(255, 26, 157, 0.46));
+}
+
+.module-link b {
+  display: block;
+  margin-bottom: 4px;
+  color: rgba(243, 243, 248, 0.92);
+  font-size: 12px;
+}
+
+.sidebar-status {
+  margin-top: auto;
+  padding: 16px;
+  border: 1px solid rgba(49, 230, 173, 0.18);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(49, 230, 173, 0.12), transparent 58%),
+    rgba(255, 255, 255, 0.035);
+}
+
+.sidebar-status span {
+  display: block;
+  width: 9px;
+  height: 9px;
+  margin-bottom: 14px;
+  border-radius: 999px;
+  background: var(--green);
+  box-shadow: 0 0 18px rgba(49, 230, 173, 0.72);
+}
+
+.sidebar-status p {
+  margin: 0 0 4px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.landing-link,
+.logout-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 8px;
+}
+
+.logout-button {
+  border: 0;
+  background: transparent;
+  color: rgba(243, 243, 248, 0.54);
+  cursor: pointer;
+  text-align: left;
+}
+
+.logout-button:hover,
+.landing-link:hover {
+  color: var(--text);
+}
+
+/* Respaldo de datos (Exportar / Importar) */
+.data-tools {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0 2px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.data-tool-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  color: rgba(243, 243, 248, 0.62);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 180ms ease, border-color 180ms ease, color 180ms ease;
+}
+
+.data-tool-button svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.data-tool-button:hover {
+  color: var(--text);
+  border-color: rgba(255, 26, 157, 0.35);
+  background: rgba(255, 26, 157, 0.08);
+}

@@ -1,0 +1,238 @@
+/* ============================================================
+   NEXUS · Landing · Hero + globo + métricas + logo-marquee
+   ============================================================ */
+.globe-portal-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 145;
+  pointer-events: none;
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  contain: strict;
+  will-change: opacity;
+}
+
+body.portal-entering .globe-portal-canvas {
+  opacity: 1;
+}
+
+body.portal-entering.portal-live-ready .globe-canvas {
+  opacity: 0;
+  pointer-events: none;
+}
+
+body.portal-entering:not(.portal-live-ready) .globe-canvas {
+  position: fixed;
+  top: 50vh;
+  left: 50vw;
+  width: var(--portal-width, 560px);
+  height: var(--portal-height, 440px);
+  z-index: 140;
+  pointer-events: none;
+  transform:
+    translate3d(-50%, -50%, 0)
+    translate3d(var(--portal-offset-x, 0px), var(--portal-offset-y, 0px), 0)
+    scale(1);
+  transform-origin: center center;
+  filter: none;
+  backface-visibility: hidden;
+  contain: layout paint style;
+  animation: nexus-globe-portal var(--portal-duration, 2900ms) linear forwards;
+  will-change: transform, opacity;
+}
+
+body.portal-entering .ambient-canvas {
+  opacity: 0;
+  transition: opacity 260ms ease;
+}
+
+body.portal-entering .logo-marquee div,
+body.portal-entering .review-marquee-track,
+body.portal-entering .loop-orbit,
+body.portal-entering .ring-visual {
+  animation-play-state: paused;
+}
+
+@keyframes nexus-globe-portal {
+  0% {
+    opacity: 1;
+    transform:
+      translate3d(-50%, -50%, 0)
+      translate3d(var(--portal-offset-x, 0px), var(--portal-offset-y, 0px), 0)
+      scale(1);
+  }
+
+  42% {
+    opacity: 1;
+    transform:
+      translate3d(-50%, -50%, 0)
+      translate3d(var(--portal-offset-x, 0px), var(--portal-offset-y, 0px), 0)
+      scale(1.02);
+  }
+
+  58% {
+    opacity: 0.98;
+    transform:
+      translate3d(-50%, -50%, 0)
+      translate3d(var(--portal-offset-soft-x, 0px), var(--portal-offset-soft-y, 0px), 0)
+      scale(1.55);
+  }
+
+  76% {
+    opacity: 0.98;
+    transform: translate3d(-50%, -50%, 0) translate3d(0, 0, 0) scale(5.4);
+  }
+
+  100% {
+    opacity: 0.9;
+    transform: translate3d(-50%, -50%, 0) translate3d(0, 0, 0) scale(15);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.portal-entering .globe-portal-canvas,
+  body.portal-entering:not(.portal-live-ready) .globe-canvas {
+    animation-duration: 260ms;
+  }
+}
+
+.scroll-meter {
+  position: fixed;
+  right: 22px;
+  top: 50%;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transform: translateY(-50%);
+  color: rgba(240, 240, 248, 0.7);
+  font-size: 11px;
+}
+
+.meter-line {
+  display: block;
+  width: 1px;
+  height: 64px;
+  background: currentColor;
+}
+
+.hero-section {
+  min-height: 1320px;
+  padding-top: 88px;
+}
+
+.online-pill {
+  position: absolute;
+  top: 104px;
+  left: 62%;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 12px;
+  border: 0.5px solid var(--border);
+  border-radius: 999px;
+  color: rgba(240, 240, 248, 0.58);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.online-pill span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 7px rgba(228, 0, 124, 0.12);
+}
+
+.globe-canvas {
+  position: absolute;
+  top: 148px;
+  left: 50%;
+  width: 560px;
+  height: 440px;
+  transform: translate3d(-50%, 0, 0);
+  filter: drop-shadow(0 0 10px rgba(240, 240, 248, 0.08));
+  z-index: 1;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  backface-visibility: hidden;
+  will-change: transform;
+}
+
+.globe-canvas.is-dragging {
+  cursor: grabbing;
+}
+
+.hero-copy {
+  position: relative;
+  z-index: 1;
+  width: min(1248px, calc(100vw - 32px));
+  margin: 500px auto 0;
+  text-align: center;
+}
+
+.hero-copy h1 {
+  max-width: 1120px;
+  margin: 0;
+  margin-inline: auto;
+  color: var(--fg);
+  font-family: var(--display);
+  font-size: 68px;
+  line-height: 1.04;
+  font-weight: 800;
+  text-align: center;
+}
+
+.hero-copy p {
+  width: min(570px, calc(100vw - 48px));
+  margin: 34px auto 0;
+  color: rgba(240, 240, 248, 0.86);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.metric-row {
+  position: relative;
+  z-index: 2;
+  width: min(660px, calc(100vw - 32px));
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 18px 28px;
+  margin: 94px auto 0;
+  border: 0.5px solid var(--border);
+  border-radius: 9px;
+  background: rgba(17, 17, 17, 0.58);
+  box-shadow: inset 0 0 24px rgba(255, 255, 255, 0.05);
+  color: var(--fg);
+  font-size: 14px;
+  text-transform: uppercase;
+}
+
+.metric-row b {
+  color: #ffd04d;
+}
+
+.logo-marquee {
+  margin-top: -36px;
+  overflow: hidden;
+  color: rgba(240, 240, 248, 0.52);
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.logo-marquee div {
+  width: max-content;
+  display: flex;
+  gap: 68px;
+  align-items: center;
+  animation: marquee-left 28s linear infinite;
+}
