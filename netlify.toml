@@ -30,6 +30,8 @@
     # CSP: bloquea scripts inyectados (XSS) y el embebido en iframes.
     # Nota: 'unsafe-inline' sigue permitido para el script/estilos inline actuales;
     # endurecer con hashes/nonces es una mejora posterior. connect-src queda amplio
-    # (https:) porque Meta y e-commerce se llaman directo desde el navegador; se
-    # apretará a 'self' cuando el proxy serverless de la Ola 2 esté en pie.
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
+    # (https:) porque Meta, e-commerce y Firebase se llaman directo desde el navegador;
+    # se apretará cuando el proxy serverless de la Ola 2 esté en pie.
+    # script-src permite gstatic.com (SDK de Firebase). frame-src permite el iframe
+    # de Firebase Auth (authDomain) que usa para persistir/propagar la sesión.
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://www.googleapis.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:; frame-src 'self' https://nexus-systems-17a5b.firebaseapp.com https://accounts.google.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
