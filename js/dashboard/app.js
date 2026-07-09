@@ -240,10 +240,18 @@
   // - Sin Firebase (preview local sin CDN): chequeo síncrono de localStorage.
   if (window.NexusFirebaseAuth) {
     let started = false;
-    window.NexusFirebaseAuth.onAuthStateChanged(function (user) {
+    window.NexusFirebaseAuth.onAuthStateChanged(async function (user) {
       if (user) {
         if (!started) {
           started = true;
+          // Bajar los datos del usuario desde Firestore ANTES de renderizar,
+          // para que el dashboard muestre lo que hay en la nube (multi-dispositivo).
+          if (window.NexusFirestore) {
+            const loaded = await window.NexusFirestore.loadUserData(user.uid);
+            // Si bajó datos, re-hidratar el state (se armó con el localStorage
+            // vacío en un dispositivo nuevo) antes de renderizar.
+            if (loaded) S.rehydrateState();
+          }
           init();
         }
       } else {

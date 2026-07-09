@@ -24,9 +24,22 @@
 
   // Escribe en localStorage capturando el error de cuota llena (~5MB), para que
   // el usuario nunca pierda datos en silencio creyendo que se guardaron.
+  // Sincronización a la nube (Firestore), debounced. Si NexusFirestore no está
+  // cargado (SDK ausente), es un no-op y el dashboard sigue solo con localStorage.
+  let _cloudSyncTimer = null;
+  function scheduleCloudSync(key) {
+    if (!window.NexusFirestore) return;
+    if (NON_DATA_KEYS.has(key) || String(key).indexOf("nexus") !== 0) return;
+    if (_cloudSyncTimer) clearTimeout(_cloudSyncTimer);
+    _cloudSyncTimer = setTimeout(function () {
+      window.NexusFirestore.saveUserData(collectNexusData());
+    }, 1500);
+  }
+
   function safeSetItem(key, value) {
     try {
       localStorage.setItem(key, value);
+      scheduleCloudSync(key);
       return true;
     } catch (error) {
       console.error("Nexus: no se pudo guardar en localStorage:", key, error);
@@ -409,6 +422,23 @@
     safeSetItem("nexus.ecommerce.activeApp.v1", state.commerce.activeApp);
   }
 
+  // Re-lee del localStorage los campos del state que se cargan al arrancar.
+  // Necesario tras bajar datos de la nube (Firestore) en un dispositivo nuevo:
+  // el state se armó con el localStorage vacío y hay que re-hidratarlo antes de
+  // renderizar. Espeja el inicializador de `state` de arriba.
+  function rehydrateState() {
+    state.movements = loadMovements();
+    state.filters.month = localStorage.getItem(MONTH_FILTER_KEY) || currentMonth();
+    state.chartMode = localStorage.getItem(CHART_VIEW_MODE_KEY) === "3d" ? "3d" : "2d";
+    state.meta.platforms = loadMetaPlatforms();
+    state.commerce.activeApp = localStorage.getItem("nexus.ecommerce.activeApp.v1") || "kairos";
+    state.commerce.configs = loadCommerceConfigs();
+    state.commerce.snapshots = loadCommerceSnapshots();
+    if (!commerceApps.some((app) => app.id === state.commerce.activeApp)) {
+      state.commerce.activeApp = commerceApps[0].id;
+    }
+  }
+
   const chartTargets = new Map();
 
   function currentMonth() {
@@ -759,5 +789,6 @@
     movementMonth, normalizeAdAccountId, normalizeApiVersion, persistActiveMetaPlatform, runDashboardReveal, safeSetItem,
     sampleMovements, saveCommerceConfigs, saveCommerceSnapshots, saveMetaConfig, saveMetaPlatforms, saveMetaSnapshot,
     saveMovements, shiftMonth, state, summarize, toDateInput, updateTopbarForView,
+    rehydrateState,
   });
 })();
