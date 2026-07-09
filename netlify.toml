@@ -1,0 +1,35 @@
+# === Configuración de deploy de Nexus ===
+# Sirve para deploy por drag-and-drop Y por conexión con Git (recomendado).
+# El sitio es 100% estático, sin build.
+
+[build]
+  publish = "."
+  command = ""
+
+# === Cabeceras de seguridad (Ola 0 de la auditoría) ===
+# Aplicadas a todas las rutas.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # no-referrer: evita que el access_token de Meta (que hoy viaja en la URL)
+    # se filtre a terceros por la cabecera Referer. Clave hasta mover a proxy (Ola 2).
+    Referrer-Policy = "no-referrer"
+
+    # Anti-clickjacking: nadie puede embeber el dashboard en un iframe.
+    X-Frame-Options = "DENY"
+
+    # Evita que el navegador "adivine" tipos MIME (vector de XSS).
+    X-Content-Type-Options = "nosniff"
+
+    # Fuerza HTTPS en visitas futuras.
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+
+    # Apaga APIs del navegador que Nexus no usa.
+    Permissions-Policy = "geolocation=(), microphone=(), camera=(), usb=(), payment=()"
+
+    # CSP: bloquea scripts inyectados (XSS) y el embebido en iframes.
+    # Nota: 'unsafe-inline' sigue permitido para el script/estilos inline actuales;
+    # endurecer con hashes/nonces es una mejora posterior. connect-src queda amplio
+    # (https:) porque Meta y e-commerce se llaman directo desde el navegador; se
+    # apretará a 'self' cuando el proxy serverless de la Ola 2 esté en pie.
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
