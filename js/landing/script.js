@@ -34,6 +34,10 @@
   }
 
   function hasActiveSession() {
+    // Usar Firebase si está disponible; sino, fallback a NexusAuth (localStorage)
+    if (window.NexusFirebaseAuth) {
+      return window.NexusFirebaseAuth.hasSession();
+    }
     return window.NexusAuth.hasSession();
   }
 
@@ -373,12 +377,29 @@
     trigger.addEventListener("click", closeLogin);
   });
 
-  loginForm?.addEventListener("submit", (event) => {
+  loginForm?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const formData = new FormData(loginForm);
-    const user = String(formData.get("user") || "").trim().toLowerCase();
+    const email = String(formData.get("user") || "").trim();
     const password = String(formData.get("password") || "");
 
+    loginError.textContent = "";
+
+    // Si Firebase Auth está disponible, usarlo; sino, fallback a hardcoded
+    if (window.NexusFirebaseAuth) {
+      const result = await window.NexusFirebaseAuth.loginWithEmail(email, password);
+      if (result.success) {
+        markDashboardReveal();
+        enterDashboard();
+        return;
+      } else {
+        loginError.textContent = "Error: " + (result.error || "No se pudo iniciar sesión.");
+        return;
+      }
+    }
+
+    // Fallback: login hardcoded (para dev local sin Firebase)
+    const user = email.toLowerCase();
     if (user === loginUserKey && password === loginPassword) {
       createSession();
       enterDashboard();
