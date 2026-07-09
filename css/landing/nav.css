@@ -238,6 +238,7 @@ em,
 }
 
 .service-card {
+  position: relative;
   min-height: 92px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 38%;
@@ -306,6 +307,37 @@ em,
   line-height: 1.5;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+/* Badges de disponibilidad: honestidad sobre qué módulo está vivo hoy. */
+.svc-tag {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  z-index: 2;
+  padding: 2.5px 8px;
+  border-radius: 999px;
+  font-size: 8px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  line-height: 1.5;
+  text-transform: uppercase;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+/* color con !important: el badge siempre mantiene su color, aunque las reglas
+   de .service-copy span / :hover / .is-highlight sean más específicas. */
+.svc-tag--soon {
+  color: rgba(240, 240, 248, 0.62) !important;
+  background: rgba(18, 18, 20, 0.82);
+  border: 0.5px solid rgba(255, 255, 255, 0.16);
+}
+
+.svc-tag--live {
+  color: #31e6ad !important;
+  background: rgba(9, 24, 20, 0.82);
+  border: 0.5px solid rgba(49, 230, 173, 0.5);
 }
 
 .service-media,
