@@ -1,0 +1,28 @@
+rules_version = '2';
+
+// ============================================================
+// NEXUS · Reglas de seguridad de Firestore
+// ------------------------------------------------------------
+// Modelo: cada usuario tiene UN documento users/{uid} con todos
+// sus datos (finanzas, config de Meta/e-commerce, etc.).
+// Regla: un usuario autenticado SOLO puede leer/escribir su
+// propio documento. Todo lo demás queda denegado por defecto.
+//
+// Se publican a mano en: Firebase Console → Firestore Database
+// → pestaña "Rules" → pegar → "Publish".
+// ============================================================
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Documento de datos de cada usuario.
+    match /users/{userId} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == userId;
+    }
+
+    // Cualquier otra ruta: denegada.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
