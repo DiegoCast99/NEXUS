@@ -77,12 +77,16 @@
   }
 
   function readMetaConfigFromForm() {
+    const accessToken = String(elements.metaAccessToken?.value || "").trim();
     return {
       pixelId: String(elements.metaPixelId?.value || "").trim(),
       adAccountId: normalizeAdAccountId(elements.metaAdAccountId?.value || ""),
       apiVersion: normalizeApiVersion(elements.metaApiVersion?.value || ""),
       datePreset: elements.metaDatePreset?.value || "last_30d",
-      accessToken: String(elements.metaAccessToken?.value || "").trim(),
+      accessToken,
+      // hasToken: hay un token guardado (cifrado en Firestore) aunque el campo
+      // esté vacío. Se preserva para no perderlo al releer el formulario.
+      hasToken: Boolean(accessToken) || Boolean(state.meta.config && state.meta.config.hasToken),
       refreshInterval: elements.metaRefreshInterval?.value || "0"
     };
   }
@@ -93,12 +97,17 @@
     if (elements.metaAdAccountId) elements.metaAdAccountId.value = config.adAccountId || "";
     if (elements.metaApiVersion) elements.metaApiVersion.value = config.apiVersion || "v23.0";
     if (elements.metaDatePreset) elements.metaDatePreset.value = config.datePreset || "last_30d";
-    if (elements.metaAccessToken) elements.metaAccessToken.value = config.accessToken || "";
+    if (elements.metaAccessToken) {
+      elements.metaAccessToken.value = config.accessToken || "";
+      elements.metaAccessToken.placeholder = config.hasToken
+        ? "•••••••• (guardado de forma segura)"
+        : "Access Token de Meta";
+    }
     if (elements.metaRefreshInterval) elements.metaRefreshInterval.value = config.refreshInterval || "0";
   }
 
   function hasMetaCredentials(config = state.meta.config) {
-    return Boolean(config.pixelId && config.adAccountId && config.accessToken);
+    return Boolean(config.pixelId && config.adAccountId && (config.accessToken || config.hasToken));
   }
 
   function getActionValue(actions, needles) {
@@ -274,45 +283,19 @@
     };
   }
 
+  // Trae los insights vía el proxy serverless: el navegador NO llama a
+  // graph.facebook.com ni ve el access_token; el servidor lee el token cifrado
+  // de Firestore y hace la llamada. Devuelve filas crudas que normalizamos acá.
   async function fetchMetaInsights(config) {
-    const fields = [
-      "campaign_id",
-      "campaign_name",
-      "date_start",
-      "date_stop",
-      "spend",
-      "impressions",
-      "clicks",
-      "ctr",
-      "cpc",
-      "actions",
-      "action_values",
-      "purchase_roas"
-    ].join(",");
-    const params = new URLSearchParams({
-      access_token: config.accessToken,
-      date_preset: config.datePreset,
-      fields,
-      level: "campaign",
-      limit: "100",
-      time_increment: "1"
-    });
-    let nextUrl = `https://graph.facebook.com/${config.apiVersion}/${config.adAccountId}/insights?${params.toString()}`;
-    const rows = [];
-    let page = 0;
-
-    while (nextUrl && page < 5) {
-      const response = await fetch(nextUrl, { cache: "no-store" });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok || payload.error) {
-        const message = payload.error?.message || "Meta no pudo devolver datos para esta conexión.";
-        throw new Error(message);
-      }
-      rows.push(...(Array.isArray(payload.data) ? payload.data : []));
-      nextUrl = payload.paging?.next || "";
-      page += 1;
+    if (!window.NexusSecureAPI) {
+      throw new Error("El proxy seguro no está disponible en este entorno.");
     }
-
+    const result = await window.NexusSecureAPI.metaInsights({
+      adAccountId: config.adAccountId,
+      apiVersion: config.apiVersion,
+      datePreset: config.datePreset
+    });
+    const rows = result && Array.isArray(result.rows) ? result.rows : [];
     return rows.map(normalizeMetaInsightsRow);
   }
 
@@ -344,6 +327,15 @@
     renderMetaDashboard();
 
     try {
+      // Si el usuario ingresó un token nuevo, guardarlo cifrado en el servidor
+      // y sacarlo de memoria/DOM. Después el proxy lo usa desde Firestore.
+      if (state.meta.config.accessToken) {
+        await window.NexusSecureAPI.saveProviderToken("meta", state.meta.config.accessToken);
+        state.meta.config.accessToken = "";
+        state.meta.config.hasToken = true;
+        saveMetaConfig();
+        populateMetaConfigForm();
+      }
       const records = await fetchMetaInsights(state.meta.config);
       saveMetaSnapshot(createMetaSnapshot(records, "live"));
       setMetaMessage(records.length ? `Datos reales sincronizados para ${getMetaPlatform().name}.` : "Meta respondió sin campañas para este periodo.", "success");

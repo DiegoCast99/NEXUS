@@ -17,10 +17,14 @@
   }
 
   function readCommerceConfigFromForm() {
+    const apiToken = String(elements.commerceApiToken?.value || "").trim();
+    const prev = getCommerceConfig();
     return {
       pixelId: String(elements.commercePixelId?.value || "").trim(),
       apiUrl: String(elements.commerceApiUrl?.value || "").trim(),
-      apiToken: String(elements.commerceApiToken?.value || "").trim(),
+      apiToken,
+      // hasToken: existe un token guardado (cifrado en Firestore) aunque el campo esté vacío.
+      hasToken: Boolean(apiToken) || Boolean(prev && prev.hasToken),
       refreshInterval: elements.commerceRefreshInterval?.value || "0"
     };
   }
@@ -31,7 +35,12 @@
     if (elements.commerceConfigTitle) elements.commerceConfigTitle.textContent = `Configurar ${app.name}`;
     if (elements.commercePixelId) elements.commercePixelId.value = config.pixelId || "";
     if (elements.commerceApiUrl) elements.commerceApiUrl.value = config.apiUrl || "";
-    if (elements.commerceApiToken) elements.commerceApiToken.value = config.apiToken || "";
+    if (elements.commerceApiToken) {
+      elements.commerceApiToken.value = config.apiToken || "";
+      elements.commerceApiToken.placeholder = config.hasToken
+        ? "•••••••• (guardado de forma segura)"
+        : "API Token";
+    }
     if (elements.commerceRefreshInterval) elements.commerceRefreshInterval.value = config.refreshInterval || "0";
   }
 
@@ -115,19 +124,19 @@
     };
   }
 
+  // Trae los datos vía el proxy serverless: el navegador NO llama al endpoint del
+  // negocio ni ve el apiToken; el servidor lee el token cifrado de Firestore y hace
+  // la llamada (con guard anti-SSRF). Devuelve el payload crudo, que normalizamos.
   async function fetchCommerceData(config) {
-    const response = await fetch(config.apiUrl, {
-      cache: "no-store",
-      headers: {
-        Accept: "application/json",
-        Authorization: `Bearer ${config.apiToken}`,
-        "X-Nexus-Pixel": config.pixelId
-      }
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(payload.message || payload.error || "El endpoint del negocio no respondio correctamente.");
+    if (!window.NexusSecureAPI) {
+      throw new Error("El proxy seguro no está disponible en este entorno.");
     }
+    const result = await window.NexusSecureAPI.commerceFetch({
+      provider: "commerce:" + state.commerce.activeApp,
+      apiUrl: config.apiUrl,
+      pixelId: config.pixelId
+    });
+    const payload = (result && result.payload) || {};
     const rows = Array.isArray(payload)
       ? payload
       : Array.isArray(payload.orders)
@@ -234,6 +243,15 @@
     renderCommerceDashboard();
 
     try {
+      // Si se ingresó un token nuevo, guardarlo cifrado en el servidor y sacarlo
+      // de memoria/DOM. Después el proxy lo usa desde Firestore.
+      if (config.apiToken) {
+        await window.NexusSecureAPI.saveProviderToken("commerce:" + appId, config.apiToken);
+        config.apiToken = "";
+        config.hasToken = true;
+        saveCommerceConfigs();
+        populateCommerceConfigForm();
+      }
       const orders = await fetchCommerceData(config);
       state.commerce.snapshots[appId] = createCommerceSnapshot(orders, "live");
       saveCommerceSnapshots();

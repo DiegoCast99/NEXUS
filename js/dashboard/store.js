@@ -490,8 +490,21 @@
       apiVersion: "v23.0",
       datePreset: "last_30d",
       accessToken: "",
+      hasToken: false,
       refreshInterval: "0"
     };
+  }
+
+  // Nunca persistir el secreto en localStorage (vive cifrado en Firestore vía el
+  // proxy serverless). Devuelve una copia con el campo secreto vaciado y un flag
+  // hasToken que indica que existe un token guardado.
+  function stripSecret(config, field) {
+    if (!config || typeof config !== "object") return config;
+    const clone = { ...config };
+    const had = Boolean(clone[field]) || Boolean(clone.hasToken);
+    clone[field] = "";
+    clone.hasToken = had;
+    return clone;
   }
 
   function loadMetaConfig() {
@@ -508,7 +521,7 @@
       persistActiveMetaPlatform();
       return;
     }
-    safeSetItem(META_CONFIG_KEY, JSON.stringify(state.meta.config));
+    safeSetItem(META_CONFIG_KEY, JSON.stringify(stripSecret(state.meta.config, "accessToken")));
   }
 
   function loadMetaSnapshot() {
@@ -572,7 +585,13 @@
   }
 
   function saveMetaPlatforms() {
-    safeSetItem(META_PLATFORMS_KEY, JSON.stringify(state.meta.platforms));
+    // Cada plataforma guarda su config sin el accessToken (vive cifrado en Firestore).
+    const sanitized = {};
+    Object.keys(state.meta.platforms).forEach((id) => {
+      const ps = state.meta.platforms[id];
+      sanitized[id] = { ...ps, config: stripSecret(ps.config, "accessToken") };
+    });
+    safeSetItem(META_PLATFORMS_KEY, JSON.stringify(sanitized));
   }
 
   function getMetaPlatform(id = state.meta.selectedPlatform) {
@@ -640,6 +659,7 @@
       pixelId: "",
       apiUrl: "",
       apiToken: "",
+      hasToken: false,
       refreshInterval: "0"
     };
   }
@@ -661,7 +681,12 @@
   }
 
   function saveCommerceConfigs() {
-    safeSetItem(COMMERCE_CONFIG_KEY, JSON.stringify(state.commerce.configs));
+    // Cada negocio guarda su config sin el apiToken (vive cifrado en Firestore).
+    const sanitized = {};
+    Object.keys(state.commerce.configs).forEach((id) => {
+      sanitized[id] = stripSecret(state.commerce.configs[id], "apiToken");
+    });
+    safeSetItem(COMMERCE_CONFIG_KEY, JSON.stringify(sanitized));
   }
 
   function loadCommerceSnapshots() {
@@ -690,7 +715,7 @@
   }
 
   function hasCommerceConnection(config = getCommerceConfig()) {
-    return Boolean(config.pixelId && config.apiUrl && config.apiToken);
+    return Boolean(config.pixelId && config.apiUrl && (config.apiToken || config.hasToken));
   }
 
   function escapeHtml(value) {

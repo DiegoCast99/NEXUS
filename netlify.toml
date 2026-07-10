@@ -6,6 +6,13 @@
   publish = "."
   command = ""
 
+# === Funciones serverless (Ola 2) ===
+# Proxy seguro de tokens de Meta/e-commerce. Sin dependencias npm (solo módulos
+# nativos de Node), así el deploy por drag-and-drop las empaqueta con esbuild.
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
 # === Cabeceras de seguridad (Ola 0 de la auditoría) ===
 # Aplicadas a todas las rutas.
 [[headers]]
@@ -29,9 +36,12 @@
 
     # CSP: bloquea scripts inyectados (XSS) y el embebido en iframes.
     # Nota: 'unsafe-inline' sigue permitido para el script/estilos inline actuales;
-    # endurecer con hashes/nonces es una mejora posterior. connect-src queda amplio
-    # (https:) porque Meta, e-commerce y Firebase se llaman directo desde el navegador;
-    # se apretará cuando el proxy serverless de la Ola 2 esté en pie.
+    # endurecer con hashes/nonces es una mejora posterior.
+    # connect-src APRETADO (Ola 2): el navegador ya NO llama a Meta ni a los
+    # endpoints de e-commerce (lo hacen las funciones serverless). Solo necesita
+    # 'self' (las funciones + el sitio) y *.googleapis.com (Auth + Firestore).
+    # ⚠️ Si tras deployar el login de Firebase fallara, revertir connect-src a
+    #    "'self' https:" y avisar (algún dominio de Firebase quedó fuera).
     # script-src permite gstatic.com (SDK de Firebase). frame-src permite el iframe
     # de Firebase Auth (authDomain) que usa para persistir/propagar la sesión.
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://www.googleapis.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https:; frame-src 'self' https://nexus-systems-17a5b.firebaseapp.com https://accounts.google.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://apis.google.com https://www.googleapis.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.googleapis.com; frame-src 'self' https://nexus-systems-17a5b.firebaseapp.com https://accounts.google.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"
