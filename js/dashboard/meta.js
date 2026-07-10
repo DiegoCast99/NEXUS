@@ -9,14 +9,10 @@
   const { getMetaPlatformState, integerNumber, loadActiveMetaPlatform, metaPlatforms, moneyWithCents, normalizeAdAccountId } = S;
   const { normalizeApiVersion, safeSetItem, saveMetaConfig, saveMetaSnapshot, state, toDateInput } = S;
   const { updateTopbarForView } = S;
-  function setMetaMessage(message = "", type = "") {
-    state.meta.message = message;
-    state.meta.messageType = type;
-    if (!elements.metaMessage) return;
-    elements.metaMessage.textContent = message;
-    elements.metaMessage.classList.toggle("is-error", type === "error");
-    elements.metaMessage.classList.toggle("is-success", type === "success");
-  }
+  const setMetaMessage = S.createIntegrationMessenger({
+    slice: () => state.meta,
+    getElement: () => elements.metaMessage
+  });
 
   function isMetaPlatformReady(id) {
     const platformState = getMetaPlatformState(id);
@@ -287,10 +283,7 @@
   // graph.facebook.com ni ve el access_token; el servidor lee el token cifrado
   // de Firestore y hace la llamada. Devuelve filas crudas que normalizamos acá.
   async function fetchMetaInsights(config) {
-    if (!window.NexusSecureAPI) {
-      throw new Error("El proxy seguro no está disponible en este entorno.");
-    }
-    const result = await window.NexusSecureAPI.metaInsights({
+    const result = await S.requireSecureApi().metaInsights({
       adAccountId: config.adAccountId,
       apiVersion: config.apiVersion,
       datePreset: config.datePreset
@@ -322,42 +315,39 @@
       return;
     }
 
-    state.meta.syncing = true;
-    if (!silent) setMetaMessage("Sincronizando Meta Ads...", "");
-    renderMetaDashboard();
-
-    try {
-      // Si el usuario ingresó un token nuevo, guardarlo cifrado en el servidor
-      // y sacarlo de memoria/DOM. Después el proxy lo usa desde Firestore.
-      if (state.meta.config.accessToken) {
-        await window.NexusSecureAPI.saveProviderToken("meta", state.meta.config.accessToken);
-        state.meta.config.accessToken = "";
-        state.meta.config.hasToken = true;
-        saveMetaConfig();
-        populateMetaConfigForm();
+    await S.runIntegrationSync({
+      slice: () => state.meta,
+      silent,
+      setMessage: setMetaMessage,
+      syncingMessage: "Sincronizando Meta Ads...",
+      render: renderMetaDashboard,
+      errorFallback: "No se pudo sincronizar Meta Ads.",
+      after: () => scheduleMetaRefresh(),
+      run: async () => {
+        // Token nuevo en el formulario -> se guarda cifrado server-side y se
+        // saca de memoria/DOM. Después el proxy lo usa desde Firestore.
+        await S.persistProviderToken({
+          config: state.meta.config,
+          field: "accessToken",
+          provider: "meta",
+          saveConfig: saveMetaConfig,
+          populateForm: populateMetaConfigForm
+        });
+        const records = await fetchMetaInsights(state.meta.config);
+        saveMetaSnapshot(createMetaSnapshot(records, "live"));
+        return records.length
+          ? `Datos reales sincronizados para ${getMetaPlatform().name}.`
+          : "Meta respondió sin campañas para este periodo.";
       }
-      const records = await fetchMetaInsights(state.meta.config);
-      saveMetaSnapshot(createMetaSnapshot(records, "live"));
-      setMetaMessage(records.length ? `Datos reales sincronizados para ${getMetaPlatform().name}.` : "Meta respondió sin campañas para este periodo.", "success");
-    } catch (error) {
-      setMetaMessage(error.message || "No se pudo sincronizar Meta Ads.", "error");
-    } finally {
-      state.meta.syncing = false;
-      renderMetaDashboard();
-      scheduleMetaRefresh();
-    }
+    });
   }
 
-  function scheduleMetaRefresh() {
-    window.clearInterval(state.meta.refreshTimer);
-    state.meta.refreshTimer = 0;
-    if (!state.meta.selectedPlatform) return;
-    const seconds = Number(state.meta.config.refreshInterval);
-    if (!seconds || !hasMetaCredentials()) return;
-    state.meta.refreshTimer = window.setInterval(() => {
-      syncMetaAds({ silent: true });
-    }, seconds * 1000);
-  }
+  const scheduleMetaRefresh = S.createRefreshScheduler({
+    slice: () => state.meta,
+    getIntervalSeconds: () => state.meta.config.refreshInterval,
+    isEnabled: () => Boolean(state.meta.selectedPlatform) && hasMetaCredentials(),
+    sync: (options) => syncMetaAds(options)
+  });
 
   function renderMetaDashboard() {
     renderMetaPlatformSelector();

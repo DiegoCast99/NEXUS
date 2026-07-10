@@ -7,14 +7,10 @@
   const { commerceApps, currency, demoCommerceData, drawCommerceTrendChart, elements, escapeHtml } = S;
   const { formatMetaDate, getCommerceApp, getCommerceConfig, getCommerceSnapshot, hasCommerceConnection, integerNumber } = S;
   const { moneyWithCents, saveCommerceConfigs, saveCommerceSnapshots, state, toDateInput } = S;
-  function setCommerceMessage(message = "", type = "") {
-    state.commerce.message = message;
-    state.commerce.messageType = type;
-    if (!elements.commerceMessage) return;
-    elements.commerceMessage.textContent = message;
-    elements.commerceMessage.classList.toggle("is-error", type === "error");
-    elements.commerceMessage.classList.toggle("is-success", type === "success");
-  }
+  const setCommerceMessage = S.createIntegrationMessenger({
+    slice: () => state.commerce,
+    getElement: () => elements.commerceMessage
+  });
 
   function readCommerceConfigFromForm() {
     const apiToken = String(elements.commerceApiToken?.value || "").trim();
@@ -128,10 +124,7 @@
   // negocio ni ve el apiToken; el servidor lee el token cifrado de Firestore y hace
   // la llamada (con guard anti-SSRF). Devuelve el payload crudo, que normalizamos.
   async function fetchCommerceData(config) {
-    if (!window.NexusSecureAPI) {
-      throw new Error("El proxy seguro no está disponible en este entorno.");
-    }
-    const result = await window.NexusSecureAPI.commerceFetch({
+    const result = await S.requireSecureApi().commerceFetch({
       provider: "commerce:" + state.commerce.activeApp,
       apiUrl: config.apiUrl,
       pixelId: config.pixelId
@@ -238,43 +231,40 @@
       return;
     }
 
-    state.commerce.syncing = true;
-    if (!silent) setCommerceMessage(`Sincronizando ${getCommerceApp(appId).name}...`, "");
-    renderCommerceDashboard();
-
-    try {
-      // Si se ingresó un token nuevo, guardarlo cifrado en el servidor y sacarlo
-      // de memoria/DOM. Después el proxy lo usa desde Firestore.
-      if (config.apiToken) {
-        await window.NexusSecureAPI.saveProviderToken("commerce:" + appId, config.apiToken);
-        config.apiToken = "";
-        config.hasToken = true;
-        saveCommerceConfigs();
-        populateCommerceConfigForm();
+    await S.runIntegrationSync({
+      slice: () => state.commerce,
+      silent,
+      setMessage: setCommerceMessage,
+      syncingMessage: `Sincronizando ${getCommerceApp(appId).name}...`,
+      render: renderCommerceDashboard,
+      errorFallback: "No se pudo sincronizar este negocio.",
+      after: () => scheduleCommerceRefresh(),
+      run: async () => {
+        // Token nuevo en el formulario -> se guarda cifrado server-side y se
+        // saca de memoria/DOM. Después el proxy lo usa desde Firestore.
+        await S.persistProviderToken({
+          config,
+          field: "apiToken",
+          provider: "commerce:" + appId,
+          saveConfig: saveCommerceConfigs,
+          populateForm: populateCommerceConfigForm
+        });
+        const orders = await fetchCommerceData(config);
+        state.commerce.snapshots[appId] = createCommerceSnapshot(orders, "live");
+        saveCommerceSnapshots();
+        return orders.length
+          ? "Datos reales sincronizados correctamente."
+          : "El endpoint respondio sin pedidos para este periodo.";
       }
-      const orders = await fetchCommerceData(config);
-      state.commerce.snapshots[appId] = createCommerceSnapshot(orders, "live");
-      saveCommerceSnapshots();
-      setCommerceMessage(orders.length ? "Datos reales sincronizados correctamente." : "El endpoint respondio sin pedidos para este periodo.", "success");
-    } catch (error) {
-      setCommerceMessage(error.message || "No se pudo sincronizar este negocio.", "error");
-    } finally {
-      state.commerce.syncing = false;
-      renderCommerceDashboard();
-      scheduleCommerceRefresh();
-    }
+    });
   }
 
-  function scheduleCommerceRefresh() {
-    window.clearInterval(state.commerce.refreshTimer);
-    state.commerce.refreshTimer = 0;
-    const config = getCommerceConfig();
-    const seconds = Number(config.refreshInterval);
-    if (!seconds || !hasCommerceConnection(config)) return;
-    state.commerce.refreshTimer = window.setInterval(() => {
-      syncCommerce({ silent: true });
-    }, seconds * 1000);
-  }
+  const scheduleCommerceRefresh = S.createRefreshScheduler({
+    slice: () => state.commerce,
+    getIntervalSeconds: () => getCommerceConfig().refreshInterval,
+    isEnabled: () => hasCommerceConnection(getCommerceConfig()),
+    sync: (options) => syncCommerce(options)
+  });
 
 
   Object.assign(S, {
