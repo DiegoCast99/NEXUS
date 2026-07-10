@@ -63,3 +63,27 @@ input {
 button {
   color: inherit;
 }
+
+/* === Accesibilidad (Ola 4) ============================================== */
+/* Anillo de foco visible SOLO en navegación por teclado (:focus-visible),
+   no con click/touch. Antes el foco era invisible fuera de la nav. */
+:focus-visible {
+  outline: 2px solid var(--hot-pink);
+  outline-offset: 2px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Respeta "menos movimiento": neutraliza animaciones y transiciones para
+   quien lo pide en su sistema (mareo/vestibular). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
