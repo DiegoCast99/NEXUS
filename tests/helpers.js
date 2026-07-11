@@ -32,7 +32,12 @@ function done() {
   (async () => {
     for (const run of pending) await run();
     console.log("\n=== RESULTADO: " + passed + " ok, " + failed + " fallos ===");
-    process.exitCode = failed ? 1 : 0;
+    const code = failed ? 1 : 0;
+    process.exitCode = code;
+    // Salida explícita: si algún test dejó un handle vivo (p.ej. un setInterval
+    // sin limpiar), esto evita que el proceso quede colgado. Se hace un flush de
+    // stdout antes de salir para no truncar el resumen.
+    process.stdout.write("", function () { process.exit(code); });
   })();
 }
 

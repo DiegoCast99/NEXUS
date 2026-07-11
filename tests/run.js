@@ -9,13 +9,20 @@ const path = require("path");
 const files = fs.readdirSync(__dirname).filter((f) => f.endsWith(".test.js")).sort();
 let failures = 0;
 
+const TIMEOUT_MS = 30000; // corta un archivo colgado en vez de esperar para siempre
 console.log("NEXUS · suite de tests (" + files.length + " archivos)\n" + "=".repeat(50));
 for (const file of files) {
-  const result = spawnSync(process.execPath, [path.join(__dirname, file)], { encoding: "utf8" });
+  const result = spawnSync(process.execPath, [path.join(__dirname, file)], {
+    encoding: "utf8",
+    timeout: TIMEOUT_MS
+  });
   process.stdout.write(result.stdout || "");
   if (result.stderr) process.stderr.write(result.stderr);
-  if (result.status !== 0) failures += 1;
-  console.log("-".repeat(50) + " " + file + (result.status === 0 ? " ✅" : " ❌"));
+  const timedOut = result.error && result.error.code === "ETIMEDOUT";
+  const okFile = !timedOut && result.status === 0;
+  if (!okFile) failures += 1;
+  const mark = okFile ? " ✅" : timedOut ? " ⏱️ TIMEOUT (" + TIMEOUT_MS + "ms)" : " ❌";
+  console.log("-".repeat(50) + " " + file + mark);
 }
 
 console.log("\n" + "=".repeat(50));

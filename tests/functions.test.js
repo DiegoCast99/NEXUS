@@ -90,6 +90,8 @@ test("save-token handler", async () => {
 
 test("meta-insights handler", async () => {
   const handler = require(path.join(FN, "meta-insights.js")).handler;
+  // Sembrar el token cifrado (test independiente del orden de ejecución).
+  docStore("testuid123").secret_meta = shared.encrypt(SECRET);
   let r = await handler({ httpMethod: "POST", headers: auth, body: JSON.stringify({ adAccountId: "act_123", apiVersion: "v21.0", datePreset: "last_30d" }) });
   const body = JSON.parse(r.body);
   ok("con token guardado -> 200 con filas", r.statusCode === 200 && body.rows.length === 1 && body.rows[0].campaign_name === "Camp Test");
@@ -102,6 +104,8 @@ test("meta-insights handler", async () => {
 
 test("commerce-fetch handler", async () => {
   const handler = require(path.join(FN, "commerce-fetch.js")).handler;
+  // Sembrar el token cifrado (test independiente del orden de ejecución).
+  docStore("testuid123").secret_commerce_kairos = shared.encrypt("shop_tok_999");
   let r = await handler({ httpMethod: "POST", headers: auth, body: JSON.stringify({ provider: "commerce:kairos", apiUrl: "https://tienda-real.example.com/api/orders", pixelId: "PIX1" }) });
   const body = JSON.parse(r.body);
   ok("con token guardado -> 200 con payload", r.statusCode === 200 && body.payload.orders[0].total === 99);
