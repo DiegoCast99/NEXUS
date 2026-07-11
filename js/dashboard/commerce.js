@@ -198,12 +198,28 @@
 
   function normalizeMLOrder(mlOrder, index) {
     var payments = mlOrder.payments || [];
+    var orderItems = mlOrder.order_items || [];
     var total = payments.reduce(function (s, p) { return s + (p.total_paid_amount || 0); }, 0) || (mlOrder.total_amount || 0);
-    var fee = payments.reduce(function (s, p) { return s + (p.marketplace_fee || 0); }, 0);
-    var shipping = (mlOrder.shipping && mlOrder.shipping.cost) || 0;
-    var margin = total - fee - shipping;
 
-    var items = (mlOrder.order_items || []).map(function (i) { return i.item ? i.item.title : "Producto"; });
+    // Comisión REAL de ML. Dos fuentes que vienen en la misma respuesta de
+    // /orders/search (sin llamadas extra):
+    //   1) payments[].marketplace_fee — comisión efectivamente cobrada en el pago.
+    //   2) order_items[].sale_fee × quantity — tarifa de venta por publicación.
+    // Usamos la primera si ML la informa; si no, la segunda. Si ML no informa
+    // ninguna (raro), estimamos el 13% (comisión típica ML Uruguay) para no
+    // mostrar un margen falso del 100%.
+    var paymentFee = payments.reduce(function (s, p) { return s + (Number(p.marketplace_fee) || 0); }, 0);
+    var itemFee = orderItems.reduce(function (s, i) {
+      return s + ((Number(i.sale_fee) || 0) * (Number(i.quantity) || 1));
+    }, 0);
+    var commission = paymentFee > 0 ? paymentFee : itemFee > 0 ? itemFee : total * 0.13;
+
+    // Envío pagado por el vendedor, si ML lo informa en el pago.
+    var shipping = payments.reduce(function (s, p) { return s + (Number(p.shipping_cost) || 0); }, 0);
+
+    var margin = total - commission - shipping;
+
+    var items = orderItems.map(function (i) { return i.item ? i.item.title : "Producto"; });
     var product = items.join(", ") || "Producto ML";
 
     var statusMap = {

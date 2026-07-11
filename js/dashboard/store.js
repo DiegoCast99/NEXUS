@@ -169,14 +169,17 @@
     }, 1950);
   }
 
+  // Moneda: peso uruguayo (UYU) mostrado con símbolo "$" (narrowSymbol).
   const currency = new Intl.NumberFormat("es-419", {
     style: "currency",
-    currency: "USD",
+    currency: "UYU",
+    currencyDisplay: "narrowSymbol",
     maximumFractionDigits: 0
   });
   const moneyWithCents = new Intl.NumberFormat("es-419", {
     style: "currency",
-    currency: "USD",
+    currency: "UYU",
+    currencyDisplay: "narrowSymbol",
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
