@@ -31,7 +31,7 @@
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260709-ola0css" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260709-ola0css" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260710-ola6b" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260709-ola4" />
   </head>
@@ -87,7 +87,7 @@
             </svg>
             <span>
               <b>E-Commerce</b>
-              <small>Kairos, Billion y KiwiFi</small>
+              <small>Negocios y ventas</small>
             </span>
           </button>
         </nav>
@@ -135,11 +135,6 @@
             </p>
           </div>
           <div class="topbar-actions is-hidden">
-            <div class="chart-view-toggle" id="chartViewToggle" aria-label="Cambiar vista de graficos">
-              <button type="button" data-chart-mode="2d">Vista 2D</button>
-              <button type="button" data-chart-mode="3d">Vista 3D</button>
-            </div>
-            <button class="ghost-button" type="button" id="chartResetButton">Resetear vista</button>
             <div class="finance-tools" id="financeTools">
               <label class="field compact-field">
                 <span>Mes</span>
@@ -167,7 +162,7 @@
             <article class="welcome-card" data-welcome-view="ecommerce">
               <span>03</span>
               <h3>E-Commerce</h3>
-              <p>Kairos, Billion, KiwiFi y plataformas de venta.</p>
+              <p>Ventas, pedidos y facturación por negocio.</p>
               <button class="primary-button" type="button">Entrar</button>
             </article>
           </div>
@@ -512,17 +507,7 @@
         </section>
 
         <section class="view-panel" data-panel="ecommerce" aria-label="Dashboard de E-Commerce">
-          <div class="integration-hero ecommerce-hero">
-            <div>
-              <span class="eyebrow">E-Commerce / negocios conectados</span>
-              <h2>Gestiona Kairos, Billion y KiwiFi desde una sola interfaz.</h2>
-              <p>
-                Cada negocio puede guardar su pixel, endpoint de tienda y token para traer ventas,
-                pedidos, trafico y rentabilidad en tiempo real dentro de Nexus.
-              </p>
-            </div>
-            <div class="ecommerce-switcher" id="commerceAppSwitcher" aria-label="Seleccionar negocio e-commerce"></div>
-          </div>
+          <div class="ecommerce-switcher" id="commerceAppSwitcher" aria-label="Seleccionar negocio e-commerce"></div>
 
           <form class="panel commerce-config-panel" id="commerceConfigForm">
             <div class="panel-heading">
@@ -679,7 +664,7 @@
     <script src="./js/firebase/secure-api.js?v=20260710-ola2"></script>
     <!-- Dashboard modules -->
     <script src="./js/core/auth.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/store.js?v=20260710-ola2"></script>
+    <script src="./js/dashboard/store.js?v=20260710-ola6b"></script>
     <script src="./js/dashboard/integration-core.js?v=20260710-ola5r"></script>
     <script src="./js/dashboard/charts.js?v=20260709-ola1d"></script>
     <script src="./js/dashboard/finance.js?v=20260709-ola0mod"></script>

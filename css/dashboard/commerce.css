@@ -1,20 +1,11 @@
 /* ============================================================
    NEXUS · Dashboard · E-Commerce (switcher, métricas, tooltip)
    ============================================================ */
-.ecommerce-hero {
-  align-items: stretch;
-}
-
-.ecommerce-hero > div:first-child {
-  display: grid;
-  align-content: center;
-}
-
 .ecommerce-switcher {
-  min-width: 360px;
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 10px;
+  margin-bottom: 22px;
 }
 
 .commerce-app-button {

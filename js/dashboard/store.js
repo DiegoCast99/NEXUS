@@ -238,7 +238,9 @@
   const commerceApps = [
     { id: "kairos", name: "Kairos", model: "E-commerce operativo", accent: "#ff1a9d" },
     { id: "billion", name: "Billion", model: "Marca digital", accent: "#52e1ff" },
-    { id: "kiwifi", name: "KiwiFi", model: "Tienda / checkout", accent: "#31e6ad" }
+    { id: "kiwifi", name: "KiwiFi", model: "Tienda / checkout", accent: "#31e6ad" },
+    { id: "mercadolibre", name: "Mercado Libre", model: "Marketplace", accent: "#ffe600" },
+    { id: "alfafitness", name: "Alfa Fitness Web", model: "Tienda propia", accent: "#a855f7" }
   ];
 
   const demoCommerceData = {
@@ -267,6 +269,24 @@
       ["KW-3127", "Lucia J.", "Suite pro", "Pagado", 289, 151, 730, -2],
       ["KW-3133", "Tomas Q.", "Suite pro", "Pendiente", 289, 145, 690, -1],
       ["KW-3139", "Eva D.", "Pack creator", "Enviado", 149, 71, 800, 0]
+    ],
+    mercadolibre: [
+      ["ML-5501", "Comprador ML", "Proteína 1kg", "Pagado", 210, 74, 640, -6],
+      ["ML-5507", "Comprador ML", "Creatina 300g", "Enviado", 145, 52, 720, -5],
+      ["ML-5512", "Comprador ML", "Shaker premium", "Pagado", 62, 27, 810, -4],
+      ["ML-5519", "Comprador ML", "Proteína 1kg", "Pagado", 210, 78, 900, -3],
+      ["ML-5524", "Comprador ML", "Pre-entreno", "Pendiente", 168, 58, 760, -2],
+      ["ML-5531", "Comprador ML", "Combo full", "Pagado", 395, 152, 1180, -1],
+      ["ML-5538", "Comprador ML", "Creatina 300g", "Enviado", 145, 54, 1020, 0]
+    ],
+    alfafitness: [
+      ["AF-7001", "Cliente web", "Whey 2 lb", "Pagado", 178, 66, 380, -6],
+      ["AF-7008", "Cliente web", "Combo masa", "Enviado", 264, 101, 440, -5],
+      ["AF-7013", "Cliente web", "Creatina micronizada", "Pagado", 132, 51, 520, -4],
+      ["AF-7019", "Cliente web", "Whey 2 lb", "Pagado", 178, 69, 610, -3],
+      ["AF-7024", "Cliente web", "Pack definición", "Pendiente", 221, 84, 470, -2],
+      ["AF-7031", "Cliente web", "Combo masa", "Pagado", 264, 108, 700, -1],
+      ["AF-7037", "Cliente web", "Barra proteica x12", "Enviado", 96, 39, 560, 0]
     ]
   };
 
@@ -395,7 +415,7 @@
       category: "all"
     },
     activeView: "welcome",
-    chartMode: localStorage.getItem(CHART_VIEW_MODE_KEY) === "3d" ? "3d" : "2d",
+    chartMode: "2d", // solo 2D (se quitó la opción de vista 3D)
     meta: {
       platforms: loadMetaPlatforms(),
       selectedPlatform: null,
@@ -782,7 +802,7 @@
     if (view === "ecommerce") {
       elements.viewTitle.textContent = "E-Commerce";
       document.title = "Nexus Dashboard - E-Commerce";
-      elements.viewDescription.textContent = "Administra Kairos, Billion y KiwiFi con pixel, ventas, pedidos, productos, conversiones y sincronizacion en tiempo real.";
+      elements.viewDescription.textContent = "Elegí un negocio para ver ventas, pedidos, productos y facturación.";
       return;
     }
 
