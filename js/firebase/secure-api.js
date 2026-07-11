@@ -58,6 +58,14 @@
     // Trae datos de un e-commerce (idem).
     commerceFetch: function (params) {
       return call("commerce-fetch", params || {});
+    },
+    // Guarda el bundle cifrado de tokens de ML (viene del OAuth callback).
+    mlSaveTokens: function (encBundle) {
+      return call("ml-save-tokens", { encBundle: encBundle });
+    },
+    // Proxy seguro a la API de Mercado Libre.
+    mlApi: function (endpoint, method, body) {
+      return call("ml-api-proxy", { endpoint: endpoint, method: method || "GET", body: body });
     }
   };
 })();

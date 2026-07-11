@@ -122,6 +122,23 @@
   line-height: 1.55;
 }
 
+.ml-connect-desc {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+#mlConnectPanel .primary-button {
+  background: linear-gradient(135deg, #ffe600, #e6c200);
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+#mlConnectPanel .primary-button:hover {
+  background: linear-gradient(135deg, #fff04d, #ffe600);
+}
+
 @keyframes syncPulse {
   0%,
   100% {

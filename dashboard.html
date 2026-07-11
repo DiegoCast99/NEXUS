@@ -514,6 +514,24 @@
               ← Volver a negocios
             </button>
 
+          <div class="panel commerce-config-panel is-hidden" id="mlConnectPanel">
+            <div class="panel-heading">
+              <div>
+                <span>Mercado Libre</span>
+                <h2 id="mlConnectTitle">Conectar cuenta</h2>
+              </div>
+              <span class="source-pill" id="mlConnectStatus">Desconectado</span>
+            </div>
+            <p class="ml-connect-desc" id="mlConnectDesc">Conecta tu cuenta de Mercado Libre para sincronizar ventas, pedidos y productos.</p>
+            <div class="meta-sync-actions">
+              <button class="primary-button" type="button" id="mlConnectButton">Conectar con Mercado Libre</button>
+              <button class="ghost-button is-hidden" type="button" id="mlSyncButton">Sincronizar ahora</button>
+              <button class="ghost-button is-hidden" type="button" id="mlDemoButton">Cargar demo</button>
+              <button class="ghost-button danger-button is-hidden" type="button" id="mlDisconnectButton">Desconectar</button>
+            </div>
+            <p class="meta-message" id="mlMessage"></p>
+          </div>
+
           <form class="panel commerce-config-panel" id="commerceConfigForm">
             <div class="panel-heading">
               <div>
@@ -667,17 +685,17 @@
     <script src="./js/firebase/config.js?v=20260709-ola1c"></script>
     <script src="./js/firebase/auth.js?v=20260709-ola1"></script>
     <script src="./js/firebase/db.js?v=20260709-ola1"></script>
-    <script src="./js/firebase/secure-api.js?v=20260710-ola2"></script>
+    <script src="./js/firebase/secure-api.js?v=20260711-ml1"></script>
     <!-- Dashboard modules -->
     <script src="./js/core/auth.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/store.js?v=20260710-ola7"></script>
+    <script src="./js/dashboard/store.js?v=20260711-ml1"></script>
     <script src="./js/dashboard/integration-core.js?v=20260710-ola5r"></script>
     <script src="./js/dashboard/charts.js?v=20260709-ola1d"></script>
     <script src="./js/dashboard/finance.js?v=20260709-ola0mod"></script>
     <script src="./js/dashboard/meta.js?v=20260710-ola5r"></script>
-    <script src="./js/dashboard/commerce.js?v=20260710-ola7"></script>
-    <script src="./js/dashboard/router.js?v=20260710-ola7"></script>
-    <script src="./js/dashboard/app.js?v=20260710-ola7"></script>
+    <script src="./js/dashboard/commerce.js?v=20260711-ml1"></script>
+    <script src="./js/dashboard/router.js?v=20260711-ml1"></script>
+    <script src="./js/dashboard/app.js?v=20260711-ml1"></script>
     <script src="./js/pwa.js?v=20260710-ola5" defer></script>
   </body>
 </html>

@@ -13,7 +13,7 @@
   const { saveMetaConfig, saveMetaPlatforms, scheduleCommerceRefresh, scheduleMetaRefresh, seedData, selectMetaPlatform } = S;
   const { setCommerceMessage, setMetaMessage, setView, showChartTooltip, startEdit, state } = S;
   const { syncCommerce, syncMetaAds, toDateInput } = S;
-  const { selectCommerceApp, clearSelectedCommerceApp } = S;
+  const { selectCommerceApp, clearSelectedCommerceApp, disconnectML, handleMlOAuthReturn, startMLOAuth, syncMercadoLibre } = S;
   function bindEvents() {
     elements.navButtons.forEach((button) => {
       button.addEventListener("click", () => setView(button.dataset.view));
@@ -133,6 +133,12 @@
     elements.commerceBackButton?.addEventListener("click", () => {
       clearSelectedCommerceApp();
     });
+    elements.mlConnectButton?.addEventListener("click", startMLOAuth);
+    elements.mlSyncButton?.addEventListener("click", () => syncMercadoLibre());
+    elements.mlDemoButton?.addEventListener("click", () => syncCommerce({ demo: true }));
+    elements.mlDisconnectButton?.addEventListener("click", () => {
+      if (window.confirm("Desconectar Mercado Libre? Se eliminan tokens y datos locales.")) disconnectML();
+    });
     elements.commerceConfigForm?.addEventListener("submit", (event) => {
       event.preventDefault();
       state.commerce.configs[state.commerce.activeApp] = readCommerceConfigFromForm();
@@ -220,7 +226,12 @@
       scheduleMetaRefresh();
       scheduleCommerceRefresh();
       const initial = location.hash.replace("#", "");
-      setView(initial || "welcome", false);
+      if (initial === "ml-connect") {
+        setView("ecommerce", false);
+        handleMlOAuthReturn();
+      } else {
+        setView(initial || "welcome", false);
+      }
     } catch (error) {
       console.error("Nexus dashboard init error:", error);
     } finally {

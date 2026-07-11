@@ -17,6 +17,8 @@
   const COMMERCE_CONFIG_KEY = "nexus.ecommerce.config.v1";
   const COMMERCE_DATA_KEY = "nexus.ecommerce.snapshot.v1";
   const CHART_VIEW_MODE_KEY = "nexus_chart_view_mode";
+  const ML_APP_ID = "8783041912762661";
+  const ML_AUTH_URL = "https://auth.mercadolibre.com.uy/authorization";
 
   // === Persistencia segura + respaldo (Ola 0) ================================
   // Claves que NO entran al respaldo: sesión y flags transitorios de UI.
@@ -372,6 +374,15 @@
     commerceAppSwitcher: document.getElementById("commerceAppSwitcher"),
     commerceWorkspace: document.getElementById("commerceWorkspace"),
     commerceBackButton: document.getElementById("commerceBackButton"),
+    mlConnectPanel: document.getElementById("mlConnectPanel"),
+    mlConnectTitle: document.getElementById("mlConnectTitle"),
+    mlConnectStatus: document.getElementById("mlConnectStatus"),
+    mlConnectDesc: document.getElementById("mlConnectDesc"),
+    mlConnectButton: document.getElementById("mlConnectButton"),
+    mlSyncButton: document.getElementById("mlSyncButton"),
+    mlDemoButton: document.getElementById("mlDemoButton"),
+    mlDisconnectButton: document.getElementById("mlDisconnectButton"),
+    mlMessage: document.getElementById("mlMessage"),
     commerceConfigForm: document.getElementById("commerceConfigForm"),
     commerceConfigTitle: document.getElementById("commerceConfigTitle"),
     commercePixelId: document.getElementById("commercePixelId"),
@@ -737,7 +748,12 @@
     return state.commerce.snapshots[id] || null;
   }
 
+  function isMLApp(id) {
+    return (id || state.commerce.activeApp) === "mercadolibre";
+  }
+
   function hasCommerceConnection(config = getCommerceConfig()) {
+    if (isMLApp()) return Boolean(config.hasToken);
     return Boolean(config.pixelId && config.apiUrl && (config.apiToken || config.hasToken));
   }
 
@@ -829,12 +845,13 @@
 
   Object.assign(S, {
     AUTH_KEY, AUTH_USER, CHART_VIEW_MODE_KEY, COMMERCE_CONFIG_KEY, COMMERCE_DATA_KEY, DASHBOARD_REVEAL_KEY,
-    META_ACTIVE_PLATFORM_KEY, META_CONFIG_KEY, META_DATA_KEY, META_PLATFORMS_KEY, MONTH_FILTER_KEY, NON_DATA_KEYS,
+    META_ACTIVE_PLATFORM_KEY, META_CONFIG_KEY, META_DATA_KEY, META_PLATFORMS_KEY, ML_APP_ID, ML_AUTH_URL,
+    MONTH_FILTER_KEY, NON_DATA_KEYS,
     STORAGE_KEY, animateActivePanel, categories, categoryColors, chartTargets, collectNexusData,
     commerceApps, compactNumber, currency, currentMonth, decimalNumber, defaultCommerceConfig,
     defaultMetaConfig, defaultMetaPlatformState, demoCommerceData, demoMetaRecords, elements, escapeHtml,
     exportNexusData, formatDate, formatMetaDate, getCommerceApp, getCommerceConfig, getCommerceSnapshot,
-    getFilteredMovements, getMetaPlatform, getMetaPlatformState, hasCommerceConnection, importNexusData, integerNumber,
+    getFilteredMovements, getMetaPlatform, getMetaPlatformState, hasCommerceConnection, importNexusData, integerNumber, isMLApp,
     isValidMovement, labelMonth, loadActiveMetaPlatform, loadCommerceConfigs, loadCommerceSnapshots, loadMetaConfig,
     loadMetaPlatforms, loadMetaSnapshot, loadMovements, mainSections, metaPlatforms, moneyWithCents,
     movementMonth, normalizeAdAccountId, normalizeApiVersion, persistActiveMetaPlatform, runDashboardReveal, safeSetItem,

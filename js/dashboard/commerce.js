@@ -5,12 +5,19 @@
 (function () {
   const S = window.NexusDash;
   const { commerceApps, currency, demoCommerceData, drawCommerceTrendChart, elements, escapeHtml } = S;
-  const { formatMetaDate, getCommerceApp, getCommerceConfig, getCommerceSnapshot, hasCommerceConnection, integerNumber } = S;
-  const { moneyWithCents, saveCommerceConfigs, saveCommerceSnapshots, state, toDateInput } = S;
+  const { formatMetaDate, getCommerceApp, getCommerceConfig, getCommerceSnapshot, hasCommerceConnection, integerNumber, isMLApp } = S;
+  const { ML_APP_ID, ML_AUTH_URL, moneyWithCents, saveCommerceConfigs, saveCommerceSnapshots, state, toDateInput } = S;
   const setCommerceMessage = S.createIntegrationMessenger({
     slice: () => state.commerce,
     getElement: () => elements.commerceMessage
   });
+
+  const setMlMessage = S.createIntegrationMessenger({
+    slice: () => state.commerce,
+    getElement: () => elements.mlMessage
+  });
+
+  // ---- Config form (negocios genéricos) ----------------------
 
   function readCommerceConfigFromForm() {
     const apiToken = String(elements.commerceApiToken?.value || "").trim();
@@ -19,7 +26,6 @@
       pixelId: String(elements.commercePixelId?.value || "").trim(),
       apiUrl: String(elements.commerceApiUrl?.value || "").trim(),
       apiToken,
-      // hasToken: existe un token guardado (cifrado en Firestore) aunque el campo esté vacío.
       hasToken: Boolean(apiToken) || Boolean(prev && prev.hasToken),
       refreshInterval: elements.commerceRefreshInterval?.value || "0"
     };
@@ -39,6 +45,8 @@
     }
     if (elements.commerceRefreshInterval) elements.commerceRefreshInterval.value = config.refreshInterval || "0";
   }
+
+  // ---- Normalización y snapshots -----------------------------
 
   function buildDemoCommerceSnapshot(appId) {
     const rows = demoCommerceData[appId] || demoCommerceData.kairos;
@@ -120,9 +128,8 @@
     };
   }
 
-  // Trae los datos vía el proxy serverless: el navegador NO llama al endpoint del
-  // negocio ni ve el apiToken; el servidor lee el token cifrado de Firestore y hace
-  // la llamada (con guard anti-SSRF). Devuelve el payload crudo, que normalizamos.
+  // ---- Fetch genérico (commerce proxy) -----------------------
+
   async function fetchCommerceData(config) {
     const result = await S.requireSecureApi().commerceFetch({
       provider: "commerce:" + state.commerce.activeApp,
@@ -140,11 +147,145 @@
     return rows.map(normalizeCommerceOrder);
   }
 
+  // ---- Mercado Libre: OAuth + fetch --------------------------
+
+  function buildMLAuthUrl() {
+    var redirectUri = window.location.origin + "/.netlify/functions/ml-oauth-callback";
+    var mlState = crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2);
+    sessionStorage.setItem("nexus_ml_state_expected", mlState);
+    return ML_AUTH_URL
+      + "?response_type=code"
+      + "&client_id=" + encodeURIComponent(ML_APP_ID)
+      + "&redirect_uri=" + encodeURIComponent(redirectUri)
+      + "&state=" + encodeURIComponent(mlState);
+  }
+
+  function startMLOAuth() {
+    window.location.href = buildMLAuthUrl();
+  }
+
+  async function handleMlOAuthReturn() {
+    var encBundle = sessionStorage.getItem("nexus_ml_enc");
+    var returnedState = sessionStorage.getItem("nexus_ml_state");
+    sessionStorage.removeItem("nexus_ml_enc");
+    sessionStorage.removeItem("nexus_ml_state");
+
+    if (!encBundle) return;
+
+    var expectedState = sessionStorage.getItem("nexus_ml_state_expected");
+    sessionStorage.removeItem("nexus_ml_state_expected");
+    if (expectedState && returnedState !== expectedState) {
+      console.warn("ML OAuth state mismatch");
+      return;
+    }
+
+    try {
+      var api = S.requireSecureApi();
+      var result = await api.mlSaveTokens(encBundle);
+      state.commerce.configs.mercadolibre = Object.assign(
+        state.commerce.configs.mercadolibre || S.defaultCommerceConfig(),
+        { hasToken: true, mlUserId: (result && result.userId) || "" }
+      );
+      saveCommerceConfigs();
+      selectCommerceApp("mercadolibre");
+      setMlMessage("Cuenta de Mercado Libre conectada exitosamente.", "success");
+    } catch (err) {
+      console.error("ML OAuth save error:", err);
+      selectCommerceApp("mercadolibre");
+      setMlMessage("Error al guardar tokens: " + (err.message || err), "error");
+    }
+  }
+
+  function normalizeMLOrder(mlOrder, index) {
+    var payments = mlOrder.payments || [];
+    var total = payments.reduce(function (s, p) { return s + (p.total_paid_amount || 0); }, 0) || (mlOrder.total_amount || 0);
+    var fee = payments.reduce(function (s, p) { return s + (p.marketplace_fee || 0); }, 0);
+    var shipping = (mlOrder.shipping && mlOrder.shipping.cost) || 0;
+    var margin = total - fee - shipping;
+
+    var items = (mlOrder.order_items || []).map(function (i) { return i.item ? i.item.title : "Producto"; });
+    var product = items.join(", ") || "Producto ML";
+
+    var statusMap = {
+      paid: "Pagado", cancelled: "Cancelado", pending: "Pendiente",
+      confirmed: "Confirmado", payment_required: "Pago requerido",
+      payment_in_process: "En proceso"
+    };
+    var status = statusMap[mlOrder.status] || mlOrder.status || "Desconocido";
+
+    var buyer = mlOrder.buyer || {};
+    var customer = (buyer.first_name || "") + " " + (buyer.last_name || "");
+    if (customer.trim().length === 0) customer = "Comprador ML";
+
+    return {
+      id: String(mlOrder.id || "ML-" + index),
+      customer: customer.trim(),
+      product: product,
+      status: status,
+      total: total,
+      margin: margin,
+      sessions: 0,
+      date: String(mlOrder.date_created || "").slice(0, 10) || toDateInput()
+    };
+  }
+
+  async function fetchMLOrders() {
+    var api = S.requireSecureApi();
+    var config = getCommerceConfig("mercadolibre");
+    var userId = config.mlUserId || "";
+
+    if (!userId) {
+      var meResult = await api.mlApi("/users/me");
+      userId = String((meResult.payload || {}).id || "");
+      if (userId) {
+        state.commerce.configs.mercadolibre.mlUserId = userId;
+        saveCommerceConfigs();
+      }
+    }
+
+    if (!userId) throw new Error("No se pudo obtener el user ID de ML.");
+
+    var allOrders = [];
+    var offset = 0;
+    var limit = 50;
+    var maxPages = 4;
+
+    for (var page = 0; page < maxPages; page++) {
+      var endpoint = "/orders/search?seller=" + userId + "&sort=date_desc&limit=" + limit + "&offset=" + offset;
+      var result = await api.mlApi(endpoint);
+      var payload = result.payload || {};
+      var results = payload.results || [];
+      allOrders = allOrders.concat(results);
+
+      var paging = payload.paging || {};
+      if (offset + limit >= (paging.total || 0)) break;
+      offset += limit;
+    }
+
+    return allOrders.map(normalizeMLOrder);
+  }
+
+  async function disconnectML() {
+    state.commerce.configs.mercadolibre = S.defaultCommerceConfig();
+    delete state.commerce.snapshots.mercadolibre;
+    saveCommerceConfigs();
+    saveCommerceSnapshots();
+    setMlMessage("Mercado Libre desconectado.", "success");
+    renderCommerceDashboard();
+  }
+
+  // ---- Render ------------------------------------------------
+
   function renderCommerceSwitcher() {
     if (!elements.commerceAppSwitcher) return;
     elements.commerceAppSwitcher.innerHTML = commerceApps.map((app) => {
       const snapshot = state.commerce.snapshots[app.id];
-      const source = snapshot?.source === "live" ? "Conectado" : snapshot?.source === "demo" ? "Demo activo" : "Sin datos";
+      const config = getCommerceConfig(app.id);
+      var source;
+      if (app.id === "mercadolibre" && config.hasToken) source = "Conectado (OAuth)";
+      else if (snapshot?.source === "live") source = "Conectado";
+      else if (snapshot?.source === "demo") source = "Demo activo";
+      else source = "Sin datos";
       return `
         <button class="commerce-app-button ${state.commerce.selectedApp === app.id ? "is-active" : ""}" type="button" data-commerce-app="${app.id}">
           <i style="background:linear-gradient(90deg, ${app.accent}, var(--cyan))"></i>
@@ -155,12 +296,41 @@
     }).join("");
   }
 
+  function updateMLPanel() {
+    var config = getCommerceConfig("mercadolibre");
+    var connected = Boolean(config.hasToken);
+
+    elements.mlConnectButton?.classList.toggle("is-hidden", connected);
+    elements.mlSyncButton?.classList.toggle("is-hidden", !connected);
+    elements.mlDemoButton?.classList.toggle("is-hidden", connected);
+    elements.mlDisconnectButton?.classList.toggle("is-hidden", !connected);
+
+    if (elements.mlConnectStatus) {
+      elements.mlConnectStatus.textContent = connected ? "Conectado" : "Desconectado";
+      elements.mlConnectStatus.classList.toggle("commerce-status-live", connected);
+    }
+    if (elements.mlConnectTitle) {
+      elements.mlConnectTitle.textContent = connected ? "Mercado Libre conectado" : "Conectar cuenta";
+    }
+    if (elements.mlConnectDesc) {
+      elements.mlConnectDesc.textContent = connected
+        ? "Tu cuenta esta vinculada. Podes sincronizar ventas o desconectarla."
+        : "Conecta tu cuenta de Mercado Libre para sincronizar ventas, pedidos y productos.";
+    }
+  }
+
   function renderCommerceDashboard() {
-    // Dos niveles: sin negocio elegido se ven las tarjetas (selector); con un
-    // negocio elegido se ve su workspace (config + dashboard).
-    const hasApp = !!state.commerce.selectedApp;
+    var hasApp = !!state.commerce.selectedApp;
+    var ml = isMLApp(state.commerce.selectedApp);
+
     elements.commerceAppSwitcher?.classList.toggle("is-hidden", hasApp);
     elements.commerceWorkspace?.classList.toggle("is-hidden", !hasApp);
+
+    elements.mlConnectPanel?.classList.toggle("is-hidden", !(hasApp && ml));
+    elements.commerceConfigForm?.classList.toggle("is-hidden", !hasApp || ml);
+
+    if (ml) updateMLPanel();
+
     const app = getCommerceApp();
     const config = getCommerceConfig(app.id);
     const snapshot = getCommerceSnapshot(app.id);
@@ -168,7 +338,7 @@
     const sourceLabel = snapshot?.source === "live" ? "API real" : snapshot?.source === "demo" ? "Demo" : "Datos locales";
 
     renderCommerceSwitcher();
-    populateCommerceConfigForm();
+    if (!ml) populateCommerceConfigForm();
 
     if (elements.commerceDataSource) elements.commerceDataSource.textContent = sourceLabel;
     if (elements.commerceRevenueValue) elements.commerceRevenueValue.textContent = currency.format(totals.revenue || 0);
@@ -187,8 +357,8 @@
     }
     if (elements.commerceStatusHint) elements.commerceStatusHint.textContent = snapshot ? `${sourceLabel} · ${formatMetaDate(snapshot.fetchedAt)}` : "Conecta datos o demo";
     if (elements.commerceActiveLabel) elements.commerceActiveLabel.textContent = app.name;
-    if (elements.commercePixelLabel) elements.commercePixelLabel.textContent = config.pixelId || "No configurado";
-    if (elements.commerceEndpointLabel) elements.commerceEndpointLabel.textContent = config.apiUrl || "No configurado";
+    if (elements.commercePixelLabel) elements.commercePixelLabel.textContent = ml ? (config.mlUserId || "OAuth") : (config.pixelId || "No configurado");
+    if (elements.commerceEndpointLabel) elements.commerceEndpointLabel.textContent = ml ? "api.mercadolibre.com" : (config.apiUrl || "No configurado");
     if (elements.commerceLastSync) elements.commerceLastSync.textContent = formatMetaDate(snapshot?.fetchedAt);
 
     const orders = snapshot?.orders || [];
@@ -216,18 +386,27 @@
     drawCommerceTrendChart();
   }
 
+  // ---- Sync genérico -----------------------------------------
+
   async function syncCommerce({ demo = false, silent = false } = {}) {
     const appId = state.commerce.activeApp;
-    state.commerce.configs[appId] = readCommerceConfigFromForm();
-    saveCommerceConfigs();
 
     if (demo) {
       state.commerce.snapshots[appId] = buildDemoCommerceSnapshot(appId);
       saveCommerceSnapshots();
-      setCommerceMessage(`Demo cargada para ${getCommerceApp(appId).name}.`, "success");
+      var msg = isMLApp(appId) ? setMlMessage : setCommerceMessage;
+      msg(`Demo cargada para ${getCommerceApp(appId).name}.`, "success");
       renderCommerceDashboard();
       return;
     }
+
+    if (isMLApp(appId)) {
+      await syncMercadoLibre({ silent });
+      return;
+    }
+
+    state.commerce.configs[appId] = readCommerceConfigFromForm();
+    saveCommerceConfigs();
 
     const config = getCommerceConfig(appId);
     if (!hasCommerceConnection(config)) {
@@ -245,8 +424,6 @@
       errorFallback: "No se pudo sincronizar este negocio.",
       after: () => scheduleCommerceRefresh(),
       run: async () => {
-        // Token nuevo en el formulario -> se guarda cifrado server-side y se
-        // saca de memoria/DOM. Después el proxy lo usa desde Firestore.
         await S.persistProviderToken({
           config,
           field: "apiToken",
@@ -264,6 +441,35 @@
     });
   }
 
+  // ---- Sync Mercado Libre ------------------------------------
+
+  async function syncMercadoLibre({ silent = false } = {}) {
+    var config = getCommerceConfig("mercadolibre");
+    if (!config.hasToken) {
+      setMlMessage("Conecta tu cuenta de Mercado Libre primero.", "error");
+      renderCommerceDashboard();
+      return;
+    }
+
+    await S.runIntegrationSync({
+      slice: () => state.commerce,
+      silent: silent,
+      setMessage: setMlMessage,
+      syncingMessage: "Sincronizando Mercado Libre...",
+      render: renderCommerceDashboard,
+      errorFallback: "No se pudo sincronizar Mercado Libre.",
+      after: () => scheduleCommerceRefresh(),
+      run: async () => {
+        var orders = await fetchMLOrders();
+        state.commerce.snapshots.mercadolibre = createCommerceSnapshot(orders, "live");
+        saveCommerceSnapshots();
+        return orders.length
+          ? orders.length + " ordenes sincronizadas desde Mercado Libre."
+          : "No se encontraron ordenes en tu cuenta de ML.";
+      }
+    });
+  }
+
   const scheduleCommerceRefresh = S.createRefreshScheduler({
     slice: () => state.commerce,
     getIntervalSeconds: () => getCommerceConfig().refreshInterval,
@@ -271,7 +477,8 @@
     sync: (options) => syncCommerce(options)
   });
 
-  // Entrar a un negocio: muestra su workspace (config + dashboard).
+  // ---- Navegación nivel 2 ------------------------------------
+
   function selectCommerceApp(id) {
     const app = getCommerceApp(id);
     if (!app) return;
@@ -279,26 +486,30 @@
     state.commerce.activeApp = id;
     S.safeSetItem("nexus.ecommerce.activeApp.v1", id);
     setCommerceMessage("", "");
+    setMlMessage("", "");
     renderCommerceDashboard();
     S.updateTopbarForView("ecommerce");
     scheduleCommerceRefresh();
     S.animateActivePanel();
   }
 
-  // Volver a la pantalla de selección de negocios (las tarjetas).
   function clearSelectedCommerceApp() {
     state.commerce.selectedApp = null;
     window.clearInterval(state.commerce.refreshTimer);
     state.commerce.refreshTimer = 0;
     setCommerceMessage("", "");
+    setMlMessage("", "");
     renderCommerceDashboard();
     S.updateTopbarForView("ecommerce");
     S.animateActivePanel();
   }
 
   Object.assign(S, {
-    aggregateCommerceProducts, aggregateCommerceTrend, buildDemoCommerceSnapshot, clearSelectedCommerceApp, createCommerceSnapshot, fetchCommerceData, normalizeCommerceOrder,
-    populateCommerceConfigForm, readCommerceConfigFromForm, renderCommerceDashboard, renderCommerceSwitcher, scheduleCommerceRefresh, selectCommerceApp, setCommerceMessage,
-    syncCommerce,
+    aggregateCommerceProducts, aggregateCommerceTrend, buildDemoCommerceSnapshot, buildMLAuthUrl,
+    clearSelectedCommerceApp, createCommerceSnapshot, disconnectML, fetchCommerceData, fetchMLOrders,
+    handleMlOAuthReturn, normalizeCommerceOrder, normalizeMLOrder,
+    populateCommerceConfigForm, readCommerceConfigFromForm, renderCommerceDashboard, renderCommerceSwitcher,
+    scheduleCommerceRefresh, selectCommerceApp, setCommerceMessage, setMlMessage,
+    startMLOAuth, syncCommerce, syncMercadoLibre,
   });
 })();
