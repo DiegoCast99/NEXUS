@@ -40,6 +40,11 @@
       localStorage.removeItem(META_ACTIVE_PLATFORM_KEY);
     }
 
+    if (nextView !== "ecommerce") {
+      window.clearInterval(state.commerce.refreshTimer);
+      state.commerce.refreshTimer = 0;
+    }
+
     elements.navButtons.forEach((button) => button.classList.toggle("is-active", button.dataset.view === nextView));
     elements.panels.forEach((panel) => panel.classList.toggle("is-active", panel.dataset.panel === nextView));
     updateTopbarForView(nextView);
@@ -56,6 +61,10 @@
     }
 
     if (nextView === "ecommerce") {
+      // Entrar a E-Commerce siempre muestra el selector de negocios (las tarjetas).
+      state.commerce.selectedApp = null;
+      window.clearInterval(state.commerce.refreshTimer);
+      state.commerce.refreshTimer = 0;
       window.setTimeout(renderCommerceDashboard, 30);
       if (shouldPushHash) history.replaceState(null, "", "#ecommerce");
       animateActivePanel();

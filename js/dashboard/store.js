@@ -370,6 +370,8 @@
     metaEventList: document.getElementById("metaEventList"),
     metaTrendChart: document.getElementById("metaTrendChart"),
     commerceAppSwitcher: document.getElementById("commerceAppSwitcher"),
+    commerceWorkspace: document.getElementById("commerceWorkspace"),
+    commerceBackButton: document.getElementById("commerceBackButton"),
     commerceConfigForm: document.getElementById("commerceConfigForm"),
     commerceConfigTitle: document.getElementById("commerceConfigTitle"),
     commercePixelId: document.getElementById("commercePixelId"),
@@ -428,6 +430,7 @@
     },
     commerce: {
       activeApp: localStorage.getItem("nexus.ecommerce.activeApp.v1") || "kairos",
+      selectedApp: null, // null = pantalla de selección (tarjetas); id = adentro de un negocio
       configs: loadCommerceConfigs(),
       snapshots: loadCommerceSnapshots(),
       syncing: false,
@@ -800,9 +803,12 @@
     }
 
     if (view === "ecommerce") {
-      elements.viewTitle.textContent = "E-Commerce";
-      document.title = "Nexus Dashboard - E-Commerce";
-      elements.viewDescription.textContent = "Elegí un negocio para ver ventas, pedidos, productos y facturación.";
+      const commerceApp = state.commerce.selectedApp ? getCommerceApp(state.commerce.selectedApp) : null;
+      elements.viewTitle.textContent = commerceApp ? `E-Commerce / ${commerceApp.name}` : "E-Commerce";
+      document.title = commerceApp ? `Nexus Dashboard - E-Commerce / ${commerceApp.name}` : "Nexus Dashboard - E-Commerce";
+      elements.viewDescription.textContent = commerceApp
+        ? `Ventas, pedidos, productos y facturación de ${commerceApp.name}.`
+        : "Elegí un negocio para ver ventas, pedidos, productos y facturación.";
       return;
     }
 

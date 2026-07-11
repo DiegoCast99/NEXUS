@@ -8,6 +8,11 @@
   margin-bottom: 22px;
 }
 
+/* is-hidden debe ganarle al display:grid de arriba (misma especificidad, orden). */
+.ecommerce-switcher.is-hidden {
+  display: none;
+}
+
 .commerce-app-button {
   display: grid;
   align-content: space-between;

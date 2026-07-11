@@ -31,7 +31,7 @@
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260709-ola0css" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260710-ola6b" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260710-ola7" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260709-ola4" />
   </head>
@@ -509,6 +509,11 @@
         <section class="view-panel" data-panel="ecommerce" aria-label="Dashboard de E-Commerce">
           <div class="ecommerce-switcher" id="commerceAppSwitcher" aria-label="Seleccionar negocio e-commerce"></div>
 
+          <div class="commerce-workspace is-hidden" id="commerceWorkspace">
+            <button class="ghost-button platform-back-button" type="button" id="commerceBackButton">
+              ← Volver a negocios
+            </button>
+
           <form class="panel commerce-config-panel" id="commerceConfigForm">
             <div class="panel-heading">
               <div>
@@ -647,6 +652,7 @@
               <div class="event-list" id="commerceProductList"></div>
             </section>
           </div>
+          </div>
         </section>
       </main>
     </div>
@@ -664,14 +670,14 @@
     <script src="./js/firebase/secure-api.js?v=20260710-ola2"></script>
     <!-- Dashboard modules -->
     <script src="./js/core/auth.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/store.js?v=20260710-ola6b"></script>
+    <script src="./js/dashboard/store.js?v=20260710-ola7"></script>
     <script src="./js/dashboard/integration-core.js?v=20260710-ola5r"></script>
     <script src="./js/dashboard/charts.js?v=20260709-ola1d"></script>
     <script src="./js/dashboard/finance.js?v=20260709-ola0mod"></script>
     <script src="./js/dashboard/meta.js?v=20260710-ola5r"></script>
-    <script src="./js/dashboard/commerce.js?v=20260710-ola5r"></script>
-    <script src="./js/dashboard/router.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/app.js?v=20260709-ola1f"></script>
+    <script src="./js/dashboard/commerce.js?v=20260710-ola7"></script>
+    <script src="./js/dashboard/router.js?v=20260710-ola7"></script>
+    <script src="./js/dashboard/app.js?v=20260710-ola7"></script>
     <script src="./js/pwa.js?v=20260710-ola5" defer></script>
   </body>
 </html>

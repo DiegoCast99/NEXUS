@@ -13,6 +13,7 @@
   const { saveMetaConfig, saveMetaPlatforms, scheduleCommerceRefresh, scheduleMetaRefresh, seedData, selectMetaPlatform } = S;
   const { setCommerceMessage, setMetaMessage, setView, showChartTooltip, startEdit, state } = S;
   const { syncCommerce, syncMetaAds, toDateInput } = S;
+  const { selectCommerceApp, clearSelectedCommerceApp } = S;
   function bindEvents() {
     elements.navButtons.forEach((button) => {
       button.addEventListener("click", () => setView(button.dataset.view));
@@ -127,11 +128,10 @@
     elements.commerceAppSwitcher?.addEventListener("click", (event) => {
       const button = event.target.closest("[data-commerce-app]");
       if (!button) return;
-      state.commerce.activeApp = button.dataset.commerceApp;
-      safeSetItem("nexus.ecommerce.activeApp.v1", state.commerce.activeApp);
-      setCommerceMessage("", "");
-      scheduleCommerceRefresh();
-      renderCommerceDashboard();
+      selectCommerceApp(button.dataset.commerceApp);
+    });
+    elements.commerceBackButton?.addEventListener("click", () => {
+      clearSelectedCommerceApp();
     });
     elements.commerceConfigForm?.addEventListener("submit", (event) => {
       event.preventDefault();

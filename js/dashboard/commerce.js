@@ -146,7 +146,7 @@
       const snapshot = state.commerce.snapshots[app.id];
       const source = snapshot?.source === "live" ? "Conectado" : snapshot?.source === "demo" ? "Demo activo" : "Sin datos";
       return `
-        <button class="commerce-app-button ${state.commerce.activeApp === app.id ? "is-active" : ""}" type="button" data-commerce-app="${app.id}">
+        <button class="commerce-app-button ${state.commerce.selectedApp === app.id ? "is-active" : ""}" type="button" data-commerce-app="${app.id}">
           <i style="background:linear-gradient(90deg, ${app.accent}, var(--cyan))"></i>
           <b>${escapeHtml(app.name)}</b>
           <small>${escapeHtml(app.model)} · ${source}</small>
@@ -156,6 +156,11 @@
   }
 
   function renderCommerceDashboard() {
+    // Dos niveles: sin negocio elegido se ven las tarjetas (selector); con un
+    // negocio elegido se ve su workspace (config + dashboard).
+    const hasApp = !!state.commerce.selectedApp;
+    elements.commerceAppSwitcher?.classList.toggle("is-hidden", hasApp);
+    elements.commerceWorkspace?.classList.toggle("is-hidden", !hasApp);
     const app = getCommerceApp();
     const config = getCommerceConfig(app.id);
     const snapshot = getCommerceSnapshot(app.id);
@@ -266,10 +271,34 @@
     sync: (options) => syncCommerce(options)
   });
 
+  // Entrar a un negocio: muestra su workspace (config + dashboard).
+  function selectCommerceApp(id) {
+    const app = getCommerceApp(id);
+    if (!app) return;
+    state.commerce.selectedApp = id;
+    state.commerce.activeApp = id;
+    S.safeSetItem("nexus.ecommerce.activeApp.v1", id);
+    setCommerceMessage("", "");
+    renderCommerceDashboard();
+    S.updateTopbarForView("ecommerce");
+    scheduleCommerceRefresh();
+    S.animateActivePanel();
+  }
+
+  // Volver a la pantalla de selección de negocios (las tarjetas).
+  function clearSelectedCommerceApp() {
+    state.commerce.selectedApp = null;
+    window.clearInterval(state.commerce.refreshTimer);
+    state.commerce.refreshTimer = 0;
+    setCommerceMessage("", "");
+    renderCommerceDashboard();
+    S.updateTopbarForView("ecommerce");
+    S.animateActivePanel();
+  }
 
   Object.assign(S, {
-    aggregateCommerceProducts, aggregateCommerceTrend, buildDemoCommerceSnapshot, createCommerceSnapshot, fetchCommerceData, normalizeCommerceOrder,
-    populateCommerceConfigForm, readCommerceConfigFromForm, renderCommerceDashboard, renderCommerceSwitcher, scheduleCommerceRefresh, setCommerceMessage,
+    aggregateCommerceProducts, aggregateCommerceTrend, buildDemoCommerceSnapshot, clearSelectedCommerceApp, createCommerceSnapshot, fetchCommerceData, normalizeCommerceOrder,
+    populateCommerceConfigForm, readCommerceConfigFromForm, renderCommerceDashboard, renderCommerceSwitcher, scheduleCommerceRefresh, selectCommerceApp, setCommerceMessage,
     syncCommerce,
   });
 })();
