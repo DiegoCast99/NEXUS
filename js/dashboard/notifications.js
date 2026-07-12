@@ -9,7 +9,6 @@
    pantalla de inicio con iOS 16.4+.
    ============================================================ */
 (function () {
-  // Clave pública VAPID (la privada vive como env var en el servidor).
   var VAPID_PUBLIC = "BLohTYozFQLoQcY2Qe63hTPZBNiMZMwyI11o4OQ2gfEuZzHMFCP9AssIsluHLRBx1EMGWh5-e2lBobW7688t-m4";
 
   function urlB64ToUint8Array(base64) {
@@ -40,6 +39,11 @@
     btn.disabled = !!disabled;
   }
 
+  function showTestButton(visible) {
+    var btn = document.getElementById("mlTestPushButton");
+    if (btn) btn.classList.toggle("is-hidden", !visible);
+  }
+
   function getSellerId() {
     try {
       var cfg = window.NexusDash && window.NexusDash.getCommerceConfig
@@ -51,16 +55,34 @@
     }
   }
 
+  async function sendTestPush() {
+    var testBtn = document.getElementById("mlTestPushButton");
+    if (testBtn) { testBtn.disabled = true; testBtn.textContent = "Enviando..."; }
+    setState("");
+    try {
+      if (!window.NexusSecureAPI || !window.NexusSecureAPI.available()) {
+        setState("Necesitas tener la sesion iniciada.", "error");
+        return;
+      }
+      await window.NexusSecureAPI.sendTestPush();
+      setState("Notificacion de prueba enviada. Deberia aparecer en unos segundos.", "success");
+    } catch (e) {
+      setState("La prueba fallo: " + (e.message || e), "error");
+    } finally {
+      if (testBtn) { testBtn.disabled = false; testBtn.textContent = "Enviar notificacion de prueba"; }
+    }
+  }
+
   async function enableNotifications() {
     if (!supported()) {
-      setState("Este dispositivo no soporta notificaciones push. En iPhone: agregá Nexus a la pantalla de inicio (iOS 16.4+).", "error");
+      setState("Este dispositivo no soporta notificaciones push. En iPhone: agrega Nexus a la pantalla de inicio (iOS 16.4+).", "error");
       return;
     }
     setButton("Activando...", true);
     try {
       var permission = await Notification.requestPermission();
       if (permission !== "granted") {
-        setState("Permiso de notificaciones denegado. Activalo desde los ajustes del teléfono.", "error");
+        setState("Permiso de notificaciones denegado. Activalo desde los ajustes del telefono.", "error");
         setButton("Activar notificaciones de ventas", false);
         return;
       }
@@ -75,20 +97,20 @@
       }
 
       if (!window.NexusSecureAPI || !window.NexusSecureAPI.available()) {
-        setState("Necesitás tener la sesión de Nexus iniciada para activar las notificaciones.", "error");
+        setState("Necesitas tener la sesion de Nexus iniciada para activar las notificaciones.", "error");
         setButton("Activar notificaciones de ventas", false);
         return;
       }
 
       await window.NexusSecureAPI.savePushSub(sub.toJSON(), getSellerId());
-      setButton("Notificaciones activas ✓", true);
-      setState("Notificaciones activadas. Enviando una prueba a este dispositivo...", "success");
-      // Push de prueba inmediato: confirma que la cadena completa funciona.
+      setButton("Notificaciones activas", true);
+      showTestButton(true);
+      setState("Notificaciones activadas. Enviando prueba...", "success");
       try {
         await window.NexusSecureAPI.sendTestPush();
-        setState("¡Listo! Deberías ver una notificación de prueba. Te avisaremos con cada venta de Mercado Libre.", "success");
+        setState("Notificacion de prueba enviada. Deberia aparecer en unos segundos.", "success");
       } catch (e) {
-        setState("Suscripción guardada, pero la prueba falló: " + (e.message || e) + ". Las ventas igual pueden notificar.", "error");
+        setState("Suscripcion guardada, pero la prueba fallo: " + (e.message || e), "error");
       }
     } catch (error) {
       setState("No se pudieron activar las notificaciones: " + (error.message || error), "error");
@@ -108,19 +130,23 @@
         var reg = await navigator.serviceWorker.ready;
         var sub = await reg.pushManager.getSubscription();
         if (sub) {
-          setButton("Notificaciones activas ✓", true);
+          setButton("Notificaciones activas", true);
+          showTestButton(true);
           return;
         }
       }
     } catch (e) { /* noop */ }
     setButton("Activar notificaciones de ventas", false);
+    showTestButton(false);
   }
 
   window.addEventListener("load", function () {
     var btn = document.getElementById("mlNotifyButton");
     if (btn) btn.addEventListener("click", enableNotifications);
+    var testBtn = document.getElementById("mlTestPushButton");
+    if (testBtn) testBtn.addEventListener("click", sendTestPush);
     refreshState();
   });
 
-  window.NexusNotifications = { enableNotifications: enableNotifications, refreshState: refreshState };
+  window.NexusNotifications = { enableNotifications: enableNotifications, refreshState: refreshState, sendTestPush: sendTestPush };
 })();
