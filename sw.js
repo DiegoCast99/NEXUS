@@ -8,7 +8,7 @@
      va directo a la red — auth y Firestore siguen funcionando.
    Para forzar refresco tras un deploy grande: subir CACHE_VERSION.
    ============================================================ */
-const CACHE_VERSION = "nexus-cache-v3";
+const CACHE_VERSION = "nexus-cache-v4";
 const APP_SHELL = [
   "/index.html",
   "/dashboard.html",
@@ -29,6 +29,42 @@ self.addEventListener("activate", (event) => {
     caches.keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE_VERSION).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
+  );
+});
+
+// --- Web Push: mostrar la notificación de venta -------------
+self.addEventListener("push", (event) => {
+  let data = { title: "Vendiste", body: "Mercado Libre" };
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      // push sin payload o no-JSON: usar el texto por defecto.
+    }
+  }
+  const title = data.title || "Vendiste";
+  const options = {
+    body: data.body || "Mercado Libre",
+    icon: "/img/icon-192.png?v=3",
+    badge: "/img/icon-192.png?v=3",
+    tag: data.tag || "nexus-venta",
+    renotify: true,
+    data: { url: "/dashboard.html#ecommerce" }
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Al tocar la notificación: enfocar la PWA si está abierta, o abrirla.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "/dashboard.html";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ("focus" in client) return client.focus();
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(target);
+    })
   );
 });
 

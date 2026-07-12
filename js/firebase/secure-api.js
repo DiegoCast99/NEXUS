@@ -66,6 +66,14 @@
     // Proxy seguro a la API de Mercado Libre.
     mlApi: function (endpoint, method, body) {
       return call("ml-api-proxy", { endpoint: endpoint, method: method || "GET", body: body });
+    },
+    // Guarda la suscripción Web Push del dispositivo.
+    savePushSub: function (subscription, sellerId) {
+      return call("save-push-sub", { subscription: subscription, sellerId: sellerId });
+    },
+    // Envía una notificación de prueba a los dispositivos del usuario.
+    sendTestPush: function () {
+      return call("send-test-push", {});
     }
   };
 })();

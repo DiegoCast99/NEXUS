@@ -139,6 +139,24 @@
   background: linear-gradient(135deg, #fff04d, #ffe600);
 }
 
+.ml-notify-block {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.ml-notify-hint {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+#mlNotifyButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 @keyframes syncPulse {
   0%,
   100% {
