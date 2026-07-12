@@ -24,11 +24,18 @@ exports.handler = async (event) => {
     }
 
     let sent = 0;
+    let lastError = "";
     for (const sub of subs) {
       try {
         const r = await sendPush(sub, { title: "Nexus", body: "Notificaciones activas ✓", tag: "nexus-test" });
         if (!r.gone) sent += 1;
-      } catch (e) { /* seguir con los demás */ }
+      } catch (e) {
+        lastError = (e && e.message) || String(e);
+        console.error("send-test-push error:", lastError);
+      }
+    }
+    if (sent === 0 && lastError) {
+      return json(500, { error: "Push falló: " + lastError });
     }
     return json(200, { ok: true, sent });
   } catch (error) {

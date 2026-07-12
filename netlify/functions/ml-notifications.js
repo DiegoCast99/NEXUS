@@ -56,7 +56,10 @@ async function handleNotification(body) {
 
   // seller -> uid
   const hit = await adminQueryUsersByField("ml_seller_id", sellerId);
-  if (!hit) return; // no hay usuario con ese seller conectado
+  if (!hit) {
+    console.warn("ml-notifications: seller " + sellerId + " sin usuario en Firestore");
+    return;
+  }
 
   const uid = hit.uid;
   const fields = (hit.doc && hit.doc.fields) || {};
@@ -86,26 +89,35 @@ async function handleNotification(body) {
   // Enviar el push a cada dispositivo. Quitar las suscripciones caducadas.
   const payload = { title: "Vendiste", body: "Mercado Libre", tag: "ml-" + orderId };
   const alive = [];
+  let sentCount = 0;
   for (const sub of subs) {
     try {
       const result = await sendPush(sub, payload);
-      if (!result.gone) alive.push(sub);
+      if (!result.gone) { alive.push(sub); sentCount += 1; }
     } catch (e) {
-      alive.push(sub); // error transitorio: conservar la suscripción
+      alive.push(sub);
+      console.warn("ml-notifications push error:", e && e.message);
     }
   }
 
-  // Marcar la orden como notificada (y podar la lista).
-  notified.unshift(orderId);
-  if (notified.length > MAX_NOTIFIED) notified = notified.slice(0, MAX_NOTIFIED);
+  const updateFields = {};
+  const maskPaths = [];
 
-  const updateFields = {
-    ml_notified_ids: { stringValue: JSON.stringify(notified) }
-  };
-  const maskPaths = ["ml_notified_ids"];
   if (alive.length !== subs.length) {
     updateFields.push_subs = { stringValue: JSON.stringify(alive) };
     maskPaths.push("push_subs");
   }
-  await adminPatchDoc("users/" + uid, updateFields, maskPaths);
+
+  if (sentCount > 0) {
+    notified.unshift(orderId);
+    if (notified.length > MAX_NOTIFIED) notified = notified.slice(0, MAX_NOTIFIED);
+    updateFields.ml_notified_ids = { stringValue: JSON.stringify(notified) };
+    maskPaths.push("ml_notified_ids");
+  } else {
+    console.warn("ml-notifications: 0 pushes enviados para orden " + orderId);
+  }
+
+  if (maskPaths.length > 0) {
+    await adminPatchDoc("users/" + uid, updateFields, maskPaths);
+  }
 }

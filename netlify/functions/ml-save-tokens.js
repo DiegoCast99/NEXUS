@@ -43,6 +43,11 @@ exports.handler = async (event) => {
     }
 
     await writeUserField(uid, idToken, "secret_mercadolibre", encBundle);
+
+    if (parsed.user_id) {
+      await writeUserField(uid, idToken, "ml_seller_id", String(parsed.user_id));
+    }
+
     return json(200, { ok: true, userId: parsed.user_id || null });
   } catch (error) {
     return json(400, { error: error.message || "No se pudieron guardar los tokens de ML." });
