@@ -361,10 +361,6 @@
       return;
     }
 
-    if (elements.metaPlatformEyebrow) elements.metaPlatformEyebrow.textContent = `Meta Ads / ${platform.name}`;
-    if (elements.metaPlatformTitle) elements.metaPlatformTitle.textContent = `Meta Ads / ${platform.name}`;
-    if (elements.metaPlatformDescription) elements.metaPlatformDescription.textContent = platform.description;
-
     const snapshot = state.meta.snapshot;
     const totals = snapshot?.totals || { spend: 0, impressions: 0, clicks: 0, conversions: 0, ctr: 0, cpc: 0, roas: 0 };
     const campaigns = snapshot?.campaigns || [];

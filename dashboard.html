@@ -30,7 +30,7 @@
     <link rel="stylesheet" href="./css/dashboard/controls.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260709-ola0css" />
-    <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260709-ola0css" />
+    <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260712-dedup1" />
     <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260711-push1" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260709-ola4" />
@@ -331,20 +331,10 @@
             <button class="ghost-button platform-back-button" type="button" id="metaBackButton">
               ← Volver a plataformas
             </button>
-          <div class="integration-hero meta-control-hero">
-            <div>
-              <span class="eyebrow" id="metaPlatformEyebrow">Meta Ads / centro de performance</span>
-              <h2 id="metaPlatformTitle">Campanas, pixel y rentabilidad en una sola vista.</h2>
-              <p id="metaPlatformDescription">
-                Conecta tu cuenta publicitaria para leer inversion, impresiones, clics, conversiones,
-                CPC, CTR y ROAS desde Meta Marketing API.
-              </p>
-            </div>
-            <div class="meta-status-card" id="metaConnectionStatus">
-              <span class="status-dot"></span>
-              <b id="metaStatusTitle">Sin conexion</b>
-              <small id="metaStatusDetail">Agrega Pixel ID, cuenta publicitaria y token.</small>
-            </div>
+          <div class="meta-status-card meta-status-standalone" id="metaConnectionStatus">
+            <span class="status-dot"></span>
+            <b id="metaStatusTitle">Sin conexion</b>
+            <small id="metaStatusDetail">Agrega Pixel ID, cuenta publicitaria y token.</small>
           </div>
 
           <form class="panel meta-config-panel" id="metaConfigForm">
@@ -694,11 +684,11 @@
     <script src="./js/firebase/secure-api.js?v=20260711-push1"></script>
     <!-- Dashboard modules -->
     <script src="./js/core/auth.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/store.js?v=20260711-ml2"></script>
+    <script src="./js/dashboard/store.js?v=20260712-dedup1"></script>
     <script src="./js/dashboard/integration-core.js?v=20260710-ola5r"></script>
     <script src="./js/dashboard/charts.js?v=20260709-ola1d"></script>
     <script src="./js/dashboard/finance.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/meta.js?v=20260710-ola5r"></script>
+    <script src="./js/dashboard/meta.js?v=20260712-dedup1"></script>
     <script src="./js/dashboard/commerce.js?v=20260711-ml2"></script>
     <script src="./js/dashboard/notifications.js?v=20260712-push2"></script>
     <script src="./js/dashboard/router.js?v=20260711-ml1"></script>
