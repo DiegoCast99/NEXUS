@@ -8,13 +8,14 @@
      va directo a la red — auth y Firestore siguen funcionando.
    Para forzar refresco tras un deploy grande: subir CACHE_VERSION.
    ============================================================ */
-const CACHE_VERSION = "nexus-cache-v4";
+const CACHE_VERSION = "nexus-cache-v5";
 const APP_SHELL = [
   "/index.html",
   "/dashboard.html",
   "/manifest.json",
   "/img/icon-192.png?v=3",
-  "/img/icon-512.png?v=3"
+  "/img/icon-512.png?v=3",
+  "/img/notif-venta.png?v=1"
 ];
 
 self.addEventListener("install", (event) => {
@@ -34,7 +35,7 @@ self.addEventListener("activate", (event) => {
 
 // --- Web Push: mostrar la notificación de venta -------------
 self.addEventListener("push", (event) => {
-  let data = { title: "Vendiste", body: "Mercado Libre" };
+  let data = { title: "¡Vendiste!", body: "Mercado Libre" };
   if (event.data) {
     try {
       data = event.data.json();
@@ -42,11 +43,11 @@ self.addEventListener("push", (event) => {
       // push sin payload o no-JSON: usar el texto por defecto.
     }
   }
-  const title = data.title || "Vendiste";
+  const title = data.title || "¡Vendiste!";
   const options = {
     body: data.body || "Mercado Libre",
-    icon: "/img/icon-192.png?v=3",
-    badge: "/img/icon-192.png?v=3",
+    icon: "/img/notif-venta.png?v=1",
+    badge: "/img/notif-venta.png?v=1",
     tag: data.tag || "nexus-venta",
     renotify: true,
     data: { url: "/dashboard.html#ecommerce" }

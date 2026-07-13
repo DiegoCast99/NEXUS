@@ -27,7 +27,7 @@ exports.handler = async (event) => {
     let lastError = "";
     for (const sub of subs) {
       try {
-        const r = await sendPush(sub, { title: "Nexus", body: "Notificaciones activas ✓", tag: "nexus-test" });
+        const r = await sendPush(sub, { title: "¡Vendiste!", body: "Mercado Libre", tag: "nexus-test" });
         if (!r.gone) sent += 1;
       } catch (e) {
         lastError = (e && e.message) || String(e);

@@ -87,7 +87,7 @@ async function handleNotification(body) {
   if (subs.length === 0) return; // nada a donde notificar
 
   // Enviar el push a cada dispositivo. Quitar las suscripciones caducadas.
-  const payload = { title: "Vendiste", body: "Mercado Libre", tag: "ml-" + orderId };
+  const payload = { title: "¡Vendiste!", body: "Mercado Libre", tag: "ml-" + orderId };
   const alive = [];
   let sentCount = 0;
   for (const sub of subs) {
