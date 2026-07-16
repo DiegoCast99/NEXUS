@@ -6,6 +6,15 @@
   publish = "."
   command = ""
 
+# El escaneo de secretos de Netlify marca la apiKey de Firebase (AIza...) como
+# "likely secret" y frena el build. Es un FALSO POSITIVO: la config web de
+# Firebase es publica por diseño (viaja al navegador en cualquier app Firebase);
+# la seguridad real la dan las reglas de Firestore y los dominios autorizados.
+# Se omite SOLO ese valor: el escaneo de los secretos de verdad (TOKEN_ENC_KEY,
+# VAPID_PRIVATE, ML_CLIENT_SECRET, FIREBASE_SA_KEY) sigue activo.
+[build.environment]
+  SECRETS_SCAN_SMART_DETECTION_OMIT_VALUES = "AIzaSyDlIXaVYhwT-cRzaqzuZQ6HKL5gSb6cRYA"
+
 # === Funciones serverless (Ola 2) ===
 # Proxy seguro de tokens de Meta/e-commerce. Sin dependencias npm (solo módulos
 # nativos de Node), así el deploy por drag-and-drop las empaqueta con esbuild.
