@@ -157,6 +157,23 @@
   cursor: default;
 }
 
+/* Selector de auto-sync: solo visible con la cuenta conectada.
+   La regla .is-hidden va explicita porque commerce.css se carga
+   despues de finance.css (donde vive .is-hidden). */
+.ml-refresh-field {
+  margin-top: 14px;
+  max-width: 260px;
+}
+
+.ml-refresh-field.is-hidden {
+  display: none;
+}
+
+/* El diagnostico imprime un renglon por chequeo. */
+#mlNotifyMessage {
+  white-space: pre-line;
+}
+
 @keyframes syncPulse {
   0%,
   100% {

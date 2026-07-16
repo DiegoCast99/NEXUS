@@ -172,6 +172,22 @@
       scheduleCommerceRefresh();
       renderCommerceDashboard();
     });
+    // Mercado Libre usa su propio panel, asi que su intervalo se guarda aparte.
+    elements.mlRefreshInterval?.addEventListener("change", () => {
+      const seconds = elements.mlRefreshInterval.value || "0";
+      state.commerce.configs.mercadolibre = {
+        ...S.getCommerceConfig("mercadolibre"),
+        refreshInterval: seconds
+      };
+      saveCommerceConfigs();
+      scheduleCommerceRefresh();
+      S.setMlMessage(
+        Number(seconds)
+          ? `Sincronizacion automatica cada ${Number(seconds) >= 60 ? Number(seconds) / 60 + " min" : seconds + " s"}. Solo corre con Nexus abierto.`
+          : "Sincronizacion automatica desactivada.",
+        "success"
+      );
+    });
     elements.logoutButton?.addEventListener("click", async () => {
       if (window.NexusFirebaseAuth) {
         await window.NexusFirebaseAuth.logout();

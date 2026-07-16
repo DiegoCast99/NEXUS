@@ -333,6 +333,12 @@
         ? "Tu cuenta esta vinculada. Podes sincronizar ventas o desconectarla."
         : "Conecta tu cuenta de Mercado Libre para sincronizar ventas, pedidos y productos.";
     }
+
+    // Auto-sync: solo tiene sentido con la cuenta conectada.
+    elements.mlRefreshField?.classList.toggle("is-hidden", !connected);
+    if (elements.mlRefreshInterval) {
+      elements.mlRefreshInterval.value = config.refreshInterval || "0";
+    }
   }
 
   function renderCommerceDashboard() {

@@ -31,7 +31,7 @@
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260712-dedup1" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260711-push1" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260713-diag1" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260709-ola4" />
   </head>
@@ -519,10 +519,19 @@
               <button class="ghost-button is-hidden" type="button" id="mlDemoButton">Cargar demo</button>
               <button class="ghost-button danger-button is-hidden" type="button" id="mlDisconnectButton">Desconectar</button>
             </div>
+            <label class="field ml-refresh-field is-hidden" id="mlRefreshField">
+              <span>Actualizacion automatica</span>
+              <select id="mlRefreshInterval">
+                <option value="0">Manual</option>
+                <option value="60">Cada 60 segundos</option>
+                <option value="300">Cada 5 minutos</option>
+              </select>
+            </label>
             <p class="meta-message" id="mlMessage"></p>
             <div class="ml-notify-block">
               <button class="ghost-button" type="button" id="mlNotifyButton">Activar notificaciones de ventas</button>
               <button class="ghost-button is-hidden" type="button" id="mlTestPushButton">Enviar notificacion de prueba</button>
+              <button class="ghost-button" type="button" id="mlDiagnoseButton">Ver diagnostico de notificaciones</button>
               <p class="ml-notify-hint">Recibí un aviso en tu celular cada vez que vendas en Mercado Libre. En iPhone: agregá Nexus a la pantalla de inicio.</p>
               <p class="meta-message" id="mlNotifyMessage"></p>
             </div>
@@ -681,18 +690,18 @@
     <script src="./js/firebase/config.js?v=20260709-ola1c"></script>
     <script src="./js/firebase/auth.js?v=20260709-ola1"></script>
     <script src="./js/firebase/db.js?v=20260709-ola1"></script>
-    <script src="./js/firebase/secure-api.js?v=20260711-push1"></script>
+    <script src="./js/firebase/secure-api.js?v=20260713-diag1"></script>
     <!-- Dashboard modules -->
     <script src="./js/core/auth.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/store.js?v=20260712-dedup1"></script>
+    <script src="./js/dashboard/store.js?v=20260713-diag1"></script>
     <script src="./js/dashboard/integration-core.js?v=20260710-ola5r"></script>
     <script src="./js/dashboard/charts.js?v=20260709-ola1d"></script>
     <script src="./js/dashboard/finance.js?v=20260709-ola0mod"></script>
     <script src="./js/dashboard/meta.js?v=20260712-dedup1"></script>
-    <script src="./js/dashboard/commerce.js?v=20260711-ml2"></script>
-    <script src="./js/dashboard/notifications.js?v=20260712-push2"></script>
+    <script src="./js/dashboard/commerce.js?v=20260713-diag1"></script>
+    <script src="./js/dashboard/notifications.js?v=20260713-diag1"></script>
     <script src="./js/dashboard/router.js?v=20260711-ml1"></script>
-    <script src="./js/dashboard/app.js?v=20260711-ml1"></script>
+    <script src="./js/dashboard/app.js?v=20260713-diag1"></script>
     <script src="./js/pwa.js?v=20260711-push1" defer></script>
   </body>
 </html>

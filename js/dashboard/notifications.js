@@ -73,6 +73,50 @@
     }
   }
 
+  // Revisa la cadena de la venta real (webhook), que es distinta a la del
+  // push de prueba: por eso la prueba puede andar y la venta no.
+  async function runDiagnose() {
+    var btn = document.getElementById("mlDiagnoseButton");
+    if (btn) { btn.disabled = true; btn.textContent = "Revisando..."; }
+    setState("");
+    try {
+      if (!window.NexusSecureAPI || !window.NexusSecureAPI.available()) {
+        setState("Necesitas tener la sesion iniciada.", "error");
+        return;
+      }
+      var r = await window.NexusSecureAPI.mlDiagnose();
+      var c = (r && r.checks) || {};
+      var lines = [];
+
+      lines.push((c.pushSubs > 0 ? "OK" : "FALLA") + " · Dispositivos suscritos: " + (c.pushSubs || 0));
+      lines.push((c.mlConnected ? "OK" : "FALLA") + " · Mercado Libre conectado: " + (c.mlConnected ? "si" : "no"));
+      lines.push((c.mlSellerId ? "OK" : "FALLA") + " · Tu ID de vendedor guardado: " + (c.mlSellerId || "FALTA"));
+      lines.push((c.firebaseAdmin === "ok" ? "OK" : "FALLA") + " · Acceso del servidor a la base: " + c.firebaseAdmin);
+      lines.push((c.sellerResolves === "ok" ? "OK" : "FALLA") + " · Busqueda venta->usuario: " + c.sellerResolves);
+
+      var verdict;
+      if (c.firebaseAdmin !== "ok") {
+        verdict = "PROBLEMA: el servidor no puede leer la base de datos. Hay que revisar FIREBASE_SA_KEY en Netlify. (El push de prueba no usa esta clave, por eso igual funciona.)";
+      } else if (!c.mlConnected) {
+        verdict = "PROBLEMA: no hay tokens de Mercado Libre guardados. Conecta la cuenta.";
+      } else if (!c.mlSellerId) {
+        verdict = "PROBLEMA: falta tu ID de vendedor, asi que el webhook no puede saber que la venta es tuya. Volve a apretar 'Activar notificaciones' para que se guarde.";
+      } else if (c.sellerResolves !== "ok") {
+        verdict = "PROBLEMA: la busqueda venta->usuario no resuelve (" + c.sellerResolves + ").";
+      } else if (!c.pushSubs) {
+        verdict = "PROBLEMA: no hay dispositivos suscritos. Activa las notificaciones.";
+      } else {
+        verdict = "Todo OK de este lado. Si la venta igual no notifica, falta configurar el webhook en Mercado Libre (URL de callback + topico orders).";
+      }
+
+      setState(lines.join("\n") + "\n\n" + verdict, verdict.indexOf("PROBLEMA") === 0 ? "error" : "success");
+    } catch (e) {
+      setState("No se pudo diagnosticar: " + (e.message || e), "error");
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "Ver diagnostico de notificaciones"; }
+    }
+  }
+
   async function enableNotifications() {
     if (!supported()) {
       setState("Este dispositivo no soporta notificaciones push. En iPhone: agrega Nexus a la pantalla de inicio (iOS 16.4+).", "error");
@@ -132,6 +176,14 @@
         if (sub) {
           setButton("Notificaciones activas", true);
           showTestButton(true);
+          // Re-guardar en silencio: asegura que ml_seller_id quede escrito
+          // aunque las notificaciones se hayan activado desde un dispositivo
+          // que todavia no tenia la cuenta de ML en su almacenamiento local.
+          try {
+            if (window.NexusSecureAPI && window.NexusSecureAPI.available()) {
+              await window.NexusSecureAPI.savePushSub(sub.toJSON(), getSellerId());
+            }
+          } catch (e) { /* no bloquea la UI */ }
           return;
         }
       }
@@ -145,8 +197,15 @@
     if (btn) btn.addEventListener("click", enableNotifications);
     var testBtn = document.getElementById("mlTestPushButton");
     if (testBtn) testBtn.addEventListener("click", sendTestPush);
+    var diagBtn = document.getElementById("mlDiagnoseButton");
+    if (diagBtn) diagBtn.addEventListener("click", runDiagnose);
     refreshState();
   });
 
-  window.NexusNotifications = { enableNotifications: enableNotifications, refreshState: refreshState, sendTestPush: sendTestPush };
+  window.NexusNotifications = {
+    enableNotifications: enableNotifications,
+    refreshState: refreshState,
+    sendTestPush: sendTestPush,
+    runDiagnose: runDiagnose
+  };
 })();

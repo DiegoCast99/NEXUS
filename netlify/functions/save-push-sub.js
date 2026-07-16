@@ -10,6 +10,7 @@
    Header: Authorization: Bearer <Firebase ID token>
    ============================================================ */
 const {
+  decrypt,
   readUserField,
   writeUserField,
   uidFromIdToken,
@@ -51,12 +52,25 @@ exports.handler = async (event) => {
 
     await writeUserField(uid, idToken, "push_subs", JSON.stringify(subs));
 
-    // Guardar el seller id de ML como campo consultable por el webhook.
-    if (sellerId) {
-      await writeUserField(uid, idToken, "ml_seller_id", String(sellerId));
+    // Seller id de ML: campo consultable que el webhook usa para resolver
+    // venta -> usuario. Si el cliente no lo mando (pasa al activar desde el
+    // iPhone, donde mlUserId no esta en el localStorage de ese dispositivo),
+    // lo derivamos de los tokens de ML ya guardados en Firestore.
+    let resolvedSeller = sellerId ? String(sellerId) : "";
+    if (!resolvedSeller) {
+      try {
+        const encBundle = await readUserField(uid, idToken, "secret_mercadolibre");
+        if (encBundle) {
+          const parsed = JSON.parse(decrypt(encBundle));
+          if (parsed.user_id) resolvedSeller = String(parsed.user_id);
+        }
+      } catch (e) { /* todavia no conecto Mercado Libre */ }
+    }
+    if (resolvedSeller) {
+      await writeUserField(uid, idToken, "ml_seller_id", resolvedSeller);
     }
 
-    return json(200, { ok: true, count: subs.length });
+    return json(200, { ok: true, count: subs.length, sellerId: resolvedSeller || null });
   } catch (error) {
     return json(400, { error: error.message || "No se pudo guardar la suscripción." });
   }

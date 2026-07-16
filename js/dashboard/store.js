@@ -383,6 +383,8 @@
     mlDemoButton: document.getElementById("mlDemoButton"),
     mlDisconnectButton: document.getElementById("mlDisconnectButton"),
     mlMessage: document.getElementById("mlMessage"),
+    mlRefreshField: document.getElementById("mlRefreshField"),
+    mlRefreshInterval: document.getElementById("mlRefreshInterval"),
     commerceConfigForm: document.getElementById("commerceConfigForm"),
     commerceConfigTitle: document.getElementById("commerceConfigTitle"),
     commercePixelId: document.getElementById("commercePixelId"),

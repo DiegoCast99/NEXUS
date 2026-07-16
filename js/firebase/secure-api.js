@@ -74,6 +74,10 @@
     // Envía una notificación de prueba a los dispositivos del usuario.
     sendTestPush: function () {
       return call("send-test-push", {});
+    },
+    // Revisa la cadena que dispara la notificación de una venta real.
+    mlDiagnose: function () {
+      return call("ml-diagnose", {});
     }
   };
 })();
