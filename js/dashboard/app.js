@@ -173,14 +173,17 @@
       renderCommerceDashboard();
     });
     // Mercado Libre usa su propio panel, asi que su intervalo se guarda aparte.
+    // refreshChoice=user marca que el titular eligio a proposito (no pisar el default).
     elements.mlRefreshInterval?.addEventListener("change", () => {
       const seconds = elements.mlRefreshInterval.value || "0";
       state.commerce.configs.mercadolibre = {
         ...S.getCommerceConfig("mercadolibre"),
-        refreshInterval: seconds
+        refreshInterval: seconds,
+        refreshChoice: "user"
       };
       saveCommerceConfigs();
-      scheduleCommerceRefresh();
+      state.commerce.failCount = 0;
+      S.scheduleMLRefresh();
       S.setMlMessage(
         Number(seconds)
           ? `Sincronizacion automatica cada ${Number(seconds) >= 60 ? Number(seconds) / 60 + " min" : seconds + " s"}. Solo corre con Nexus abierto.`
@@ -223,6 +226,21 @@
     window.addEventListener("hashchange", () => {
       setView(location.hash.replace("#", ""), false);
     });
+
+    // Mercado Libre "en vivo": cuando la PWA vuelve del background (el caso
+    // tipico en iPhone: se abre Nexus tras una venta), refrescar solo.
+    // Throttle de 30s para no disparar rafagas si se alterna rapido de app.
+    let lastMlVisibilitySync = 0;
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState !== "visible") return;
+      if (!S.getCommerceConfig("mercadolibre").hasToken) return;
+      if (state.commerce.syncing) return;
+      if (!window.NexusSecureAPI || !window.NexusSecureAPI.available()) return;
+      const now = Date.now();
+      if (now - lastMlVisibilitySync < 30000) return;
+      lastMlVisibilitySync = now;
+      syncMercadoLibre({ silent: true });
+    });
   }
 
   function init() {
@@ -240,13 +258,22 @@
       renderMetaDashboard();
       renderCommerceDashboard();
       scheduleMetaRefresh();
+      S.ensureMLLiveDefaults();
       scheduleCommerceRefresh();
+      // El "en vivo" de ML arranca aunque el negocio activo sea otro.
+      S.scheduleMLRefresh();
       const initial = location.hash.replace("#", "");
       if (initial === "ml-connect") {
         setView("ecommerce", false);
         handleMlOAuthReturn();
       } else {
         setView(initial || "welcome", false);
+        // Mercado Libre "en vivo": al abrir Nexus con la cuenta conectada,
+        // traer las ventas de entrada (sin apretar Sincronizar). El caso
+        // ml-connect se excluye porque handleMlOAuthReturn ya sincroniza.
+        if (S.getCommerceConfig("mercadolibre").hasToken) {
+          syncMercadoLibre({ silent: true });
+        }
       }
     } catch (error) {
       console.error("Nexus dashboard init error:", error);

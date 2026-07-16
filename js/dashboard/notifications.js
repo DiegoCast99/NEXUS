@@ -92,6 +92,7 @@
       lines.push((c.mlConnected ? "OK" : "FALLA") + " · Mercado Libre conectado: " + (c.mlConnected ? "si" : "no"));
       lines.push((c.mlSellerId ? "OK" : "FALLA") + " · Tu ID de vendedor guardado: " + (c.mlSellerId || "FALTA"));
       lines.push((c.firebaseAdmin === "ok" ? "OK" : "FALLA") + " · Acceso del servidor a la base: " + c.firebaseAdmin);
+      if (c.firebaseAdminError) lines.push("       motivo: " + c.firebaseAdminError);
       lines.push((c.sellerResolves === "ok" ? "OK" : "FALLA") + " · Busqueda venta->usuario: " + c.sellerResolves);
 
       var verdict;

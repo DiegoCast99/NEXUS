@@ -50,19 +50,37 @@
     return true;
   }
 
-  // Ciclo de vida estándar de una sincronización "live":
+  // Cuántos fallos seguidos tolera el auto-refresh antes de frenarse.
+  // Evita machacar la API (y el banner rojo) si el token se vencio.
+  const MAX_SILENT_FAILS = 3;
+
+  // Ciclo de vida estándar de una sincronización:
   // syncing=true → mensaje → render → run() → mensaje éxito/error →
   // syncing=false → render → after() (p.ej. re-programar el refresh).
+  //
+  // En modo `silent` (los ticks del auto-refresh y los syncs de apertura) NO
+  // toca la UI salvo el render final: sin "Sincronizando...", sin mensaje de
+  // éxito y sin el parpadeo Live→Sync→Live. El titular solo ve los datos
+  // aparecer. Los errores sí se muestran, pero una sola vez.
   async function runIntegrationSync(hooks) {
     const slice = hooks.slice();
     slice.syncing = true;
-    if (!hooks.silent) hooks.setMessage(hooks.syncingMessage, "");
-    hooks.render();
+    if (!hooks.silent) {
+      hooks.setMessage(hooks.syncingMessage, "");
+      hooks.render();
+    }
     try {
       const successMessage = await hooks.run();
-      hooks.setMessage(successMessage, "success");
+      slice.failCount = 0;
+      if (!hooks.silent) hooks.setMessage(successMessage, "success");
     } catch (error) {
-      hooks.setMessage((error && error.message) || hooks.errorFallback, "error");
+      slice.failCount = (slice.failCount || 0) + 1;
+      const text = (error && error.message) || hooks.errorFallback;
+      // Silencioso: no repetir el mismo banner rojo en cada tick.
+      if (!hooks.silent || slice.messageType !== "error") {
+        hooks.setMessage(text, "error");
+      }
+      if (hooks.silent) console.warn("sync silencioso fallo:", text);
     } finally {
       slice.syncing = false;
       hooks.render();
@@ -72,14 +90,26 @@
 
   // Auto-refresh: reinicia el timer del slice; si el intervalo y las
   // credenciales están, programa sync({silent:true}) cada N segundos.
+  // Se frena solo tras MAX_SILENT_FAILS fallos seguidos (token vencido,
+  // API caida): sin eso quedaria pidiendo y fallando para siempre.
+  // `timerKey` permite que una integración tenga su propio timer dentro del
+  // mismo slice (ej: Mercado Libre "en vivo" usa mlRefreshTimer, para no
+  // depender del negocio activo ni morir cuando el router limpia refreshTimer).
   function createRefreshScheduler(hooks) {
+    const timerKey = hooks.timerKey || "refreshTimer";
     return function scheduleRefresh() {
       const slice = hooks.slice();
-      root.clearInterval(slice.refreshTimer);
-      slice.refreshTimer = 0;
+      root.clearInterval(slice[timerKey]);
+      slice[timerKey] = 0;
       const seconds = Number(hooks.getIntervalSeconds());
       if (!seconds || !hooks.isEnabled()) return;
-      slice.refreshTimer = root.setInterval(function () {
+      if ((slice.failCount || 0) >= MAX_SILENT_FAILS) return;
+      slice[timerKey] = root.setInterval(function () {
+        if ((slice.failCount || 0) >= MAX_SILENT_FAILS) {
+          root.clearInterval(slice[timerKey]);
+          slice[timerKey] = 0;
+          return;
+        }
         hooks.sync({ silent: true });
       }, seconds * 1000);
     };

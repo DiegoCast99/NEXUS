@@ -282,6 +282,10 @@
   }
 
   async function disconnectML() {
+    // Frenar el "en vivo" primero: sin token, cada tick fallaria.
+    window.clearInterval(state.commerce.mlRefreshTimer);
+    state.commerce.mlRefreshTimer = 0;
+    state.commerce.failCount = 0;
     state.commerce.configs.mercadolibre = S.defaultCommerceConfig();
     delete state.commerce.snapshots.mercadolibre;
     saveCommerceConfigs();
@@ -480,11 +484,17 @@
       syncingMessage: "Sincronizando Mercado Libre...",
       render: renderCommerceDashboard,
       errorFallback: "No se pudo sincronizar Mercado Libre.",
-      after: () => scheduleCommerceRefresh(),
+      after: () => scheduleMLRefresh(),
       run: async () => {
         var orders = await fetchMLOrders();
-        state.commerce.snapshots.mercadolibre = createCommerceSnapshot(orders, "live");
-        saveCommerceSnapshots();
+        var next = createCommerceSnapshot(orders, "live");
+        var prev = state.commerce.snapshots.mercadolibre;
+        state.commerce.snapshots.mercadolibre = next;
+        // Con el modo "en vivo" esto corre cada minuto: si no hay ventas
+        // nuevas, no reescribir (evita subir lo mismo a Firestore sin parar).
+        if (!prev || ordersSignature(prev.orders) !== ordersSignature(next.orders)) {
+          saveCommerceSnapshots();
+        }
         return orders.length
           ? orders.length + " ordenes sincronizadas desde Mercado Libre."
           : "No se encontraron ordenes en tu cuenta de ML.";
@@ -492,11 +502,33 @@
     });
   }
 
+  // Huella estable de las ventas: cambia solo si hay una orden nueva o si
+  // alguna cambió de estado/monto. `fetchedAt` queda afuera a proposito.
+  function ordersSignature(orders) {
+    if (!Array.isArray(orders)) return "";
+    return orders.map(function (o) {
+      return [o.id, o.status, o.total, o.margin].join(":");
+    }).join("|");
+  }
+
   const scheduleCommerceRefresh = S.createRefreshScheduler({
     slice: () => state.commerce,
     getIntervalSeconds: () => getCommerceConfig().refreshInterval,
-    isEnabled: () => hasCommerceConnection(getCommerceConfig()),
+    // ML queda afuera a proposito: tiene su propio scheduler (scheduleMLRefresh).
+    // Si no, al entrar al panel de ML habria dos timers pidiendo lo mismo.
+    isEnabled: () => !isMLApp() && hasCommerceConnection(getCommerceConfig()),
     sync: (options) => syncCommerce(options)
+  });
+
+  // Mercado Libre "en vivo": scheduler propio, atado SIEMPRE a la config de
+  // ML (no al negocio activo) y con su propio timer, para que el polling siga
+  // aunque el titular esté en otra vista y no lo mate el router.
+  const scheduleMLRefresh = S.createRefreshScheduler({
+    slice: () => state.commerce,
+    timerKey: "mlRefreshTimer",
+    getIntervalSeconds: () => getCommerceConfig("mercadolibre").refreshInterval,
+    isEnabled: () => Boolean(getCommerceConfig("mercadolibre").hasToken),
+    sync: () => syncMercadoLibre({ silent: true })
   });
 
   // ---- Navegación nivel 2 ------------------------------------
@@ -513,6 +545,11 @@
     S.updateTopbarForView("ecommerce");
     scheduleCommerceRefresh();
     S.animateActivePanel();
+    // Mercado Libre "en vivo": al entrar al panel, traer las ventas solo,
+    // sin esperar el proximo tick ni que el titular apriete Sincronizar.
+    if (isMLApp(id) && getCommerceConfig(id).hasToken && !state.commerce.syncing) {
+      syncMercadoLibre({ silent: true });
+    }
   }
 
   function clearSelectedCommerceApp() {
@@ -526,12 +563,26 @@
     S.animateActivePanel();
   }
 
+  // Mercado Libre queda "en vivo" por defecto: si el titular nunca eligio
+  // una frecuencia con el selector, arranca en 60 segundos. Si algun dia
+  // elige "Manual" a proposito (refreshChoice=user), se respeta. Se llama
+  // desde init() (app.js), DESPUES de rehydrateState, para que la config
+  // bajada de la nube no pise el default.
+  function ensureMLLiveDefaults() {
+    var cfg = state.commerce.configs.mercadolibre;
+    if (!cfg) return;
+    if (!cfg.refreshChoice && (!cfg.refreshInterval || cfg.refreshInterval === "0")) {
+      cfg.refreshInterval = "60";
+      saveCommerceConfigs();
+    }
+  }
+
   Object.assign(S, {
     aggregateCommerceProducts, aggregateCommerceTrend, buildDemoCommerceSnapshot, buildMLAuthUrl,
-    clearSelectedCommerceApp, createCommerceSnapshot, disconnectML, fetchCommerceData, fetchMLOrders,
+    clearSelectedCommerceApp, createCommerceSnapshot, disconnectML, ensureMLLiveDefaults, fetchCommerceData, fetchMLOrders,
     handleMlOAuthReturn, normalizeCommerceOrder, normalizeMLOrder,
     populateCommerceConfigForm, readCommerceConfigFromForm, renderCommerceDashboard, renderCommerceSwitcher,
-    scheduleCommerceRefresh, selectCommerceApp, setCommerceMessage, setMlMessage,
+    scheduleCommerceRefresh, scheduleMLRefresh, selectCommerceApp, setCommerceMessage, setMlMessage,
     startMLOAuth, syncCommerce, syncMercadoLibre,
   });
 })();

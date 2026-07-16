@@ -449,7 +449,12 @@
       syncing: false,
       message: "",
       messageType: "",
-      refreshTimer: 0
+      refreshTimer: 0,
+      // Timer propio del modo "en vivo" de Mercado Libre: separado de
+      // refreshTimer (que el router limpia al cambiar de vista) para que el
+      // polling no dependa de qué negocio quedó activo.
+      mlRefreshTimer: 0,
+      failCount: 0
     }
   };
 
