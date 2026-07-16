@@ -215,3 +215,182 @@ th {
   border-color: rgba(255, 26, 157, 0.35);
   background: rgba(255, 26, 157, 0.08);
 }
+
+/* ============================================================
+   Navegacion contextual de plataformas + barra plegable
+   ============================================================ */
+
+/* Boton flotante para ocultar/mostrar la barra. */
+.sidebar-toggle {
+  position: fixed;
+  top: 18px;
+  left: 18px;
+  z-index: 40;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(18, 18, 22, 0.86);
+  backdrop-filter: blur(8px);
+  color: var(--text);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, background 0.18s ease;
+}
+
+.sidebar-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.sidebar-toggle:hover {
+  background: rgba(38, 38, 46, 0.94);
+}
+
+/* Visible solo al pasar por el borde izquierdo, o siempre si esta plegada. */
+.dashboard-shell:hover .sidebar-toggle,
+.sidebar-toggle:focus-visible,
+.sidebar-collapsed .sidebar-toggle {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sidebar {
+  transition: width 0.22s ease, padding 0.22s ease, opacity 0.18s ease;
+  overflow: hidden;
+}
+
+.sidebar-collapsed .sidebar {
+  width: 0;
+  /* Sin esto no se pliega: los flex items tienen min-width:auto y el
+     contenido impide que el ancho baje de su minimo. */
+  min-width: 0;
+  padding-left: 0;
+  padding-right: 0;
+  border-right-width: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sidebar-collapsed .dashboard-main {
+  padding-left: 64px;
+}
+
+/* --- Sub-nav de plataforma --- */
+.platform-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.platform-nav.is-hidden,
+.module-nav.is-hidden {
+  display: none;
+}
+
+.platform-nav-back {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.16s ease;
+}
+
+.platform-nav-back:hover {
+  color: var(--text);
+}
+
+.platform-nav-back svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.platform-nav-head {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(255, 26, 157, 0.16), rgba(82, 225, 255, 0.05)),
+    rgba(255, 255, 255, 0.03);
+}
+
+.platform-nav-head span {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.platform-nav-head b {
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.platform-nav-links {
+  display: grid;
+  gap: 4px;
+}
+
+.platform-nav-link {
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease, border-color 0.16s ease;
+}
+
+.platform-nav-link b {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.platform-nav-link small {
+  font-size: 11px;
+  opacity: 0.75;
+}
+
+.platform-nav-link:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+}
+
+.platform-nav-link.is-active {
+  border-color: rgba(255, 26, 157, 0.4);
+  background: linear-gradient(135deg, rgba(255, 26, 157, 0.16), rgba(255, 26, 157, 0.04));
+  color: var(--text);
+}
+
+/* Bloques que no pertenecen a la seccion activa.
+   Clase propia (no .is-hidden) para no chocar con los toggles de cada modulo:
+   un panel puede estar oculto por su modulo Y por la seccion a la vez. */
+.section-hidden {
+  display: none !important;
+}

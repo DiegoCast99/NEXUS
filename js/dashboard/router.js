@@ -50,6 +50,19 @@
     updateTopbarForView(nextView);
     applyChartMode();
 
+    // Barra lateral contextual: solo queda "enfocada" en una plataforma si hay
+    // una abierta. Entrar a E-Commerce siempre muestra el selector, y cualquier
+    // otro modulo vuelve al menu principal.
+    const nav = window.NexusPlatformNav;
+    if (nav) {
+      if (nextView === "meta" && normalized.metaPlatform) {
+        const platform = S.getMetaPlatform(normalized.metaPlatform);
+        nav.enterPlatform("meta", platform ? platform.name : normalized.metaPlatform);
+      } else {
+        nav.exitPlatform();
+      }
+    }
+
     if (nextView === "meta") {
       window.setTimeout(() => {
         renderMetaDashboard();

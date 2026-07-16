@@ -26,24 +26,45 @@
       })();
     </script>
     <link rel="stylesheet" href="./css/dashboard/base.css?v=20260709-ola4" />
-    <link rel="stylesheet" href="./css/dashboard/layout.css?v=20260709-ola0css" />
+    <link rel="stylesheet" href="./css/dashboard/layout.css?v=20260716-nav1" />
     <link rel="stylesheet" href="./css/dashboard/controls.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260712-dedup1" />
     <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260713-diag1" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260709-ola0css" />
-    <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260709-ola4" />
+    <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260716-nav1" />
   </head>
   <body>
-    <div class="dashboard-shell">
-      <aside class="sidebar" aria-label="Navegacion de Nexus">
+    <div class="dashboard-shell" id="dashboardShell">
+      <button class="sidebar-toggle" type="button" id="sidebarToggle" aria-label="Mostrar u ocultar el menu" aria-expanded="true">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 7h16" />
+          <path d="M4 12h16" />
+          <path d="M4 17h16" />
+        </svg>
+      </button>
+      <aside class="sidebar" id="sidebar" aria-label="Navegacion de Nexus">
         <a class="app-brand" href="./index.html" aria-label="Volver a la landing de Nexus">
           <span>NEXUS</span>
           <small>centro de control</small>
         </a>
 
-        <nav class="module-nav" aria-label="Modulos principales">
+        <!-- Navegacion contextual: al entrar a una plataforma reemplaza al
+             menu de modulos y muestra las subsecciones de esa plataforma. -->
+        <nav class="platform-nav is-hidden" id="platformNav" aria-label="Secciones de la plataforma">
+          <button class="platform-nav-back" type="button" id="platformNavBack">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
+            <span id="platformNavBackLabel">Volver</span>
+          </button>
+          <div class="platform-nav-head">
+            <span id="platformNavModule">E-Commerce</span>
+            <b id="platformNavTitle">Plataforma</b>
+          </div>
+          <div class="platform-nav-links" id="platformNavLinks"></div>
+        </nav>
+
+        <nav class="module-nav" id="moduleNav" aria-label="Modulos principales">
           <button class="module-link is-active" type="button" data-view="welcome">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 12h16" />
@@ -331,13 +352,13 @@
             <button class="ghost-button platform-back-button" type="button" id="metaBackButton">
               ← Volver a plataformas
             </button>
-          <div class="meta-status-card meta-status-standalone" id="metaConnectionStatus">
+          <div class="meta-status-card meta-status-standalone" id="metaConnectionStatus" data-section="config">
             <span class="status-dot"></span>
             <b id="metaStatusTitle">Sin conexion</b>
             <small id="metaStatusDetail">Agrega Pixel ID, cuenta publicitaria y token.</small>
           </div>
 
-          <form class="panel meta-config-panel" id="metaConfigForm">
+          <form class="panel meta-config-panel" id="metaConfigForm" data-section="config">
             <div class="panel-heading">
               <div>
                 <span>Conexion</span>
@@ -392,7 +413,22 @@
             <p class="meta-message" id="metaMessage"></p>
           </form>
 
-          <div class="ads-metric-grid">
+          <section class="panel" data-section="config">
+            <div class="panel-heading">
+              <div>
+                <span>Cuenta</span>
+                <h2>Estado de conexion</h2>
+              </div>
+            </div>
+            <div class="connection-facts">
+              <div><span>Pixel</span><b id="metaPixelLabel">No configurado</b></div>
+              <div><span>Cuenta</span><b id="metaAccountLabel">No configurada</b></div>
+              <div><span>Ultima sincronizacion</span><b id="metaLastSync">Sin sincronizar</b></div>
+              <div><span>Fuente</span><b id="metaSourceLabel">Local</b></div>
+            </div>
+          </section>
+
+          <div class="ads-metric-grid" data-section="resumen">
             <article class="metric-card">
               <span>Inversion</span>
               <strong id="metaSpendValue">$0</strong>
@@ -426,7 +462,7 @@
           </div>
 
           <div class="meta-layout">
-            <section class="panel wide-panel">
+            <section class="panel wide-panel" data-section="resumen">
               <div class="panel-heading">
                 <div>
                   <span>Rendimiento</span>
@@ -439,21 +475,7 @@
               </div>
               <canvas id="metaTrendChart" height="230"></canvas>
             </section>
-            <section class="panel">
-              <div class="panel-heading">
-                <div>
-                  <span>Cuenta</span>
-                  <h2>Estado de conexion</h2>
-                </div>
-              </div>
-              <div class="connection-facts">
-                <div><span>Pixel</span><b id="metaPixelLabel">No configurado</b></div>
-                <div><span>Cuenta</span><b id="metaAccountLabel">No configurada</b></div>
-                <div><span>Ultima sincronizacion</span><b id="metaLastSync">Sin sincronizar</b></div>
-                <div><span>Fuente</span><b id="metaSourceLabel">Local</b></div>
-              </div>
-            </section>
-            <section class="panel wide-panel">
+            <section class="panel wide-panel" data-section="campanas">
               <div class="panel-heading">
                 <div>
                   <span>Campanas</span>
@@ -483,7 +505,7 @@
                 </div>
               </div>
             </section>
-            <section class="panel">
+            <section class="panel wide-panel" data-section="pixel">
               <div class="panel-heading">
                 <div>
                   <span>Eventos</span>
@@ -504,7 +526,7 @@
               ← Volver a negocios
             </button>
 
-          <div class="panel commerce-config-panel is-hidden" id="mlConnectPanel">
+          <div class="panel commerce-config-panel is-hidden" id="mlConnectPanel" data-section="config">
             <div class="panel-heading">
               <div>
                 <span>Mercado Libre</span>
@@ -537,7 +559,7 @@
             </div>
           </div>
 
-          <form class="panel commerce-config-panel" id="commerceConfigForm">
+          <form class="panel commerce-config-panel" id="commerceConfigForm" data-section="config">
             <div class="panel-heading">
               <div>
                 <span>Conexion</span>
@@ -576,7 +598,22 @@
             <p class="meta-message" id="commerceMessage"></p>
           </form>
 
-          <div class="ads-metric-grid commerce-metric-grid">
+          <section class="panel" data-section="config">
+            <div class="panel-heading">
+              <div>
+                <span>Negocio</span>
+                <h2>Conexion activa</h2>
+              </div>
+            </div>
+            <div class="connection-facts">
+              <div><span>App</span><b id="commerceActiveLabel">Kairos</b></div>
+              <div><span>Pixel</span><b id="commercePixelLabel">No configurado</b></div>
+              <div><span>Endpoint</span><b id="commerceEndpointLabel">No configurado</b></div>
+              <div><span>Ultima sincronizacion</span><b id="commerceLastSync">Sin sincronizar</b></div>
+            </div>
+          </section>
+
+          <div class="ads-metric-grid commerce-metric-grid" data-section="resumen">
             <article class="metric-card featured">
               <span>Ventas</span>
               <strong id="commerceRevenueValue">$0</strong>
@@ -610,7 +647,7 @@
           </div>
 
           <div class="meta-layout commerce-layout">
-            <section class="panel wide-panel">
+            <section class="panel wide-panel" data-section="resumen">
               <div class="panel-heading">
                 <div>
                   <span>Ventas</span>
@@ -623,21 +660,7 @@
               </div>
               <canvas id="commerceTrendChart" height="230"></canvas>
             </section>
-            <section class="panel">
-              <div class="panel-heading">
-                <div>
-                  <span>Negocio</span>
-                  <h2>Conexion activa</h2>
-                </div>
-              </div>
-              <div class="connection-facts">
-                <div><span>App</span><b id="commerceActiveLabel">Kairos</b></div>
-                <div><span>Pixel</span><b id="commercePixelLabel">No configurado</b></div>
-                <div><span>Endpoint</span><b id="commerceEndpointLabel">No configurado</b></div>
-                <div><span>Ultima sincronizacion</span><b id="commerceLastSync">Sin sincronizar</b></div>
-              </div>
-            </section>
-            <section class="panel wide-panel">
+            <section class="panel wide-panel" data-section="pedidos">
               <div class="panel-heading">
                 <div>
                   <span>Pedidos</span>
@@ -665,7 +688,7 @@
                 </div>
               </div>
             </section>
-            <section class="panel">
+            <section class="panel wide-panel" data-section="productos">
               <div class="panel-heading">
                 <div>
                   <span>Productos</span>
@@ -697,10 +720,11 @@
     <script src="./js/dashboard/integration-core.js?v=20260716-live1"></script>
     <script src="./js/dashboard/charts.js?v=20260709-ola1d"></script>
     <script src="./js/dashboard/finance.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/meta.js?v=20260712-dedup1"></script>
+    <script src="./js/dashboard/meta.js?v=20260716-nav1"></script>
     <script src="./js/dashboard/commerce.js?v=20260716-live1"></script>
     <script src="./js/dashboard/notifications.js?v=20260716-diag2"></script>
-    <script src="./js/dashboard/router.js?v=20260711-ml1"></script>
+    <script src="./js/dashboard/platform-nav.js?v=20260716-nav1"></script>
+    <script src="./js/dashboard/router.js?v=20260716-nav1"></script>
     <script src="./js/dashboard/app.js?v=20260716-live1"></script>
     <script src="./js/pwa.js?v=20260711-push1" defer></script>
   </body>

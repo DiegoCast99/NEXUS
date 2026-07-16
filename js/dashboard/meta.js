@@ -56,12 +56,15 @@
     populateMetaConfigForm();
     renderMetaDashboard();
     updateTopbarForView("meta");
+    // La barra lateral se enfoca en esta plataforma y muestra sus secciones.
+    window.NexusPlatformNav?.enterPlatform("meta", platform.name);
     animateActivePanel();
     if (shouldPushHash) history.replaceState(null, "", `#meta-ads-${id}`);
   }
 
   function clearSelectedMetaPlatform(shouldPushHash = true) {
     state.meta.selectedPlatform = null;
+    window.NexusPlatformNav?.exitPlatform();
     localStorage.removeItem(META_ACTIVE_PLATFORM_KEY);
     state.meta.config = defaultMetaConfig();
     state.meta.snapshot = null;

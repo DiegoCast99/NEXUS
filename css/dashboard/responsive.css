@@ -6,6 +6,16 @@
     display: block;
   }
 
+  /* Plegada en movil/tablet: la barra es una franja horizontal arriba, asi que
+     se oculta entera (a ancho 0 dejaria un hueco vertical). */
+  .sidebar-collapsed .sidebar {
+    display: none;
+  }
+
+  .sidebar-collapsed .dashboard-main {
+    padding-left: 0;
+  }
+
   .sidebar {
     position: static;
     width: auto;

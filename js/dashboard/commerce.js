@@ -544,6 +544,8 @@
     renderCommerceDashboard();
     S.updateTopbarForView("ecommerce");
     scheduleCommerceRefresh();
+    // La barra lateral se enfoca en este negocio y muestra sus secciones.
+    window.NexusPlatformNav?.enterPlatform("ecommerce", app.name);
     S.animateActivePanel();
     // Mercado Libre "en vivo": al entrar al panel, traer las ventas solo,
     // sin esperar el proximo tick ni que el titular apriete Sincronizar.
@@ -554,6 +556,7 @@
 
   function clearSelectedCommerceApp() {
     state.commerce.selectedApp = null;
+    window.NexusPlatformNav?.exitPlatform();
     window.clearInterval(state.commerce.refreshTimer);
     state.commerce.refreshTimer = 0;
     setCommerceMessage("", "");
