@@ -351,7 +351,10 @@
   // Dibuja el selector de cuentas de ML y marca la abierta. Solo se ve dentro
   // del panel de Mercado Libre (las otras plataformas no tienen cuentas).
   function renderMLAccountSelect() {
-    var esML = isMLApp(state.commerce.selectedApp);
+    // El selector solo existe con el panel de una cuenta de ML ABIERTO. El
+    // chequeo de selectedApp va explicito: isMLApp(null) cae en activeApp (el
+    // ultimo negocio usado), asi que en la pantalla de tarjetas daria true.
+    var esML = Boolean(state.commerce.selectedApp) && isMLApp(state.commerce.selectedApp);
     elements.mlAccountField?.classList.toggle("is-hidden", !esML);
     if (!esML || !elements.mlAccountSelect) return;
 
@@ -534,7 +537,6 @@
   }
 
   function updateMLPanel() {
-    renderMLAccountSelect();
     var config = getCommerceConfig(activeMLId());
     var connected = Boolean(config.hasToken);
 
@@ -573,6 +575,10 @@
     elements.mlConnectPanel?.classList.toggle("is-hidden", !(hasApp && ml));
     elements.commerceConfigForm?.classList.toggle("is-hidden", !hasApp || ml);
 
+    // Fuera de updateMLPanel a proposito: tiene que correr SIEMPRE, porque es
+    // quien oculta el selector de cuentas al entrar a una plataforma que no es
+    // Mercado Libre (si viviera adentro, solo correria cuando hay que mostrarlo).
+    renderMLAccountSelect();
     if (ml) updateMLPanel();
 
     const app = getCommerceApp();

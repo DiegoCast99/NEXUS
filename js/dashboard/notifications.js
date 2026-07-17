@@ -55,6 +55,17 @@
     }
   }
 
+  // Cuenta de ML abierta ahora: la prueba debe decir la misma que diria la venta.
+  function activeAccount() {
+    try {
+      var sel = window.NexusDash && window.NexusDash.state
+        ? window.NexusDash.state.commerce.selectedApp : null;
+      return sel || "mercadolibre";
+    } catch (e) {
+      return "mercadolibre";
+    }
+  }
+
   async function sendTestPush() {
     var testBtn = document.getElementById("mlTestPushButton");
     if (testBtn) { testBtn.disabled = true; testBtn.textContent = "Enviando..."; }
@@ -64,7 +75,7 @@
         setState("Necesitas tener la sesion iniciada.", "error");
         return;
       }
-      await window.NexusSecureAPI.sendTestPush();
+      await window.NexusSecureAPI.sendTestPush(activeAccount());
       setState("Notificacion de prueba enviada. Deberia aparecer en unos segundos.", "success");
     } catch (e) {
       setState("La prueba fallo: " + (e.message || e), "error");
@@ -164,7 +175,7 @@
       showTestButton(true);
       setState("Notificaciones activadas. Enviando prueba...", "success");
       try {
-        await window.NexusSecureAPI.sendTestPush();
+        await window.NexusSecureAPI.sendTestPush(activeAccount());
         setState("Notificacion de prueba enviada. Deberia aparecer en unos segundos.", "success");
       } catch (e) {
         setState("Suscripcion guardada, pero la prueba fallo: " + (e.message || e), "error");

@@ -80,6 +80,18 @@ function getIdToken(event) {
 // asi los tokens ya guardados y el webhook siguen funcionando.
 const ML_ACCOUNTS = ["mercadolibre", "mercadolibre2"];
 
+// Nombre visible de cada cuenta. Tiene que coincidir con el selector del panel
+// (ML_ACCOUNTS en js/dashboard/store.js): es lo que el titular ve en la
+// notificacion de la venta, asi sabe de que cuenta fue.
+const ML_ACCOUNT_NAMES = {
+  mercadolibre: "Mercado Libre 1",
+  mercadolibre2: "Mercado Libre 2"
+};
+
+function mlAccountName(account) {
+  return ML_ACCOUNT_NAMES[account] || "Mercado Libre";
+}
+
 // Devuelve la cuenta pedida solo si esta en la lista (evita que un cliente
 // manipulado lea un campo arbitrario de Firestore).
 function mlAccount(raw) {
@@ -182,6 +194,7 @@ function json(statusCode, obj) {
 module.exports = {
   ML_ACCOUNTS,
   mlAccount,
+  mlAccountName,
   mlSellerField,
   encrypt,
   decrypt,

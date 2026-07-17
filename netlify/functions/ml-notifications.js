@@ -13,12 +13,9 @@
    ============================================================ */
 const { adminGetDoc, adminPatchDoc, adminQueryUsersByField } = require("./_fbadmin");
 const { sendPush } = require("./_webpush");
+const { ML_ACCOUNTS, mlAccountName, mlSellerField } = require("./_shared");
 
 const MAX_NOTIFIED = 60;
-
-// Campos donde vive el seller id de cada cuenta de ML conectada. El webhook no
-// sabe de que cuenta viene la venta, asi que los prueba todos.
-const ML_SELLER_FIELDS = ["ml_seller_id", "ml_seller_id_2"];
 
 function ok() {
   return { statusCode: 200, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ok: true }) };
@@ -62,10 +59,12 @@ async function handleNotification(body) {
 
   // seller -> uid. La venta puede venir de cualquiera de las cuentas de ML
   // conectadas, y cada una guarda su seller en su propio campo consultable.
+  // De paso queda cual matcheo: es lo que se muestra en la notificacion.
   let hit = null;
-  for (const field of ML_SELLER_FIELDS) {
-    hit = await adminQueryUsersByField(field, sellerId);
-    if (hit) break;
+  let accountId = null;
+  for (const mlId of ML_ACCOUNTS) {
+    hit = await adminQueryUsersByField(mlSellerField(mlId), sellerId);
+    if (hit) { accountId = mlId; break; }
   }
   if (!hit) {
     console.warn("ml-notifications: seller " + sellerId + " sin usuario en Firestore");
@@ -98,7 +97,9 @@ async function handleNotification(body) {
   if (subs.length === 0) return; // nada a donde notificar
 
   // Enviar el push a cada dispositivo. Quitar las suscripciones caducadas.
-  const payload = { title: "¡Vendiste!", body: "Mercado Libre", tag: "ml-" + orderId };
+  // El cuerpo dice de que cuenta fue la venta ("Mercado Libre 1" / "...2"),
+  // que es lo unico que distingue una notificacion de la otra en el celular.
+  const payload = { title: "¡Vendiste!", body: mlAccountName(accountId), tag: "ml-" + orderId };
   const alive = [];
   let sentCount = 0;
   for (const sub of subs) {

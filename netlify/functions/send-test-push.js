@@ -7,7 +7,7 @@
 
    Header: Authorization: Bearer <Firebase ID token>
    ============================================================ */
-const { readUserField, uidFromIdToken, getIdToken, json } = require("./_shared");
+const { readUserField, uidFromIdToken, getIdToken, parseBody, json, mlAccountName } = require("./_shared");
 const { sendPush } = require("./_webpush");
 
 exports.handler = async (event) => {
@@ -15,6 +15,9 @@ exports.handler = async (event) => {
   try {
     const idToken = getIdToken(event);
     const uid = uidFromIdToken(idToken);
+    // La prueba imita la venta real: mismo texto, incluida la cuenta.
+    const { account } = parseBody(event);
+    const cuenta = mlAccountName(account);
 
     let subs = [];
     const raw = await readUserField(uid, idToken, "push_subs");
@@ -27,7 +30,7 @@ exports.handler = async (event) => {
     let lastError = "";
     for (const sub of subs) {
       try {
-        const r = await sendPush(sub, { title: "¡Vendiste!", body: "Mercado Libre", tag: "nexus-test" });
+        const r = await sendPush(sub, { title: "¡Vendiste!", body: cuenta, tag: "nexus-test" });
         if (!r.gone) sent += 1;
       } catch (e) {
         lastError = (e && e.message) || String(e);

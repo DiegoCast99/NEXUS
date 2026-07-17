@@ -72,9 +72,10 @@
     savePushSub: function (subscription, sellerId) {
       return call("save-push-sub", { subscription: subscription, sellerId: sellerId });
     },
-    // Envía una notificación de prueba a los dispositivos del usuario.
-    sendTestPush: function () {
-      return call("send-test-push", {});
+    // Envía una notificación de prueba a los dispositivos del usuario,
+    // con el texto de la cuenta indicada (para que imite a la venta real).
+    sendTestPush: function (account) {
+      return call("send-test-push", { account: account });
     },
     // Revisa la cadena que dispara la notificación de una venta real.
     mlDiagnose: function () {
