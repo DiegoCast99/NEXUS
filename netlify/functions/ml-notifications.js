@@ -51,8 +51,10 @@ async function handleNotification(body) {
   const sellerId = body.user_id != null ? String(body.user_id) : "";
   const resource = String(body.resource || "");
 
-  // Solo nos interesan las órdenes (orders / orders_v2).
-  if (!/^orders/.test(topic)) return;
+  // Solo ventas: orders_v2 (y el legacy orders). Ojo con no aflojar esto a
+  // /^orders/: la app tambien esta suscrita a orders_feedback (calificaciones),
+  // que empieza igual pero NO es una venta y dispararia un "¡Vendiste!" falso.
+  if (!/^orders(_v2)?$/.test(topic)) return;
   if (!sellerId) return;
 
   const orderId = (resource.match(/\/orders\/(\d+)/) || [])[1] || resource;
