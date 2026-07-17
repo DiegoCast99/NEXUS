@@ -186,3 +186,53 @@
     opacity: 1;
   }
 }
+
+/* ============================================================
+   Barra de periodo de las metricas (estilo panel de Mercado Libre)
+   ============================================================ */
+.period-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-strong);
+}
+
+/* Explicita porque commerce.css carga despues de finance.css (donde vive .is-hidden). */
+.period-bar.is-hidden {
+  display: none;
+}
+
+.period-bar .field {
+  min-width: 168px;
+}
+
+.period-bar-end {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+.period-range {
+  color: var(--text);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+}
+
+.period-sync {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+@media (max-width: 760px) {
+  .period-bar-end {
+    margin-left: 0;
+    width: 100%;
+  }
+}

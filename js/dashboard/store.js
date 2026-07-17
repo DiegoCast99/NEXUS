@@ -407,6 +407,25 @@
     commerceMarginHint: document.getElementById("commerceMarginHint"),
     commerceStatusValue: document.getElementById("commerceStatusValue"),
     commerceStatusHint: document.getElementById("commerceStatusHint"),
+    // Metricas al estilo del panel de Mercado Libre (por periodo).
+    commercePeriodBar: document.getElementById("commercePeriodBar"),
+    commercePeriod: document.getElementById("commercePeriod"),
+    commercePeriodFromField: document.getElementById("commercePeriodFromField"),
+    commercePeriodFrom: document.getElementById("commercePeriodFrom"),
+    commercePeriodToField: document.getElementById("commercePeriodToField"),
+    commercePeriodTo: document.getElementById("commercePeriodTo"),
+    commercePeriodLabel: document.getElementById("commercePeriodLabel"),
+    commerceUnitsValue: document.getElementById("commerceUnitsValue"),
+    commerceUnitsHint: document.getElementById("commerceUnitsHint"),
+    commerceVisitsValue: document.getElementById("commerceVisitsValue"),
+    commerceVisitsHint: document.getElementById("commerceVisitsHint"),
+    commerceUnitPriceValue: document.getElementById("commerceUnitPriceValue"),
+    commerceCancelledCountValue: document.getElementById("commerceCancelledCountValue"),
+    commerceCancelledCountHint: document.getElementById("commerceCancelledCountHint"),
+    commerceCancelledValue: document.getElementById("commerceCancelledValue"),
+    commerceRefundedCountValue: document.getElementById("commerceRefundedCountValue"),
+    commerceRefundedCountHint: document.getElementById("commerceRefundedCountHint"),
+    commerceRefundedValue: document.getElementById("commerceRefundedValue"),
     commerceActiveLabel: document.getElementById("commerceActiveLabel"),
     commercePixelLabel: document.getElementById("commercePixelLabel"),
     commerceEndpointLabel: document.getElementById("commerceEndpointLabel"),
@@ -701,7 +720,11 @@
       apiUrl: "",
       apiToken: "",
       hasToken: false,
-      refreshInterval: "0"
+      refreshInterval: "0",
+      // Periodo de las metricas (Mercado Libre): "7" | "15" | "30" | "custom".
+      period: "30",
+      periodFrom: "",
+      periodTo: ""
     };
   }
 

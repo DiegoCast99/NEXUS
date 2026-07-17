@@ -79,6 +79,11 @@
       total,
       margin,
       sessions: Number(order.sessions || order.visits || order.traffic || 0),
+      // Campos de las metricas por periodo. Van explicitos porque esta funcion
+      // se re-aplica sobre ordenes ya normalizadas y descartaria lo que no lista.
+      units: Number(order.units ?? order.quantity ?? 1) || 1,
+      cancelled: Boolean(order.cancelled),
+      refunded: Boolean(order.refunded),
       date: String(order.date || order.createdAt || toDateInput()).slice(0, 10)
     };
   }
@@ -95,7 +100,9 @@
     return Array.from(products.values()).sort((a, b) => b.revenue - a.revenue).slice(0, 6);
   }
 
-  function aggregateCommerceTrend(orders) {
+  // Serie diaria del periodo. Con `range` se rellenan los dias sin ventas en 0,
+  // asi la grafica muestra el periodo completo (y no salta dias vacios).
+  function aggregateCommerceTrend(orders, range) {
     const days = new Map();
     orders.forEach((order) => {
       const current = days.get(order.date) || { date: order.date, revenue: 0, orders: 0 };
@@ -103,28 +110,60 @@
       current.orders += 1;
       days.set(order.date, current);
     });
-    return Array.from(days.values()).sort((a, b) => a.date.localeCompare(b.date)).slice(-10);
+
+    if (!range || !range.from || !range.to) {
+      return Array.from(days.values()).sort((a, b) => a.date.localeCompare(b.date)).slice(-10);
+    }
+
+    const serie = [];
+    const cursor = new Date(range.from + "T12:00:00");
+    const fin = new Date(range.to + "T12:00:00");
+    let guard = 0;
+    while (cursor <= fin && guard < 400) {
+      const dia = toDateInput(cursor);
+      serie.push(days.get(dia) || { date: dia, revenue: 0, orders: 0 });
+      cursor.setDate(cursor.getDate() + 1);
+      guard += 1;
+    }
+    return serie;
   }
 
-  function createCommerceSnapshot(orders, source) {
+  // `extra` trae lo que no sale de las ordenes: visitas (API aparte) y el
+  // rango del periodo consultado.
+  function createCommerceSnapshot(orders, source, extra) {
+    const info = extra || {};
     const normalizedOrders = orders.map(normalizeCommerceOrder);
     const totals = normalizedOrders.reduce((total, order) => ({
       revenue: total.revenue + order.total,
       margin: total.margin + order.margin,
       sessions: total.sessions + order.sessions,
-      orders: total.orders + 1
-    }), { revenue: 0, margin: 0, sessions: 0, orders: 0 });
+      orders: total.orders + 1,
+      units: total.units + (order.units || 1),
+      cancelledCount: total.cancelledCount + (order.cancelled ? 1 : 0),
+      cancelledValue: total.cancelledValue + (order.cancelled ? order.total : 0),
+      refundedCount: total.refundedCount + (order.refunded ? 1 : 0),
+      refundedValue: total.refundedValue + (order.refunded ? order.total : 0)
+    }), {
+      revenue: 0, margin: 0, sessions: 0, orders: 0, units: 0,
+      cancelledCount: 0, cancelledValue: 0, refundedCount: 0, refundedValue: 0
+    });
+
+    // Visitas reales de ML si vinieron; si no, lo que traigan las ordenes.
+    if (typeof info.visits === "number" && info.visits > 0) totals.sessions = info.visits;
+
     totals.aov = totals.orders ? totals.revenue / totals.orders : 0;
+    totals.unitPrice = totals.units ? totals.revenue / totals.units : 0;
     totals.conversion = totals.sessions ? (totals.orders / totals.sessions) * 100 : 0;
 
     return {
       source,
       fetchedAt: new Date().toISOString(),
       appId: state.commerce.activeApp,
+      range: info.range || null,
       totals,
       orders: normalizedOrders.sort((a, b) => b.date.localeCompare(a.date)),
       products: aggregateCommerceProducts(normalizedOrders),
-      trend: aggregateCommerceTrend(normalizedOrders)
+      trend: aggregateCommerceTrend(normalizedOrders, info.range)
     };
   }
 
@@ -233,6 +272,15 @@
     var customer = (buyer.first_name || "") + " " + (buyer.last_name || "");
     if (customer.trim().length === 0) customer = "Comprador ML";
 
+    // Unidades reales del pedido (un pedido puede llevar varios items).
+    var units = orderItems.reduce(function (s, i) { return s + (Number(i.quantity) || 0); }, 0) || 1;
+
+    // ML no marca "devuelta" a nivel orden: lo inferimos del pago reembolsado,
+    // que es la senal mas confiable sin sumar la API de reclamos.
+    var refunded = payments.some(function (p) {
+      return p.status === "refunded" || p.status === "charged_back";
+    });
+
     return {
       id: String(mlOrder.id || "ML-" + index),
       customer: customer.trim(),
@@ -241,15 +289,87 @@
       total: total,
       margin: margin,
       sessions: 0,
+      units: units,
+      cancelled: mlOrder.status === "cancelled",
+      refunded: refunded,
       date: String(mlOrder.date_created || "").slice(0, 10) || toDateInput()
     };
   }
 
-  async function fetchMLOrders() {
-    var api = S.requireSecureApi();
+  // ---- Periodo (estilo panel de Mercado Libre) ---------------
+
+  var PERIOD_PRESETS = ["7", "15", "30"];
+
+  // Devuelve el rango elegido como fechas YYYY-MM-DD (inclusive).
+  function getPeriodRange(config) {
+    var cfg = config || getCommerceConfig("mercadolibre");
+    var preset = cfg.period || "30";
+    var hoy = new Date();
+    var to = toDateInput(hoy);
+    var from;
+
+    if (preset === "custom" && cfg.periodFrom && cfg.periodTo) {
+      from = cfg.periodFrom;
+      to = cfg.periodTo;
+    } else {
+      var dias = PERIOD_PRESETS.indexOf(preset) !== -1 ? Number(preset) : 30;
+      var desde = new Date(hoy);
+      // "Ultimos 7 dias" incluye hoy: 6 dias atras + hoy = 7.
+      desde.setDate(desde.getDate() - (dias - 1));
+      from = toDateInput(desde);
+    }
+    if (from > to) { var tmp = from; from = to; to = tmp; }
+    return { from: from, to: to };
+  }
+
+  function periodLabel(range) {
+    var f = range.from.split("-"), t = range.to.split("-");
+    return f[2] + "/" + f[1] + " al " + t[2] + "/" + t[1];
+  }
+
+  // Refleja en la UI el periodo guardado (y muestra las fechas solo si es custom).
+  function renderPeriodBar(config, snapshot) {
+    var cfg = config || getCommerceConfig("mercadolibre");
+    var preset = cfg.period || "30";
+    var esCustom = preset === "custom";
+    var range = getPeriodRange(cfg);
+
+    if (elements.commercePeriod) elements.commercePeriod.value = preset;
+    elements.commercePeriodFromField?.classList.toggle("is-hidden", !esCustom);
+    elements.commercePeriodToField?.classList.toggle("is-hidden", !esCustom);
+    if (elements.commercePeriodFrom) elements.commercePeriodFrom.value = cfg.periodFrom || range.from;
+    if (elements.commercePeriodTo) elements.commercePeriodTo.value = cfg.periodTo || range.to;
+    if (elements.commercePeriodLabel) elements.commercePeriodLabel.textContent = periodLabel(range);
+  }
+
+  // Guarda el periodo elegido y vuelve a traer los datos de ese rango.
+  function applyPeriodChange() {
+    var cfg = getCommerceConfig("mercadolibre");
+    var preset = elements.commercePeriod?.value || "30";
+    var next = { ...cfg, period: preset };
+
+    if (preset === "custom") {
+      next.periodFrom = elements.commercePeriodFrom?.value || getPeriodRange(cfg).from;
+      next.periodTo = elements.commercePeriodTo?.value || toDateInput();
+    }
+    state.commerce.configs.mercadolibre = next;
+    saveCommerceConfigs();
+    renderCommerceDashboard();
+
+    // Sin fechas completas todavia (custom recien elegido): no dispares el sync.
+    if (preset === "custom" && (!next.periodFrom || !next.periodTo)) return;
+    if (!next.hasToken) return;
+    state.commerce.failCount = 0;
+    syncMercadoLibre({ silent: false });
+  }
+
+  // ML espera ISO con zona; el dia "hasta" va completo (hasta las 23:59:59).
+  function isoFrom(d) { return d + "T00:00:00.000-00:00"; }
+  function isoTo(d) { return d + "T23:59:59.999-00:00"; }
+
+  async function getMLUserId(api) {
     var config = getCommerceConfig("mercadolibre");
     var userId = config.mlUserId || "";
-
     if (!userId) {
       var meResult = await api.mlApi("/users/me");
       userId = String((meResult.payload || {}).id || "");
@@ -258,27 +378,57 @@
         saveCommerceConfigs();
       }
     }
-
     if (!userId) throw new Error("No se pudo obtener el user ID de ML.");
+    return userId;
+  }
+
+  async function fetchMLOrders(range) {
+    var api = S.requireSecureApi();
+    var userId = await getMLUserId(api);
+    var r = range || getPeriodRange();
 
     var allOrders = [];
     var offset = 0;
     var limit = 50;
-    var maxPages = 4;
+    var maxPages = 8; // hasta 400 ordenes en el periodo
 
     for (var page = 0; page < maxPages; page++) {
-      var endpoint = "/orders/search?seller=" + userId + "&sort=date_desc&limit=" + limit + "&offset=" + offset;
+      var endpoint = "/orders/search?seller=" + userId +
+        "&order.date_created.from=" + encodeURIComponent(isoFrom(r.from)) +
+        "&order.date_created.to=" + encodeURIComponent(isoTo(r.to)) +
+        "&sort=date_desc&limit=" + limit + "&offset=" + offset;
       var result = await api.mlApi(endpoint);
       var payload = result.payload || {};
       var results = payload.results || [];
       allOrders = allOrders.concat(results);
 
       var paging = payload.paging || {};
-      if (offset + limit >= (paging.total || 0)) break;
+      if (results.length === 0 || offset + limit >= (paging.total || 0)) break;
       offset += limit;
     }
 
     return allOrders.map(normalizeMLOrder);
+  }
+
+  // Visitas a las publicaciones del vendedor en el periodo.
+  // Endpoint distinto al de ordenes: /users/{id}/items_visits.
+  // Si falla (ML tarda 48h en consolidar, o el rango excede 150 dias) no
+  // rompemos el sync: devolvemos 0 y las ventas igual se muestran.
+  async function fetchMLVisits(range) {
+    try {
+      var api = S.requireSecureApi();
+      var userId = await getMLUserId(api);
+      var r = range || getPeriodRange();
+      var endpoint = "/users/" + userId + "/items_visits" +
+        "?date_from=" + encodeURIComponent(isoFrom(r.from)) +
+        "&date_to=" + encodeURIComponent(isoTo(r.to));
+      var result = await api.mlApi(endpoint);
+      var payload = result.payload || {};
+      return Number(payload.total_visits) || 0;
+    } catch (e) {
+      console.warn("No se pudieron traer las visitas de ML:", e && e.message);
+      return 0;
+    }
   }
 
   async function disconnectML() {
@@ -373,9 +523,46 @@
     if (elements.commerceOrdersHint) elements.commerceOrdersHint.textContent = `${app.name} · periodo activo`;
     if (elements.commerceAovValue) elements.commerceAovValue.textContent = moneyWithCents.format(totals.aov || 0);
     if (elements.commerceConversionValue) elements.commerceConversionValue.textContent = `${(totals.conversion || 0).toFixed(1)}%`;
-    if (elements.commerceTrafficHint) elements.commerceTrafficHint.textContent = `${integerNumber.format(totals.sessions || 0)} sesiones`;
+    if (elements.commerceTrafficHint) {
+      elements.commerceTrafficHint.textContent = totals.sessions
+        ? `${integerNumber.format(totals.orders || 0)} de ${integerNumber.format(totals.sessions)} visitas`
+        : "Sin visitas informadas";
+    }
     if (elements.commerceMarginValue) elements.commerceMarginValue.textContent = currency.format(totals.margin || 0);
     if (elements.commerceMarginHint) elements.commerceMarginHint.textContent = totals.revenue ? `${((totals.margin / totals.revenue) * 100).toFixed(1)}% sobre ventas` : "Rentabilidad estimada";
+
+    // --- Metricas por periodo (estilo panel de Mercado Libre) ---
+    if (elements.commerceUnitsValue) elements.commerceUnitsValue.textContent = integerNumber.format(totals.units || 0);
+    if (elements.commerceUnitsHint) {
+      elements.commerceUnitsHint.textContent = totals.orders
+        ? `${(((totals.units || 0) / totals.orders) || 0).toFixed(1)} por venta`
+        : "Items despachados";
+    }
+    if (elements.commerceVisitsValue) elements.commerceVisitsValue.textContent = integerNumber.format(totals.sessions || 0);
+    if (elements.commerceVisitsHint) {
+      elements.commerceVisitsHint.textContent = ml
+        ? (totals.sessions ? "Visitas a tus publicaciones" : "ML tarda hasta 48 h en informarlas")
+        : "Visitas a tus publicaciones";
+    }
+    if (elements.commerceUnitPriceValue) elements.commerceUnitPriceValue.textContent = moneyWithCents.format(totals.unitPrice || 0);
+    if (elements.commerceCancelledCountValue) elements.commerceCancelledCountValue.textContent = integerNumber.format(totals.cancelledCount || 0);
+    if (elements.commerceCancelledCountHint) {
+      elements.commerceCancelledCountHint.textContent = totals.orders
+        ? `${((((totals.cancelledCount || 0) / totals.orders) * 100) || 0).toFixed(1)}% de las ventas`
+        : "Sin cancelaciones";
+    }
+    if (elements.commerceCancelledValue) elements.commerceCancelledValue.textContent = currency.format(totals.cancelledValue || 0);
+    if (elements.commerceRefundedCountValue) elements.commerceRefundedCountValue.textContent = integerNumber.format(totals.refundedCount || 0);
+    if (elements.commerceRefundedCountHint) {
+      elements.commerceRefundedCountHint.textContent = totals.orders
+        ? `${((((totals.refundedCount || 0) / totals.orders) * 100) || 0).toFixed(1)}% de las ventas`
+        : "Pagos reembolsados";
+    }
+    if (elements.commerceRefundedValue) elements.commerceRefundedValue.textContent = currency.format(totals.refundedValue || 0);
+
+    // Barra de periodo: solo tiene sentido con Mercado Libre (trae por rango).
+    elements.commercePeriodBar?.classList.toggle("is-hidden", !ml);
+    if (ml) renderPeriodBar(config, snapshot);
     if (elements.commerceStatusValue) {
       elements.commerceStatusValue.textContent = state.commerce.syncing ? "Sync" : snapshot?.source === "live" ? "Live" : snapshot?.source === "demo" ? "Demo" : "Offline";
       elements.commerceStatusValue.classList.toggle("commerce-status-live", snapshot?.source === "live");
@@ -486,8 +673,13 @@
       errorFallback: "No se pudo sincronizar Mercado Libre.",
       after: () => scheduleMLRefresh(),
       run: async () => {
-        var orders = await fetchMLOrders();
-        var next = createCommerceSnapshot(orders, "live");
+        var range = getPeriodRange();
+        // Las visitas van en paralelo: es otra API y no debe demorar las ventas.
+        var [orders, visits] = await Promise.all([
+          fetchMLOrders(range),
+          fetchMLVisits(range)
+        ]);
+        var next = createCommerceSnapshot(orders, "live", { visits: visits, range: range });
         var prev = state.commerce.snapshots.mercadolibre;
         state.commerce.snapshots.mercadolibre = next;
         // Con el modo "en vivo" esto corre cada minuto: si no hay ventas
@@ -497,7 +689,7 @@
         }
         return orders.length
           ? orders.length + " ordenes sincronizadas desde Mercado Libre."
-          : "No se encontraron ordenes en tu cuenta de ML.";
+          : "No se encontraron ordenes en el periodo elegido.";
       }
     });
   }
@@ -585,6 +777,7 @@
     clearSelectedCommerceApp, createCommerceSnapshot, disconnectML, ensureMLLiveDefaults, fetchCommerceData, fetchMLOrders,
     handleMlOAuthReturn, normalizeCommerceOrder, normalizeMLOrder,
     populateCommerceConfigForm, readCommerceConfigFromForm, renderCommerceDashboard, renderCommerceSwitcher,
+    applyPeriodChange, getPeriodRange, renderPeriodBar,
     scheduleCommerceRefresh, scheduleMLRefresh, selectCommerceApp, setCommerceMessage, setMlMessage,
     startMLOAuth, syncCommerce, syncMercadoLibre,
   });

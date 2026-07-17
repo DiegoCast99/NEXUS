@@ -394,3 +394,25 @@ th {
 .section-hidden {
   display: none !important;
 }
+
+/* La grilla es de 12 columnas y los paneles "anchos" ocupaban 8, porque antes
+   convivian con otro de 4 al lado. Con las secciones cada panel queda solo, asi
+   que esas 4 columnas quedaban muertas: que use el ancho completo.
+   Selector con 3 clases a proposito: tiene que ganarle a
+   `.commerce-layout .wide-panel` (span 8), que se carga despues. */
+.meta-layout > .panel[data-section] {
+  grid-column: 1 / -1;
+}
+
+/* Tabla de pedidos: el nombre del producto es larguisimo y con nowrap estiraba
+   la tabla hasta forzar scroll horizontal aunque sobrara espacio. Que envuelva.
+   El overflow-x del contenedor queda como red de seguridad para pantallas chicas. */
+[data-section="pedidos"] .meta-table td:nth-child(3) {
+  white-space: normal;
+  min-width: 260px;
+}
+
+/* El id del pedido no necesita el min-width de 210px pensado para nombres. */
+[data-section="pedidos"] .meta-table td:first-child {
+  min-width: 0;
+}

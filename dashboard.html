@@ -26,12 +26,12 @@
       })();
     </script>
     <link rel="stylesheet" href="./css/dashboard/base.css?v=20260709-ola4" />
-    <link rel="stylesheet" href="./css/dashboard/layout.css?v=20260716-nav1" />
+    <link rel="stylesheet" href="./css/dashboard/layout.css?v=20260716-nav2" />
     <link rel="stylesheet" href="./css/dashboard/controls.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260712-dedup1" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260713-diag1" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260716-period1" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260716-nav1" />
   </head>
@@ -613,26 +613,56 @@
             </div>
           </section>
 
+          <div class="period-bar" id="commercePeriodBar" data-section="resumen">
+            <label class="field compact-field">
+              <span>Periodo</span>
+              <select id="commercePeriod">
+                <option value="7">Ultimos 7 dias</option>
+                <option value="15">Ultimos 15 dias</option>
+                <option value="30">Ultimos 30 dias</option>
+                <option value="custom">Fecha personalizada</option>
+              </select>
+            </label>
+            <label class="field compact-field is-hidden" id="commercePeriodFromField">
+              <span>Desde</span>
+              <input type="date" id="commercePeriodFrom" />
+            </label>
+            <label class="field compact-field is-hidden" id="commercePeriodToField">
+              <span>Hasta</span>
+              <input type="date" id="commercePeriodTo" />
+            </label>
+            <div class="period-bar-end">
+              <span class="period-range" id="commercePeriodLabel"></span>
+              <span class="source-pill" id="commerceStatusValue">Offline</span>
+              <small class="period-sync" id="commerceStatusHint">Conecta datos o demo</small>
+            </div>
+          </div>
+
           <div class="ads-metric-grid commerce-metric-grid" data-section="resumen">
             <article class="metric-card featured">
-              <span>Ventas</span>
+              <span>Ventas brutas</span>
               <strong id="commerceRevenueValue">$0</strong>
               <small id="commerceRevenueHint">Sin datos sincronizados</small>
             </article>
             <article class="metric-card">
-              <span>Pedidos</span>
+              <span>Cantidad de ventas</span>
               <strong id="commerceOrdersValue">0</strong>
               <small id="commerceOrdersHint">Ordenes del periodo</small>
             </article>
             <article class="metric-card">
-              <span>Ticket promedio</span>
-              <strong id="commerceAovValue">$0</strong>
-              <small>Valor medio por pedido</small>
+              <span>Unidades vendidas</span>
+              <strong id="commerceUnitsValue">0</strong>
+              <small id="commerceUnitsHint">Items despachados</small>
+            </article>
+            <article class="metric-card">
+              <span>Visitas</span>
+              <strong id="commerceVisitsValue">0</strong>
+              <small id="commerceVisitsHint">Visitas a tus publicaciones</small>
             </article>
             <article class="metric-card">
               <span>Conversion</span>
               <strong id="commerceConversionValue">0.0%</strong>
-              <small id="commerceTrafficHint">0 sesiones</small>
+              <small id="commerceTrafficHint">Ventas sobre visitas</small>
             </article>
             <article class="metric-card">
               <span>Margen</span>
@@ -640,9 +670,34 @@
               <small id="commerceMarginHint">Rentabilidad estimada</small>
             </article>
             <article class="metric-card">
-              <span>Estado</span>
-              <strong id="commerceStatusValue">Offline</strong>
-              <small id="commerceStatusHint">Conecta datos o demo</small>
+              <span>Precio promedio por venta</span>
+              <strong id="commerceAovValue">$0</strong>
+              <small>Valor medio por pedido</small>
+            </article>
+            <article class="metric-card">
+              <span>Precio promedio por unidad</span>
+              <strong id="commerceUnitPriceValue">$0</strong>
+              <small>Valor medio por item</small>
+            </article>
+            <article class="metric-card">
+              <span>Cantidad de ventas canceladas</span>
+              <strong id="commerceCancelledCountValue">0</strong>
+              <small id="commerceCancelledCountHint">Sin cancelaciones</small>
+            </article>
+            <article class="metric-card">
+              <span>Valor de ventas canceladas</span>
+              <strong id="commerceCancelledValue">$0</strong>
+              <small>Monto no concretado</small>
+            </article>
+            <article class="metric-card">
+              <span>Cantidad de ventas devueltas</span>
+              <strong id="commerceRefundedCountValue">0</strong>
+              <small id="commerceRefundedCountHint">Pagos reembolsados</small>
+            </article>
+            <article class="metric-card">
+              <span>Valor de ventas devueltas</span>
+              <strong id="commerceRefundedValue">$0</strong>
+              <small>Monto reembolsado</small>
             </article>
           </div>
 
@@ -716,16 +771,16 @@
     <script src="./js/firebase/secure-api.js?v=20260713-diag1"></script>
     <!-- Dashboard modules -->
     <script src="./js/core/auth.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/store.js?v=20260716-live1"></script>
+    <script src="./js/dashboard/store.js?v=20260716-period1"></script>
     <script src="./js/dashboard/integration-core.js?v=20260716-live1"></script>
     <script src="./js/dashboard/charts.js?v=20260709-ola1d"></script>
     <script src="./js/dashboard/finance.js?v=20260709-ola0mod"></script>
     <script src="./js/dashboard/meta.js?v=20260716-nav1"></script>
-    <script src="./js/dashboard/commerce.js?v=20260716-nav1"></script>
+    <script src="./js/dashboard/commerce.js?v=20260716-period1"></script>
     <script src="./js/dashboard/notifications.js?v=20260716-diag2"></script>
     <script src="./js/dashboard/platform-nav.js?v=20260716-nav1"></script>
     <script src="./js/dashboard/router.js?v=20260716-nav1"></script>
-    <script src="./js/dashboard/app.js?v=20260716-live1"></script>
+    <script src="./js/dashboard/app.js?v=20260716-period1"></script>
     <script src="./js/pwa.js?v=20260711-push1" defer></script>
   </body>
 </html>

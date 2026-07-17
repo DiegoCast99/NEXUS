@@ -191,6 +191,10 @@
         "success"
       );
     });
+    // Periodo de las metricas de ML: al cambiarlo se re-consulta ese rango.
+    elements.commercePeriod?.addEventListener("change", () => S.applyPeriodChange());
+    elements.commercePeriodFrom?.addEventListener("change", () => S.applyPeriodChange());
+    elements.commercePeriodTo?.addEventListener("change", () => S.applyPeriodChange());
     elements.logoutButton?.addEventListener("click", async () => {
       if (window.NexusFirebaseAuth) {
         await window.NexusFirebaseAuth.logout();
