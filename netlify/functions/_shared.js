@@ -78,14 +78,15 @@ function getIdToken(event) {
 // Cada cuenta guarda sus tokens en su propio campo (secret_mercadolibre,
 // secret_mercadolibre2). La primera es la historica: su nombre NO cambia,
 // asi los tokens ya guardados y el webhook siguen funcionando.
-const ML_ACCOUNTS = ["mercadolibre", "mercadolibre2"];
+const ML_ACCOUNTS = ["mercadolibre", "mercadolibre2", "mercadolivre"];
 
 // Nombre visible de cada cuenta. Tiene que coincidir con el selector del panel
 // (ML_ACCOUNTS en js/dashboard/store.js): es lo que el titular ve en la
 // notificacion de la venta, asi sabe de que cuenta fue.
 const ML_ACCOUNT_NAMES = {
   mercadolibre: "Mercado Libre 1",
-  mercadolibre2: "Mercado Libre 2"
+  mercadolibre2: "Mercado Libre 2",
+  mercadolivre: "Mercado Livre"
 };
 
 function mlAccountName(account) {
@@ -101,8 +102,15 @@ function mlAccount(raw) {
 }
 
 // Campo del seller id consultable por el webhook, por cuenta.
+// El de la primera cuenta es historico: renombrarlo romperia sus notificaciones.
+const ML_SELLER_FIELDS = {
+  mercadolibre: "ml_seller_id",
+  mercadolibre2: "ml_seller_id_2",
+  mercadolivre: "ml_seller_id_3"
+};
+
 function mlSellerField(account) {
-  return mlAccount(account) === "mercadolibre" ? "ml_seller_id" : "ml_seller_id_2";
+  return ML_SELLER_FIELDS[mlAccount(account)];
 }
 
 // Convierte un nombre de proveedor en un nombre de campo Firestore seguro.

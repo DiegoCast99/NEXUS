@@ -192,7 +192,8 @@
     var redirectUri = window.location.origin + "/.netlify/functions/ml-oauth-callback";
     var mlState = crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2);
     sessionStorage.setItem("nexus_ml_state_expected", mlState);
-    return ML_AUTH_URL
+    // El dominio depende del pais de la cuenta: Brasil no valida contra el de Uruguay.
+    return S.mlAuthUrl(activeMLId())
       + "?response_type=code"
       + "&client_id=" + encodeURIComponent(ML_APP_ID)
       + "&redirect_uri=" + encodeURIComponent(redirectUri)
@@ -359,7 +360,15 @@
     if (!esML || !elements.mlAccountSelect) return;
 
     var actual = activeMLId();
-    var html = S.mlAccounts().map(function (acc) {
+    // Solo las cuentas de esta tarjeta: Mercado Livre (Brasil) es otra tarjeta
+    // y no debe aparecer entre las de Uruguay.
+    var cuentas = S.mlAccountsFor(actual);
+    // Con una sola cuenta el selector no aporta nada.
+    if (cuentas.length < 2) {
+      elements.mlAccountField?.classList.add("is-hidden");
+      return;
+    }
+    var html = cuentas.map(function (acc) {
       var cfg = getCommerceConfig(acc.id);
       var estado = cfg.hasToken ? "" : " (sin conectar)";
       return '<option value="' + acc.id + '">' + escapeHtml(acc.name + estado) + "</option>";
@@ -549,13 +558,19 @@
       elements.mlConnectStatus.textContent = connected ? "Conectado" : "Desconectado";
       elements.mlConnectStatus.classList.toggle("commerce-status-live", connected);
     }
+    // El nombre sale de la cuenta abierta: en Brasil es "Mercado Livre", y con
+    // dos cuentas de Uruguay dice cual de las dos esta conectada.
+    var nombreCuenta = S.mlAccountById(activeMLId())?.name || "Mercado Libre";
     if (elements.mlConnectTitle) {
-      elements.mlConnectTitle.textContent = connected ? "Mercado Libre conectado" : "Conectar cuenta";
+      elements.mlConnectTitle.textContent = connected ? nombreCuenta + " conectado" : "Conectar cuenta";
     }
     if (elements.mlConnectDesc) {
       elements.mlConnectDesc.textContent = connected
         ? "Tu cuenta esta vinculada. Podes sincronizar ventas o desconectarla."
-        : "Conecta tu cuenta de Mercado Libre para sincronizar ventas, pedidos y productos.";
+        : "Conecta tu cuenta de " + nombreCuenta + " para sincronizar ventas, pedidos y productos.";
+    }
+    if (elements.mlConnectButton) {
+      elements.mlConnectButton.textContent = "Conectar con " + nombreCuenta;
     }
 
     // Auto-sync: solo tiene sentido con la cuenta conectada.

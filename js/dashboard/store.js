@@ -277,13 +277,37 @@
 
   // Cuentas de Mercado Libre Uruguay. La primera es la historica: su id es la
   // llave de secret_mercadolibre en Firestore y del webhook. NO renombrarla.
+  // Cuentas que usan el motor de Mercado Libre (misma API para todos los paises).
+  //   `card` = la tarjeta donde vive. Las que comparten tarjeta se eligen con el
+  //            selector de cuenta (ej: las dos de Uruguay).
+  //   `auth` = dominio de autorizacion del pais: ML valida la sesion contra el
+  //            sitio, asi que Brasil NO puede usar el de Uruguay.
+  // El id de la primera es la llave de secret_mercadolibre y del webhook: NO tocar.
   const ML_ACCOUNTS = [
-    { id: "mercadolibre", name: "Mercado Libre 1" },
-    { id: "mercadolibre2", name: "Mercado Libre 2" }
+    { id: "mercadolibre", name: "Mercado Libre 1", card: "mercadolibre", auth: "https://auth.mercadolibre.com.uy/authorization" },
+    { id: "mercadolibre2", name: "Mercado Libre 2", card: "mercadolibre", auth: "https://auth.mercadolibre.com.uy/authorization" },
+    { id: "mercadolivre", name: "Mercado Livre", card: "mercadolivre", auth: "https://auth.mercadolivre.com.br/authorization" }
   ];
 
   function mlAccounts() {
     return ML_ACCOUNTS;
+  }
+
+  function mlAccountById(id) {
+    return ML_ACCOUNTS.find((acc) => acc.id === id) || null;
+  }
+
+  // Cuentas que comparten tarjeta con la dada (las que ofrece el selector).
+  function mlAccountsFor(id) {
+    const acc = mlAccountById(id);
+    if (!acc) return [];
+    return ML_ACCOUNTS.filter((a) => a.card === acc.card);
+  }
+
+  // Dominio de autorizacion de esa cuenta (Uruguay vs Brasil).
+  function mlAuthUrl(id) {
+    const acc = mlAccountById(id);
+    return (acc && acc.auth) || ML_AUTH_URL;
   }
 
   function isCommerceGroup(id) {
@@ -950,7 +974,7 @@
     commerceApps, compactNumber, currency, currentMonth, decimalNumber, defaultCommerceConfig,
     defaultMetaConfig, defaultMetaPlatformState, demoCommerceData, demoMetaRecords, elements, escapeHtml,
     exportNexusData, formatDate, formatMetaDate, getCommerceApp, getCommerceChildren, getCommerceConfig,
-    getCommerceRoots, getCommerceSnapshot, isCommerceGroup, mlAccounts,
+    getCommerceRoots, getCommerceSnapshot, isCommerceGroup, mlAccountById, mlAccounts, mlAccountsFor, mlAuthUrl,
     getFilteredMovements, getMetaPlatform, getMetaPlatformState, hasCommerceConnection, importNexusData, integerNumber, isMLApp,
     isValidMovement, labelMonth, loadActiveMetaPlatform, loadCommerceConfigs, loadCommerceSnapshots, loadMetaConfig,
     loadMetaPlatforms, loadMetaSnapshot, loadMovements, mainSections, metaPlatforms, moneyWithCents,
