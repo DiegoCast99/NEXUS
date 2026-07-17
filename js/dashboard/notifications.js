@@ -88,26 +88,38 @@
       var c = (r && r.checks) || {};
       var lines = [];
 
+      var NOMBRES = { mercadolibre: "Mercado Libre 1", mercadolibre2: "Mercado Libre 2" };
+
       lines.push((c.pushSubs > 0 ? "OK" : "FALLA") + " · Dispositivos suscritos: " + (c.pushSubs || 0));
-      lines.push((c.mlConnected ? "OK" : "FALLA") + " · Mercado Libre conectado: " + (c.mlConnected ? "si" : "no"));
-      lines.push((c.mlSellerId ? "OK" : "FALLA") + " · Tu ID de vendedor guardado: " + (c.mlSellerId || "FALTA"));
       lines.push((c.firebaseAdmin === "ok" ? "OK" : "FALLA") + " · Acceso del servidor a la base: " + c.firebaseAdmin);
       if (c.firebaseAdminError) lines.push("       motivo: " + c.firebaseAdminError);
-      lines.push((c.sellerResolves === "ok" ? "OK" : "FALLA") + " · Busqueda venta->usuario: " + c.sellerResolves);
+
+      // Una linea por cuenta: el webhook resuelve cada una por separado.
+      (c.accounts || []).forEach(function (a) {
+        var nombre = NOMBRES[a.id] || a.id;
+        if (!a.connected) {
+          lines.push("--    · " + nombre + ": sin conectar");
+          return;
+        }
+        var listo = a.resolves === "ok";
+        lines.push((listo ? "OK" : "FALLA") + " · " + nombre + ": vendedor " + (a.sellerId || "FALTA") +
+          (listo ? " · va a notificar" : " · NO va a notificar (" + a.resolves + ")"));
+      });
 
       var verdict;
+      var conectadas = c.accountsConnected || 0;
+      var listas = c.accountsReady || 0;
       if (c.firebaseAdmin !== "ok") {
         verdict = "PROBLEMA: el servidor no puede leer la base de datos. Hay que revisar FIREBASE_SA_KEY en Netlify. (El push de prueba no usa esta clave, por eso igual funciona.)";
-      } else if (!c.mlConnected) {
-        verdict = "PROBLEMA: no hay tokens de Mercado Libre guardados. Conecta la cuenta.";
-      } else if (!c.mlSellerId) {
-        verdict = "PROBLEMA: falta tu ID de vendedor, asi que el webhook no puede saber que la venta es tuya. Volve a apretar 'Activar notificaciones' para que se guarde.";
-      } else if (c.sellerResolves !== "ok") {
-        verdict = "PROBLEMA: la busqueda venta->usuario no resuelve (" + c.sellerResolves + ").";
+      } else if (!conectadas) {
+        verdict = "PROBLEMA: no hay ninguna cuenta de Mercado Libre conectada.";
       } else if (!c.pushSubs) {
-        verdict = "PROBLEMA: no hay dispositivos suscritos. Activa las notificaciones.";
+        verdict = "PROBLEMA: no hay dispositivos suscritos. Apreta 'Activar notificaciones' en tu celular.";
+      } else if (listas < conectadas) {
+        verdict = "PROBLEMA: hay cuentas conectadas que no van a notificar. Apreta 'Activar notificaciones' para registrar su vendedor.";
       } else {
-        verdict = "Todo OK de este lado. Si la venta igual no notifica, falta configurar el webhook en Mercado Libre (URL de callback + topico orders).";
+        verdict = "Todo OK: " + listas + " de " + conectadas + " cuenta(s) van a notificar en " +
+          c.pushSubs + " dispositivo(s). Si una venta igual no avisa, falta el webhook en Mercado Libre (callback + topico orders).";
       }
 
       setState(lines.join("\n") + "\n\n" + verdict, verdict.indexOf("PROBLEMA") === 0 ? "error" : "success");

@@ -14,7 +14,7 @@
 
    Header: Authorization: Bearer <Firebase ID token>
    ============================================================ */
-const { decrypt, readUserField, uidFromIdToken, getIdToken, json } = require("./_shared");
+const { decrypt, readUserField, uidFromIdToken, getIdToken, json, ML_ACCOUNTS, mlSellerField } = require("./_shared");
 const { getAccessToken, adminQueryUsersByField } = require("./_fbadmin");
 
 exports.handler = async (event) => {
@@ -32,25 +32,7 @@ exports.handler = async (event) => {
     } catch (e) { /* sin suscripciones */ }
     checks.pushSubs = Array.isArray(subs) ? subs.length : 0;
 
-    // 2. Tokens de ML guardados (y el seller id que traen adentro).
-    let sellerFromTokens = null;
-    try {
-      const encBundle = await readUserField(uid, idToken, "secret_mercadolibre");
-      if (encBundle) {
-        const parsed = JSON.parse(decrypt(encBundle));
-        sellerFromTokens = parsed.user_id ? String(parsed.user_id) : null;
-      }
-    } catch (e) { /* sin tokens */ }
-    checks.mlConnected = Boolean(sellerFromTokens);
-
-    // 3. ml_seller_id: el campo consultable que usa el webhook.
-    let sellerId = null;
-    try {
-      sellerId = await readUserField(uid, idToken, "ml_seller_id");
-    } catch (e) { /* sin campo */ }
-    checks.mlSellerId = sellerId || null;
-
-    // 4. Cuenta de servicio de Firebase (la usa SOLO el webhook).
+    // 2. Cuenta de servicio de Firebase (la usa SOLO el webhook).
     try {
       await getAccessToken();
       checks.firebaseAdmin = "ok";
@@ -59,17 +41,41 @@ exports.handler = async (event) => {
       checks.firebaseAdminError = String((e && e.message) || e).slice(0, 180);
     }
 
-    // 5. La busqueda exacta que hace el webhook: seller -> uid.
-    if (sellerId && checks.firebaseAdmin === "ok") {
+    // 3. Una revision por CADA cuenta de ML: tokens guardados, seller id en su
+    // campo consultable, y la busqueda exacta que hace el webhook.
+    checks.accounts = [];
+    for (const mlId of ML_ACCOUNTS) {
+      const acc = { id: mlId, connected: false, sellerId: null, resolves: "omitido" };
+
+      let sellerFromTokens = null;
       try {
-        const hit = await adminQueryUsersByField("ml_seller_id", sellerId);
-        checks.sellerResolves = hit ? (hit.uid === uid ? "ok" : "otro-uid") : "no-encontrado";
-      } catch (e) {
-        checks.sellerResolves = "falla";
+        const encBundle = await readUserField(uid, idToken, "secret_" + mlId);
+        if (encBundle) {
+          const parsed = JSON.parse(decrypt(encBundle));
+          sellerFromTokens = parsed.user_id ? String(parsed.user_id) : null;
+        }
+      } catch (e) { /* cuenta no conectada */ }
+      acc.connected = Boolean(sellerFromTokens);
+
+      try {
+        acc.sellerId = await readUserField(uid, idToken, mlSellerField(mlId));
+      } catch (e) { /* sin campo */ }
+
+      if (acc.sellerId && checks.firebaseAdmin === "ok") {
+        try {
+          const hit = await adminQueryUsersByField(mlSellerField(mlId), acc.sellerId);
+          acc.resolves = hit ? (hit.uid === uid ? "ok" : "otro-uid") : "no-encontrado";
+        } catch (e) {
+          acc.resolves = "falla";
+        }
       }
-    } else {
-      checks.sellerResolves = "omitido";
+      checks.accounts.push(acc);
     }
+
+    // Resumen para el veredicto: cuantas cuentas quedaron listas para notificar.
+    checks.mlConnected = checks.accounts.some((a) => a.connected);
+    checks.accountsReady = checks.accounts.filter((a) => a.connected && a.resolves === "ok").length;
+    checks.accountsConnected = checks.accounts.filter((a) => a.connected).length;
 
     return json(200, { ok: true, checks });
   } catch (error) {
