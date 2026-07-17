@@ -74,8 +74,10 @@
     }
 
     if (nextView === "ecommerce") {
-      // Entrar a E-Commerce siempre muestra el selector de negocios (las tarjetas).
+      // Entrar a E-Commerce siempre muestra el selector de negocios (las tarjetas
+      // de primer nivel): se cierra tanto el panel como el negocio abierto.
       state.commerce.selectedApp = null;
+      state.commerce.selectedGroup = null;
       window.clearInterval(state.commerce.refreshTimer);
       state.commerce.refreshTimer = 0;
       window.setTimeout(renderCommerceDashboard, 30);

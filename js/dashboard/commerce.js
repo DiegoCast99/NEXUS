@@ -446,24 +446,46 @@
 
   // ---- Render ------------------------------------------------
 
+  // Estado de una tarjeta: para un contenedor resume cuantas plataformas tiene
+  // conectadas; para un negocio suelto, si tiene datos.
+  function commerceCardStatus(app) {
+    if (S.isCommerceGroup(app.id)) {
+      const hijos = S.getCommerceChildren(app.id);
+      const conectadas = hijos.filter((h) => {
+        const c = getCommerceConfig(h.id);
+        return c.hasToken || state.commerce.snapshots[h.id]?.source === "live";
+      }).length;
+      return conectadas
+        ? `${conectadas} de ${hijos.length} conectadas`
+        : `${hijos.length} plataformas`;
+    }
+    const snapshot = state.commerce.snapshots[app.id];
+    const config = getCommerceConfig(app.id);
+    if (isMLApp(app.id) && config.hasToken) return "Conectado (OAuth)";
+    if (snapshot?.source === "live") return "Conectado";
+    if (snapshot?.source === "demo") return "Demo activo";
+    return "Sin datos";
+  }
+
+  // Muestra las plataformas del contenedor abierto, o los negocios de primer
+  // nivel si no hay ninguno abierto.
   function renderCommerceSwitcher() {
     if (!elements.commerceAppSwitcher) return;
-    elements.commerceAppSwitcher.innerHTML = commerceApps.map((app) => {
-      const snapshot = state.commerce.snapshots[app.id];
-      const config = getCommerceConfig(app.id);
-      var source;
-      if (app.id === "mercadolibre" && config.hasToken) source = "Conectado (OAuth)";
-      else if (snapshot?.source === "live") source = "Conectado";
-      else if (snapshot?.source === "demo") source = "Demo activo";
-      else source = "Sin datos";
-      return `
-        <button class="commerce-app-button ${state.commerce.selectedApp === app.id ? "is-active" : ""}" type="button" data-commerce-app="${app.id}">
-          <i style="background:linear-gradient(90deg, ${app.accent}, var(--cyan))"></i>
-          <b>${escapeHtml(app.name)}</b>
-          <small>${escapeHtml(app.model)} · ${source}</small>
-        </button>
-      `;
-    }).join("");
+    const grupo = state.commerce.selectedGroup;
+    const apps = grupo ? S.getCommerceChildren(grupo) : S.getCommerceRoots();
+
+    elements.commerceAppSwitcher.innerHTML = apps.map((app) => `
+      <button class="commerce-app-button ${state.commerce.selectedApp === app.id ? "is-active" : ""}" type="button" data-commerce-app="${app.id}">
+        <i style="background:linear-gradient(90deg, ${app.accent}, var(--cyan))"></i>
+        <b>${escapeHtml(app.name)}</b>
+        <small>${escapeHtml(app.model)} · ${commerceCardStatus(app)}</small>
+      </button>
+    `).join("");
+
+    // Volver al primer nivel solo tiene sentido dentro de un contenedor, y con
+    // el panel de datos cerrado (si esta abierto manda su propio "volver").
+    const enTarjetas = !state.commerce.selectedApp;
+    elements.commerceGroupBack?.classList.toggle("is-hidden", !grupo || !enTarjetas);
   }
 
   function updateMLPanel() {
@@ -728,6 +750,21 @@
   function selectCommerceApp(id) {
     const app = getCommerceApp(id);
     if (!app) return;
+
+    // Contenedor (ej: Alpha Fitness): no abre panel, muestra sus plataformas.
+    if (S.isCommerceGroup(id)) {
+      state.commerce.selectedGroup = id;
+      state.commerce.selectedApp = null;
+      setCommerceMessage("", "");
+      setMlMessage("", "");
+      renderCommerceDashboard();
+      S.updateTopbarForView("ecommerce");
+      S.animateActivePanel();
+      return;
+    }
+
+    // Plataforma dentro de un negocio: recordar el contenedor para el "volver".
+    state.commerce.selectedGroup = app.parent || null;
     state.commerce.selectedApp = id;
     state.commerce.activeApp = id;
     S.safeSetItem("nexus.ecommerce.activeApp.v1", id);
@@ -746,11 +783,25 @@
     }
   }
 
+  // Cierra el panel abierto. Si la plataforma pertenece a un negocio, vuelve a
+  // las plataformas de ese negocio (no al primer nivel).
   function clearSelectedCommerceApp() {
     state.commerce.selectedApp = null;
     window.NexusPlatformNav?.exitPlatform();
     window.clearInterval(state.commerce.refreshTimer);
     state.commerce.refreshTimer = 0;
+    setCommerceMessage("", "");
+    setMlMessage("", "");
+    renderCommerceDashboard();
+    S.updateTopbarForView("ecommerce");
+    S.animateActivePanel();
+  }
+
+  // Sale del negocio contenedor y vuelve al listado de primer nivel.
+  function clearSelectedCommerceGroup() {
+    state.commerce.selectedGroup = null;
+    state.commerce.selectedApp = null;
+    window.NexusPlatformNav?.exitPlatform();
     setCommerceMessage("", "");
     setMlMessage("", "");
     renderCommerceDashboard();
@@ -774,7 +825,7 @@
 
   Object.assign(S, {
     aggregateCommerceProducts, aggregateCommerceTrend, buildDemoCommerceSnapshot, buildMLAuthUrl,
-    clearSelectedCommerceApp, createCommerceSnapshot, disconnectML, ensureMLLiveDefaults, fetchCommerceData, fetchMLOrders,
+    clearSelectedCommerceApp, clearSelectedCommerceGroup, createCommerceSnapshot, disconnectML, ensureMLLiveDefaults, fetchCommerceData, fetchMLOrders,
     handleMlOAuthReturn, normalizeCommerceOrder, normalizeMLOrder,
     populateCommerceConfigForm, readCommerceConfigFromForm, renderCommerceDashboard, renderCommerceSwitcher,
     applyPeriodChange, getPeriodRange, renderPeriodBar,

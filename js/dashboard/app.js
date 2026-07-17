@@ -133,6 +133,10 @@
     elements.commerceBackButton?.addEventListener("click", () => {
       clearSelectedCommerceApp();
     });
+    // Volver del negocio (Alpha Fitness) al listado de negocios.
+    elements.commerceGroupBack?.addEventListener("click", () => {
+      S.clearSelectedCommerceGroup();
+    });
     elements.mlConnectButton?.addEventListener("click", startMLOAuth);
     elements.mlSyncButton?.addEventListener("click", () => syncMercadoLibre());
     elements.mlDemoButton?.addEventListener("click", () => syncCommerce({ demo: true }));

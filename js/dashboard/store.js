@@ -240,13 +240,40 @@
     ["Alpha Fitness / Prospecting", "cmp-101", 0, 1220, 194100, 5120, 91, 7120, 5.84]
   ];
 
+  // Negocios y plataformas del modulo E-Commerce.
+  //
+  // `parent` arma la jerarquia: un negocio con hijos es un CONTENEDOR (al
+  // entrar muestra sus plataformas) y los hijos son los que abren el panel
+  // de datos. Sin `parent` el negocio abre su panel directo.
+  //
+  // OJO: los `id` son la llave de la config, los snapshots y —en el caso de
+  // mercadolibre— de los tokens en Firestore y del webhook. NO renombrarlos:
+  // cambiar "mercadolibre" romperia la conexion OAuth y las notificaciones.
   const commerceApps = [
-    { id: "kairos", name: "Kairos", model: "E-commerce operativo", accent: "#ff1a9d" },
-    { id: "billion", name: "Billion", model: "Marca digital", accent: "#52e1ff" },
-    { id: "kiwifi", name: "KiwiFi", model: "Tienda / checkout", accent: "#31e6ad" },
-    { id: "mercadolibre", name: "Mercado Libre", model: "Marketplace", accent: "#ffe600" },
-    { id: "alfafitness", name: "Alfa Fitness Web", model: "Tienda propia", accent: "#a855f7" }
+    { id: "kairos", name: "KAIROS", model: "E-commerce operativo", accent: "#ff1a9d" },
+    { id: "billion", name: "BILLION", model: "Marca digital", accent: "#52e1ff" },
+    { id: "kiwifi", name: "KIWIFI", model: "Tienda / checkout", accent: "#31e6ad" },
+    { id: "alfafitness", name: "ALPHA FITNESS", model: "Tienda propia", accent: "#a855f7" },
+    // --- Plataformas de Alpha Fitness ---
+    { id: "mercadolibre", name: "MERCADO LIBRE", model: "Marketplace Uruguay", accent: "#ffe600", parent: "alfafitness" },
+    { id: "mercadolivre", name: "MERCADO LIVRE", model: "Marketplace Brasil", accent: "#ffe600", parent: "alfafitness" },
+    { id: "amazon", name: "AMAZON", model: "Marketplace", accent: "#ff9900", parent: "alfafitness" },
+    { id: "shopee", name: "SHOPEE", model: "Marketplace", accent: "#ee4d2d", parent: "alfafitness" }
   ];
+
+  // Negocios de primer nivel (los que se ven al entrar a E-Commerce).
+  function getCommerceRoots() {
+    return commerceApps.filter((app) => !app.parent);
+  }
+
+  // Plataformas de un negocio contenedor.
+  function getCommerceChildren(id) {
+    return commerceApps.filter((app) => app.parent === id);
+  }
+
+  function isCommerceGroup(id) {
+    return getCommerceChildren(id).length > 0;
+  }
 
   const demoCommerceData = {
     kairos: [
@@ -372,6 +399,7 @@
     metaEventList: document.getElementById("metaEventList"),
     metaTrendChart: document.getElementById("metaTrendChart"),
     commerceAppSwitcher: document.getElementById("commerceAppSwitcher"),
+    commerceGroupBack: document.getElementById("commerceGroupBack"),
     commerceWorkspace: document.getElementById("commerceWorkspace"),
     commerceBackButton: document.getElementById("commerceBackButton"),
     mlConnectPanel: document.getElementById("mlConnectPanel"),
@@ -463,6 +491,9 @@
     commerce: {
       activeApp: localStorage.getItem("nexus.ecommerce.activeApp.v1") || "kairos",
       selectedApp: null, // null = pantalla de selección (tarjetas); id = adentro de un negocio
+      // Contenedor abierto (ej: "alfafitness"). null = primer nivel.
+      // Con selectedGroup y sin selectedApp se ven las plataformas del negocio.
+      selectedGroup: null,
       configs: loadCommerceConfigs(),
       snapshots: loadCommerceSnapshots(),
       syncing: false,
@@ -850,11 +881,30 @@
 
     if (view === "ecommerce") {
       const commerceApp = state.commerce.selectedApp ? getCommerceApp(state.commerce.selectedApp) : null;
-      elements.viewTitle.textContent = commerceApp ? `E-Commerce / ${commerceApp.name}` : "E-Commerce";
-      document.title = commerceApp ? `Nexus Dashboard - E-Commerce / ${commerceApp.name}` : "Nexus Dashboard - E-Commerce";
-      elements.viewDescription.textContent = commerceApp
-        ? `Ventas, pedidos, productos y facturación de ${commerceApp.name}.`
-        : "Elegí un negocio para ver ventas, pedidos, productos y facturación.";
+      const group = state.commerce.selectedGroup ? getCommerceApp(state.commerce.selectedGroup) : null;
+
+      // Panel abierto: "E-Commerce / Alpha Fitness / Mercado Libre".
+      if (commerceApp) {
+        const ruta = group && group.id !== commerceApp.id
+          ? `${group.name} / ${commerceApp.name}`
+          : commerceApp.name;
+        elements.viewTitle.textContent = `E-Commerce / ${ruta}`;
+        document.title = `Nexus Dashboard - E-Commerce / ${ruta}`;
+        elements.viewDescription.textContent = `Ventas, pedidos, productos y facturación de ${commerceApp.name}.`;
+        return;
+      }
+
+      // Adentro de un negocio, eligiendo plataforma.
+      if (group) {
+        elements.viewTitle.textContent = `E-Commerce / ${group.name}`;
+        document.title = `Nexus Dashboard - E-Commerce / ${group.name}`;
+        elements.viewDescription.textContent = `Elegí una plataforma de ${group.name} para ver sus ventas y pedidos.`;
+        return;
+      }
+
+      elements.viewTitle.textContent = "E-Commerce";
+      document.title = "Nexus Dashboard - E-Commerce";
+      elements.viewDescription.textContent = "Elegí un negocio para ver ventas, pedidos, productos y facturación.";
       return;
     }
 
@@ -880,7 +930,8 @@
     STORAGE_KEY, animateActivePanel, categories, categoryColors, chartTargets, collectNexusData,
     commerceApps, compactNumber, currency, currentMonth, decimalNumber, defaultCommerceConfig,
     defaultMetaConfig, defaultMetaPlatformState, demoCommerceData, demoMetaRecords, elements, escapeHtml,
-    exportNexusData, formatDate, formatMetaDate, getCommerceApp, getCommerceConfig, getCommerceSnapshot,
+    exportNexusData, formatDate, formatMetaDate, getCommerceApp, getCommerceChildren, getCommerceConfig,
+    getCommerceRoots, getCommerceSnapshot, isCommerceGroup,
     getFilteredMovements, getMetaPlatform, getMetaPlatformState, hasCommerceConnection, importNexusData, integerNumber, isMLApp,
     isValidMovement, labelMonth, loadActiveMetaPlatform, loadCommerceConfigs, loadCommerceSnapshots, loadMetaConfig,
     loadMetaPlatforms, loadMetaSnapshot, loadMovements, mainSections, metaPlatforms, moneyWithCents,
