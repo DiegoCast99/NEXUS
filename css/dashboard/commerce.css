@@ -236,3 +236,28 @@
     width: 100%;
   }
 }
+
+/* ============================================================
+   Barra del workspace: volver + selector de cuenta
+   ============================================================ */
+.workspace-toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+/* El boton ya trae su margen; dentro de la barra lo maneja el gap. */
+.workspace-toolbar .platform-back-button {
+  margin-bottom: 0;
+}
+
+.ml-account-field {
+  min-width: 210px;
+}
+
+/* Explicita: commerce.css carga despues de finance.css (donde vive .is-hidden). */
+.ml-account-field.is-hidden {
+  display: none;
+}

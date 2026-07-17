@@ -74,6 +74,25 @@ function getIdToken(event) {
   return m[1].trim();
 }
 
+// --- Cuentas de Mercado Libre --------------------------------
+// Cada cuenta guarda sus tokens en su propio campo (secret_mercadolibre,
+// secret_mercadolibre2). La primera es la historica: su nombre NO cambia,
+// asi los tokens ya guardados y el webhook siguen funcionando.
+const ML_ACCOUNTS = ["mercadolibre", "mercadolibre2"];
+
+// Devuelve la cuenta pedida solo si esta en la lista (evita que un cliente
+// manipulado lea un campo arbitrario de Firestore).
+function mlAccount(raw) {
+  const id = String(raw || "mercadolibre");
+  if (ML_ACCOUNTS.indexOf(id) === -1) throw new Error("Cuenta de ML invalida.");
+  return id;
+}
+
+// Campo del seller id consultable por el webhook, por cuenta.
+function mlSellerField(account) {
+  return mlAccount(account) === "mercadolibre" ? "ml_seller_id" : "ml_seller_id_2";
+}
+
 // Convierte un nombre de proveedor en un nombre de campo Firestore seguro.
 // "meta" -> secret_meta ; "commerce:kairos" -> secret_commerce_kairos
 function providerField(provider) {
@@ -161,6 +180,9 @@ function json(statusCode, obj) {
 }
 
 module.exports = {
+  ML_ACCOUNTS,
+  mlAccount,
+  mlSellerField,
   encrypt,
   decrypt,
   uidFromIdToken,

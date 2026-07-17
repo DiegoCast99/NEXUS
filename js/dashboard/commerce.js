@@ -199,7 +199,27 @@
       + "&state=" + encodeURIComponent(mlState);
   }
 
+  // Cuenta de Mercado Libre abierta ahora. Todo el motor de ML (config, tokens,
+  // snapshots, periodo, auto-sync) trabaja sobre esta, para que las cuentas no
+  // se pisen entre si. Fuera del panel de ML cae en la primera.
+  function activeMLId() {
+    var id = state.commerce.selectedApp || state.commerce.activeApp;
+    return isMLApp(id) ? id : "mercadolibre";
+  }
+
+  // La cuenta que se esta conectando viaja en el `state` del OAuth, porque al
+  // volver de Mercado Libre la pagina se recarga y se pierde el estado en RAM.
+  function mlConnectingAccount(id) {
+    try {
+      if (id) sessionStorage.setItem("nexus_ml_account", id);
+      return sessionStorage.getItem("nexus_ml_account") || "mercadolibre";
+    } catch (e) {
+      return "mercadolibre";
+    }
+  }
+
   function startMLOAuth() {
+    mlConnectingAccount(activeMLId());
     window.location.href = buildMLAuthUrl();
   }
 
@@ -220,17 +240,18 @@
 
     try {
       var api = S.requireSecureApi();
-      var result = await api.mlSaveTokens(encBundle);
-      state.commerce.configs.mercadolibre = Object.assign(
-        state.commerce.configs.mercadolibre || S.defaultCommerceConfig(),
+      var cuenta = mlConnectingAccount();
+      var result = await api.mlSaveTokens(encBundle, cuenta);
+      state.commerce.configs[cuenta] = Object.assign(
+        state.commerce.configs[cuenta] || S.defaultCommerceConfig(),
         { hasToken: true, mlUserId: (result && result.userId) || "" }
       );
       saveCommerceConfigs();
-      selectCommerceApp("mercadolibre");
+      selectCommerceApp(cuenta);
       setMlMessage("Cuenta de Mercado Libre conectada exitosamente.", "success");
     } catch (err) {
       console.error("ML OAuth save error:", err);
-      selectCommerceApp("mercadolibre");
+      selectCommerceApp(mlConnectingAccount());
       setMlMessage("Error al guardar tokens: " + (err.message || err), "error");
     }
   }
@@ -302,7 +323,7 @@
 
   // Devuelve el rango elegido como fechas YYYY-MM-DD (inclusive).
   function getPeriodRange(config) {
-    var cfg = config || getCommerceConfig("mercadolibre");
+    var cfg = config || getCommerceConfig(activeMLId());
     var preset = cfg.period || "30";
     var hoy = new Date();
     var to = toDateInput(hoy);
@@ -327,9 +348,33 @@
     return f[2] + "/" + f[1] + " al " + t[2] + "/" + t[1];
   }
 
+  // Dibuja el selector de cuentas de ML y marca la abierta. Solo se ve dentro
+  // del panel de Mercado Libre (las otras plataformas no tienen cuentas).
+  function renderMLAccountSelect() {
+    var esML = isMLApp(state.commerce.selectedApp);
+    elements.mlAccountField?.classList.toggle("is-hidden", !esML);
+    if (!esML || !elements.mlAccountSelect) return;
+
+    var actual = activeMLId();
+    var html = S.mlAccounts().map(function (acc) {
+      var cfg = getCommerceConfig(acc.id);
+      var estado = cfg.hasToken ? "" : " (sin conectar)";
+      return '<option value="' + acc.id + '">' + escapeHtml(acc.name + estado) + "</option>";
+    }).join("");
+    if (elements.mlAccountSelect.innerHTML !== html) elements.mlAccountSelect.innerHTML = html;
+    elements.mlAccountSelect.value = actual;
+  }
+
+  // Cambia de cuenta: es entrar a otra "app", asi que reusa selectCommerceApp
+  // (que ya trae los datos de esa cuenta y reprograma el auto-sync).
+  function selectMLAccount(id) {
+    if (!isMLApp(id) || id === activeMLId()) return;
+    selectCommerceApp(id);
+  }
+
   // Refleja en la UI el periodo guardado (y muestra las fechas solo si es custom).
   function renderPeriodBar(config, snapshot) {
-    var cfg = config || getCommerceConfig("mercadolibre");
+    var cfg = config || getCommerceConfig(activeMLId());
     var preset = cfg.period || "30";
     var esCustom = preset === "custom";
     var range = getPeriodRange(cfg);
@@ -344,7 +389,7 @@
 
   // Guarda el periodo elegido y vuelve a traer los datos de ese rango.
   function applyPeriodChange() {
-    var cfg = getCommerceConfig("mercadolibre");
+    var cfg = getCommerceConfig(activeMLId());
     var preset = elements.commercePeriod?.value || "30";
     var next = { ...cfg, period: preset };
 
@@ -352,7 +397,7 @@
       next.periodFrom = elements.commercePeriodFrom?.value || getPeriodRange(cfg).from;
       next.periodTo = elements.commercePeriodTo?.value || toDateInput();
     }
-    state.commerce.configs.mercadolibre = next;
+    state.commerce.configs[activeMLId()] = next;
     saveCommerceConfigs();
     renderCommerceDashboard();
 
@@ -368,13 +413,13 @@
   function isoTo(d) { return d + "T23:59:59.999-00:00"; }
 
   async function getMLUserId(api) {
-    var config = getCommerceConfig("mercadolibre");
+    var config = getCommerceConfig(activeMLId());
     var userId = config.mlUserId || "";
     if (!userId) {
-      var meResult = await api.mlApi("/users/me");
+      var meResult = await api.mlApi("/users/me", "GET", null, activeMLId());
       userId = String((meResult.payload || {}).id || "");
       if (userId) {
-        state.commerce.configs.mercadolibre.mlUserId = userId;
+        state.commerce.configs[activeMLId()].mlUserId = userId;
         saveCommerceConfigs();
       }
     }
@@ -397,7 +442,7 @@
         "&order.date_created.from=" + encodeURIComponent(isoFrom(r.from)) +
         "&order.date_created.to=" + encodeURIComponent(isoTo(r.to)) +
         "&sort=date_desc&limit=" + limit + "&offset=" + offset;
-      var result = await api.mlApi(endpoint);
+      var result = await api.mlApi(endpoint, "GET", null, activeMLId());
       var payload = result.payload || {};
       var results = payload.results || [];
       allOrders = allOrders.concat(results);
@@ -422,7 +467,7 @@
       var endpoint = "/users/" + userId + "/items_visits" +
         "?date_from=" + encodeURIComponent(isoFrom(r.from)) +
         "&date_to=" + encodeURIComponent(isoTo(r.to));
-      var result = await api.mlApi(endpoint);
+      var result = await api.mlApi(endpoint, "GET", null, activeMLId());
       var payload = result.payload || {};
       return Number(payload.total_visits) || 0;
     } catch (e) {
@@ -436,8 +481,8 @@
     window.clearInterval(state.commerce.mlRefreshTimer);
     state.commerce.mlRefreshTimer = 0;
     state.commerce.failCount = 0;
-    state.commerce.configs.mercadolibre = S.defaultCommerceConfig();
-    delete state.commerce.snapshots.mercadolibre;
+    state.commerce.configs[activeMLId()] = S.defaultCommerceConfig();
+    delete state.commerce.snapshots[activeMLId()];
     saveCommerceConfigs();
     saveCommerceSnapshots();
     setMlMessage("Mercado Libre desconectado.", "success");
@@ -489,7 +534,8 @@
   }
 
   function updateMLPanel() {
-    var config = getCommerceConfig("mercadolibre");
+    renderMLAccountSelect();
+    var config = getCommerceConfig(activeMLId());
     var connected = Boolean(config.hasToken);
 
     elements.mlConnectButton?.classList.toggle("is-hidden", connected);
@@ -679,7 +725,7 @@
   // ---- Sync Mercado Libre ------------------------------------
 
   async function syncMercadoLibre({ silent = false } = {}) {
-    var config = getCommerceConfig("mercadolibre");
+    var config = getCommerceConfig(activeMLId());
     if (!config.hasToken) {
       setMlMessage("Conecta tu cuenta de Mercado Libre primero.", "error");
       renderCommerceDashboard();
@@ -702,8 +748,9 @@
           fetchMLVisits(range)
         ]);
         var next = createCommerceSnapshot(orders, "live", { visits: visits, range: range });
-        var prev = state.commerce.snapshots.mercadolibre;
-        state.commerce.snapshots.mercadolibre = next;
+        var mlId = activeMLId();
+        var prev = state.commerce.snapshots[mlId];
+        state.commerce.snapshots[mlId] = next;
         // Con el modo "en vivo" esto corre cada minuto: si no hay ventas
         // nuevas, no reescribir (evita subir lo mismo a Firestore sin parar).
         if (!prev || ordersSignature(prev.orders) !== ordersSignature(next.orders)) {
@@ -740,8 +787,8 @@
   const scheduleMLRefresh = S.createRefreshScheduler({
     slice: () => state.commerce,
     timerKey: "mlRefreshTimer",
-    getIntervalSeconds: () => getCommerceConfig("mercadolibre").refreshInterval,
-    isEnabled: () => Boolean(getCommerceConfig("mercadolibre").hasToken),
+    getIntervalSeconds: () => getCommerceConfig(activeMLId()).refreshInterval,
+    isEnabled: () => Boolean(getCommerceConfig(activeMLId()).hasToken),
     sync: () => syncMercadoLibre({ silent: true })
   });
 
@@ -815,7 +862,7 @@
   // desde init() (app.js), DESPUES de rehydrateState, para que la config
   // bajada de la nube no pise el default.
   function ensureMLLiveDefaults() {
-    var cfg = state.commerce.configs.mercadolibre;
+    var cfg = state.commerce.configs[activeMLId()];
     if (!cfg) return;
     if (!cfg.refreshChoice && (!cfg.refreshInterval || cfg.refreshInterval === "0")) {
       cfg.refreshInterval = "60";
@@ -828,7 +875,7 @@
     clearSelectedCommerceApp, clearSelectedCommerceGroup, createCommerceSnapshot, disconnectML, ensureMLLiveDefaults, fetchCommerceData, fetchMLOrders,
     handleMlOAuthReturn, normalizeCommerceOrder, normalizeMLOrder,
     populateCommerceConfigForm, readCommerceConfigFromForm, renderCommerceDashboard, renderCommerceSwitcher,
-    applyPeriodChange, getPeriodRange, renderPeriodBar,
+    applyPeriodChange, getPeriodRange, renderPeriodBar, selectMLAccount,
     scheduleCommerceRefresh, scheduleMLRefresh, selectCommerceApp, setCommerceMessage, setMlMessage,
     startMLOAuth, syncCommerce, syncMercadoLibre,
   });

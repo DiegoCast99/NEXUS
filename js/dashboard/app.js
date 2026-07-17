@@ -195,6 +195,8 @@
         "success"
       );
     });
+    // Cambiar de cuenta de Mercado Libre desde el panel.
+    elements.mlAccountSelect?.addEventListener("change", () => S.selectMLAccount(elements.mlAccountSelect.value));
     // Periodo de las metricas de ML: al cambiarlo se re-consulta ese rango.
     elements.commercePeriod?.addEventListener("change", () => S.applyPeriodChange());
     elements.commercePeriodFrom?.addEventListener("change", () => S.applyPeriodChange());

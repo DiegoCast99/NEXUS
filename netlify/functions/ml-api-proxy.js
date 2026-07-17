@@ -19,7 +19,8 @@ const {
   uidFromIdToken,
   getIdToken,
   parseBody,
-  json
+  json,
+  mlAccount
 } = require("./_shared");
 
 const ML_API = "https://api.mercadolibre.com";
@@ -31,13 +32,15 @@ exports.handler = async (event) => {
   try {
     const idToken = getIdToken(event);
     const uid = uidFromIdToken(idToken);
-    const { endpoint, method, body: reqBody } = parseBody(event);
+    const { endpoint, method, body: reqBody, account } = parseBody(event);
+    const mlId = mlAccount(account);
+    const field = "secret_" + mlId;
 
     if (!endpoint || typeof endpoint !== "string") {
       return json(400, { error: "Falta el endpoint de ML." });
     }
 
-    const enc = await readUserField(uid, idToken, "secret_mercadolibre");
+    const enc = await readUserField(uid, idToken, field);
     if (!enc) {
       return json(400, { error: "No hay tokens de ML. Conecta tu cuenta primero." });
     }
@@ -46,7 +49,7 @@ exports.handler = async (event) => {
     const now = Math.floor(Date.now() / 1000);
     const expiresAt = (tokens.obtained_at || 0) + (tokens.expires_in || 0) - REFRESH_BUFFER_SECS;
     if (now >= expiresAt && tokens.refresh_token) {
-      tokens = await refreshToken(tokens, uid, idToken);
+      tokens = await refreshToken(tokens, uid, idToken, field);
     }
 
     const url = ML_API + (endpoint.startsWith("/") ? endpoint : "/" + endpoint);
@@ -77,7 +80,7 @@ exports.handler = async (event) => {
   }
 };
 
-async function refreshToken(tokens, uid, idToken) {
+async function refreshToken(tokens, uid, idToken, field) {
   const appId = process.env.ML_APP_ID;
   const clientSecret = process.env.ML_CLIENT_SECRET;
   if (!appId || !clientSecret) throw new Error("Faltan ML_APP_ID / ML_CLIENT_SECRET.");
@@ -106,6 +109,6 @@ async function refreshToken(tokens, uid, idToken) {
     obtained_at: Math.floor(Date.now() / 1000)
   };
 
-  await writeUserField(uid, idToken, "secret_mercadolibre", encrypt(JSON.stringify(fresh)));
+  await writeUserField(uid, idToken, field, encrypt(JSON.stringify(fresh)));
   return fresh;
 }

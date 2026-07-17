@@ -18,7 +18,9 @@ const {
   uidFromIdToken,
   getIdToken,
   parseBody,
-  json
+  json,
+  mlAccount,
+  mlSellerField
 } = require("./_shared");
 
 exports.handler = async (event) => {
@@ -26,7 +28,8 @@ exports.handler = async (event) => {
   try {
     const idToken = getIdToken(event);
     const uid = uidFromIdToken(idToken);
-    const { encBundle } = parseBody(event);
+    const { encBundle, account } = parseBody(event);
+    const mlId = mlAccount(account);
 
     if (!encBundle || typeof encBundle !== "string") {
       return json(400, { error: "Falta encBundle." });
@@ -42,10 +45,10 @@ exports.handler = async (event) => {
       return json(400, { error: "El bundle no contiene los tokens esperados." });
     }
 
-    await writeUserField(uid, idToken, "secret_mercadolibre", encBundle);
+    await writeUserField(uid, idToken, "secret_" + mlId, encBundle);
 
     if (parsed.user_id) {
-      await writeUserField(uid, idToken, "ml_seller_id", String(parsed.user_id));
+      await writeUserField(uid, idToken, mlSellerField(mlId), String(parsed.user_id));
     }
 
     return json(200, { ok: true, userId: parsed.user_id || null });

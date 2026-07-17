@@ -16,6 +16,10 @@ const { sendPush } = require("./_webpush");
 
 const MAX_NOTIFIED = 60;
 
+// Campos donde vive el seller id de cada cuenta de ML conectada. El webhook no
+// sabe de que cuenta viene la venta, asi que los prueba todos.
+const ML_SELLER_FIELDS = ["ml_seller_id", "ml_seller_id_2"];
+
 function ok() {
   return { statusCode: 200, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ok: true }) };
 }
@@ -54,8 +58,13 @@ async function handleNotification(body) {
   const orderId = (resource.match(/\/orders\/(\d+)/) || [])[1] || resource;
   if (!orderId) return;
 
-  // seller -> uid
-  const hit = await adminQueryUsersByField("ml_seller_id", sellerId);
+  // seller -> uid. La venta puede venir de cualquiera de las cuentas de ML
+  // conectadas, y cada una guarda su seller en su propio campo consultable.
+  let hit = null;
+  for (const field of ML_SELLER_FIELDS) {
+    hit = await adminQueryUsersByField(field, sellerId);
+    if (hit) break;
+  }
   if (!hit) {
     console.warn("ml-notifications: seller " + sellerId + " sin usuario en Firestore");
     return;

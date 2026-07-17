@@ -60,12 +60,13 @@
       return call("commerce-fetch", params || {});
     },
     // Guarda el bundle cifrado de tokens de ML (viene del OAuth callback).
-    mlSaveTokens: function (encBundle) {
-      return call("ml-save-tokens", { encBundle: encBundle });
+    // `account` elige la cuenta (mercadolibre | mercadolibre2).
+    mlSaveTokens: function (encBundle, account) {
+      return call("ml-save-tokens", { encBundle: encBundle, account: account });
     },
-    // Proxy seguro a la API de Mercado Libre.
-    mlApi: function (endpoint, method, body) {
-      return call("ml-api-proxy", { endpoint: endpoint, method: method || "GET", body: body });
+    // Proxy seguro a la API de Mercado Libre, sobre la cuenta indicada.
+    mlApi: function (endpoint, method, body, account) {
+      return call("ml-api-proxy", { endpoint: endpoint, method: method || "GET", body: body, account: account });
     },
     // Guarda la suscripción Web Push del dispositivo.
     savePushSub: function (subscription, sellerId) {

@@ -256,6 +256,9 @@
     { id: "alfafitness", name: "ALPHA FITNESS", model: "Tienda propia", accent: "#a855f7" },
     // --- Plataformas de Alpha Fitness ---
     { id: "mercadolibre", name: "MERCADO LIBRE", model: "Marketplace Uruguay", accent: "#ffe600", parent: "alfafitness" },
+    // Segunda cuenta de ML Uruguay. `hidden` = no aparece como tarjeta propia:
+    // se entra por "MERCADO LIBRE" y se cambia con el selector de cuenta.
+    { id: "mercadolibre2", name: "MERCADO LIBRE 2", model: "Marketplace Uruguay", accent: "#ffe600", parent: "alfafitness", hidden: true },
     { id: "mercadolivre", name: "MERCADO LIVRE", model: "Marketplace Brasil", accent: "#ffe600", parent: "alfafitness" },
     { id: "amazon", name: "AMAZON", model: "Marketplace", accent: "#ff9900", parent: "alfafitness" },
     { id: "shopee", name: "SHOPEE", model: "Marketplace", accent: "#ee4d2d", parent: "alfafitness" }
@@ -266,9 +269,21 @@
     return commerceApps.filter((app) => !app.parent);
   }
 
-  // Plataformas de un negocio contenedor.
+  // Plataformas de un negocio contenedor (sin las ocultas: las cuentas extra
+  // de una misma plataforma se eligen con el selector, no con tarjeta propia).
   function getCommerceChildren(id) {
-    return commerceApps.filter((app) => app.parent === id);
+    return commerceApps.filter((app) => app.parent === id && !app.hidden);
+  }
+
+  // Cuentas de Mercado Libre Uruguay. La primera es la historica: su id es la
+  // llave de secret_mercadolibre en Firestore y del webhook. NO renombrarla.
+  const ML_ACCOUNTS = [
+    { id: "mercadolibre", name: "Mercado Libre 1" },
+    { id: "mercadolibre2", name: "Mercado Libre 2" }
+  ];
+
+  function mlAccounts() {
+    return ML_ACCOUNTS;
   }
 
   function isCommerceGroup(id) {
@@ -400,6 +415,8 @@
     metaTrendChart: document.getElementById("metaTrendChart"),
     commerceAppSwitcher: document.getElementById("commerceAppSwitcher"),
     commerceGroupBack: document.getElementById("commerceGroupBack"),
+    mlAccountField: document.getElementById("mlAccountField"),
+    mlAccountSelect: document.getElementById("mlAccountSelect"),
     commerceWorkspace: document.getElementById("commerceWorkspace"),
     commerceBackButton: document.getElementById("commerceBackButton"),
     mlConnectPanel: document.getElementById("mlConnectPanel"),
@@ -809,8 +826,10 @@
     return state.commerce.snapshots[id] || null;
   }
 
+  // True para cualquier cuenta de Mercado Libre (todas comparten el motor).
   function isMLApp(id) {
-    return (id || state.commerce.activeApp) === "mercadolibre";
+    const target = id || state.commerce.activeApp;
+    return ML_ACCOUNTS.some((acc) => acc.id === target);
   }
 
   function hasCommerceConnection(config = getCommerceConfig()) {
@@ -931,7 +950,7 @@
     commerceApps, compactNumber, currency, currentMonth, decimalNumber, defaultCommerceConfig,
     defaultMetaConfig, defaultMetaPlatformState, demoCommerceData, demoMetaRecords, elements, escapeHtml,
     exportNexusData, formatDate, formatMetaDate, getCommerceApp, getCommerceChildren, getCommerceConfig,
-    getCommerceRoots, getCommerceSnapshot, isCommerceGroup,
+    getCommerceRoots, getCommerceSnapshot, isCommerceGroup, mlAccounts,
     getFilteredMovements, getMetaPlatform, getMetaPlatformState, hasCommerceConnection, importNexusData, integerNumber, isMLApp,
     isValidMovement, labelMonth, loadActiveMetaPlatform, loadCommerceConfigs, loadCommerceSnapshots, loadMetaConfig,
     loadMetaPlatforms, loadMetaSnapshot, loadMovements, mainSections, metaPlatforms, moneyWithCents,

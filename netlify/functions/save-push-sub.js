@@ -16,7 +16,9 @@ const {
   uidFromIdToken,
   getIdToken,
   parseBody,
-  json
+  json,
+  ML_ACCOUNTS,
+  mlSellerField
 } = require("./_shared");
 
 const MAX_SUBS = 8;
@@ -52,25 +54,29 @@ exports.handler = async (event) => {
 
     await writeUserField(uid, idToken, "push_subs", JSON.stringify(subs));
 
-    // Seller id de ML: campo consultable que el webhook usa para resolver
-    // venta -> usuario. Si el cliente no lo mando (pasa al activar desde el
-    // iPhone, donde mlUserId no esta en el localStorage de ese dispositivo),
-    // lo derivamos de los tokens de ML ya guardados en Firestore.
-    let resolvedSeller = sellerId ? String(sellerId) : "";
-    if (!resolvedSeller) {
+    // Seller id de cada cuenta de ML conectada: es el campo consultable que usa
+    // el webhook para resolver venta -> usuario. Se deriva de los tokens
+    // guardados, asi no depende del localStorage del dispositivo que activa
+    // las notificaciones (el iPhone no tiene la cuenta en su almacenamiento).
+    const sellers = {};
+    for (const mlId of ML_ACCOUNTS) {
       try {
-        const encBundle = await readUserField(uid, idToken, "secret_mercadolibre");
-        if (encBundle) {
-          const parsed = JSON.parse(decrypt(encBundle));
-          if (parsed.user_id) resolvedSeller = String(parsed.user_id);
-        }
-      } catch (e) { /* todavia no conecto Mercado Libre */ }
-    }
-    if (resolvedSeller) {
-      await writeUserField(uid, idToken, "ml_seller_id", resolvedSeller);
+        const encBundle = await readUserField(uid, idToken, "secret_" + mlId);
+        if (!encBundle) continue;
+        const parsed = JSON.parse(decrypt(encBundle));
+        if (!parsed.user_id) continue;
+        await writeUserField(uid, idToken, mlSellerField(mlId), String(parsed.user_id));
+        sellers[mlId] = String(parsed.user_id);
+      } catch (e) { /* esa cuenta no esta conectada */ }
     }
 
-    return json(200, { ok: true, count: subs.length, sellerId: resolvedSeller || null });
+    // Fallback: si el cliente mando un seller y no habia tokens, respetarlo.
+    if (!Object.keys(sellers).length && sellerId) {
+      await writeUserField(uid, idToken, "ml_seller_id", String(sellerId));
+      sellers.mercadolibre = String(sellerId);
+    }
+
+    return json(200, { ok: true, count: subs.length, sellers });
   } catch (error) {
     return json(400, { error: error.message || "No se pudo guardar la suscripción." });
   }

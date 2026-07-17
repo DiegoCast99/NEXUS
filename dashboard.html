@@ -31,7 +31,7 @@
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260712-dedup1" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260716-period1" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260717-acct1" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260716-nav1" />
   </head>
@@ -526,9 +526,16 @@
           <div class="ecommerce-switcher" id="commerceAppSwitcher" aria-label="Seleccionar negocio e-commerce"></div>
 
           <div class="commerce-workspace is-hidden" id="commerceWorkspace">
-            <button class="ghost-button platform-back-button" type="button" id="commerceBackButton">
-              ← Volver a negocios
-            </button>
+            <div class="workspace-toolbar">
+              <button class="ghost-button platform-back-button" type="button" id="commerceBackButton">
+                ← Volver a negocios
+              </button>
+              <!-- Cambiar entre las cuentas de Mercado Libre sin salir del panel. -->
+              <label class="field compact-field ml-account-field is-hidden" id="mlAccountField">
+                <span>Cuenta</span>
+                <select id="mlAccountSelect"></select>
+              </label>
+            </div>
 
           <div class="panel commerce-config-panel is-hidden" id="mlConnectPanel" data-section="config">
             <div class="panel-heading">
@@ -772,19 +779,19 @@
     <script src="./js/firebase/config.js?v=20260709-ola1c"></script>
     <script src="./js/firebase/auth.js?v=20260709-ola1"></script>
     <script src="./js/firebase/db.js?v=20260709-ola1"></script>
-    <script src="./js/firebase/secure-api.js?v=20260713-diag1"></script>
+    <script src="./js/firebase/secure-api.js?v=20260717-acct1"></script>
     <!-- Dashboard modules -->
     <script src="./js/core/auth.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/store.js?v=20260716-group1"></script>
+    <script src="./js/dashboard/store.js?v=20260717-acct1"></script>
     <script src="./js/dashboard/integration-core.js?v=20260716-live1"></script>
     <script src="./js/dashboard/charts.js?v=20260709-ola1d"></script>
     <script src="./js/dashboard/finance.js?v=20260709-ola0mod"></script>
     <script src="./js/dashboard/meta.js?v=20260716-nav1"></script>
-    <script src="./js/dashboard/commerce.js?v=20260716-group1"></script>
+    <script src="./js/dashboard/commerce.js?v=20260717-acct1"></script>
     <script src="./js/dashboard/notifications.js?v=20260716-diag2"></script>
     <script src="./js/dashboard/platform-nav.js?v=20260716-nav1"></script>
     <script src="./js/dashboard/router.js?v=20260716-group1"></script>
-    <script src="./js/dashboard/app.js?v=20260716-group1"></script>
+    <script src="./js/dashboard/app.js?v=20260717-acct1"></script>
     <script src="./js/pwa.js?v=20260711-push1" defer></script>
   </body>
 </html>
