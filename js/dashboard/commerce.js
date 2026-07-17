@@ -82,6 +82,8 @@
       // Campos de las metricas por periodo. Van explicitos porque esta funcion
       // se re-aplica sobre ordenes ya normalizadas y descartaria lo que no lista.
       units: Number(order.units ?? order.quantity ?? 1) || 1,
+      commission: Number(order.commission ?? order.fee ?? 0) || 0,
+      shipping: Number(order.shipping ?? order.shippingCost ?? 0) || 0,
       cancelled: Boolean(order.cancelled),
       refunded: Boolean(order.refunded),
       date: String(order.date || order.createdAt || toDateInput()).slice(0, 10)
@@ -139,17 +141,27 @@
       sessions: total.sessions + order.sessions,
       orders: total.orders + 1,
       units: total.units + (order.units || 1),
+      commission: total.commission + (order.commission || 0),
+      shipping: total.shipping + (order.shipping || 0),
       cancelledCount: total.cancelledCount + (order.cancelled ? 1 : 0),
       cancelledValue: total.cancelledValue + (order.cancelled ? order.total : 0),
       refundedCount: total.refundedCount + (order.refunded ? 1 : 0),
       refundedValue: total.refundedValue + (order.refunded ? order.total : 0)
     }), {
       revenue: 0, margin: 0, sessions: 0, orders: 0, units: 0,
+      commission: 0, shipping: 0,
       cancelledCount: 0, cancelledValue: 0, refundedCount: 0, refundedValue: 0
     });
 
     // Visitas reales de ML si vinieron; si no, lo que traigan las ordenes.
     if (typeof info.visits === "number" && info.visits > 0) totals.sessions = info.visits;
+
+    // Costos al estilo del panel de ML: cargos+envio es lo que te descuentan,
+    // "recibiste" es lo que queda. Publicidad NO sale de la API de ordenes.
+    totals.costs = totals.commission + totals.shipping;
+    totals.received = totals.revenue - totals.costs;
+    totals.costsPct = totals.revenue ? (totals.costs / totals.revenue) * 100 : 0;
+    totals.receivedPct = totals.revenue ? (totals.received / totals.revenue) * 100 : 0;
 
     totals.aov = totals.orders ? totals.revenue / totals.orders : 0;
     totals.unitPrice = totals.units ? totals.revenue / totals.units : 0;
@@ -312,6 +324,10 @@
       margin: margin,
       sessions: 0,
       units: units,
+      // Comision y envio van sueltos (ademas de restados en el margen) para
+      // poder desglosar los costos, como hace el panel de ML.
+      commission: commission,
+      shipping: shipping,
       cancelled: mlOrder.status === "cancelled",
       refunded: refunded,
       date: String(mlOrder.date_created || "").slice(0, 10) || toDateInput()
@@ -685,7 +701,19 @@
         : `<div><span>Sin productos</span><b>Sincroniza ${escapeHtml(app.name)} para ver rendimiento.</b></div>`;
     }
 
+    // Panel de costos: 3 numeros + dona (solo Mercado Libre trae comision/envio).
+    elements.commerceCostsPanel?.classList.toggle("is-hidden", !ml);
+    if (ml) {
+      if (elements.commerceCostsRevenue) elements.commerceCostsRevenue.textContent = currency.format(totals.revenue || 0);
+      if (elements.commerceCostsUnits) elements.commerceCostsUnits.textContent = `${integerNumber.format(totals.units || 0)} unidades`;
+      if (elements.commerceCostsCharges) elements.commerceCostsCharges.textContent = "- " + currency.format(totals.costs || 0);
+      if (elements.commerceCostsChargesPct) elements.commerceCostsChargesPct.textContent = `${(totals.costsPct || 0).toFixed(1)}% de las ventas`;
+      if (elements.commerceCostsReceived) elements.commerceCostsReceived.textContent = currency.format(totals.received || 0);
+      if (elements.commerceCostsReceivedPct) elements.commerceCostsReceivedPct.textContent = `${(totals.receivedPct || 0).toFixed(1)}% de las ventas`;
+    }
+
     drawCommerceTrendChart();
+    if (ml) S.drawCommerceCostsChart();
   }
 
   // ---- Sync genérico -----------------------------------------

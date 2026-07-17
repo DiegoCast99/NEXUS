@@ -261,3 +261,61 @@
 .ml-account-field.is-hidden {
   display: none;
 }
+
+/* ============================================================
+   Panel de costos (dentro de Metricas): 3 numeros + dona
+   ============================================================ */
+.costs-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 4px 0 18px;
+}
+
+.costs-summary-item {
+  display: grid;
+  gap: 3px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.costs-summary-item span {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.costs-summary-item strong {
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.costs-summary-item small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.costs-summary-item.is-charge strong {
+  color: var(--danger);
+}
+
+.costs-summary-item.is-net strong {
+  color: var(--green);
+}
+
+.costs-note {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+  opacity: 0.85;
+}
+
+@media (max-width: 760px) {
+  .costs-summary {
+    grid-template-columns: 1fr;
+  }
+}

@@ -27,11 +27,11 @@
     </script>
     <link rel="stylesheet" href="./css/dashboard/base.css?v=20260709-ola4" />
     <link rel="stylesheet" href="./css/dashboard/layout.css?v=20260716-nav2" />
-    <link rel="stylesheet" href="./css/dashboard/controls.css?v=20260709-ola0css" />
+    <link rel="stylesheet" href="./css/dashboard/controls.css?v=20260717-costs1" />
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260712-dedup1" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260717-acct1" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260717-costs1" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260716-nav1" />
   </head>
@@ -726,6 +726,36 @@
               </div>
               <canvas id="commerceTrendChart" height="230"></canvas>
             </section>
+
+            <section class="panel" data-section="resumen" id="commerceCostsPanel">
+              <div class="panel-heading">
+                <div>
+                  <span>Costos</span>
+                  <h2>Cargos, envios e ingreso neto</h2>
+                </div>
+              </div>
+              <div class="costs-summary">
+                <div class="costs-summary-item">
+                  <span>Ventas concretadas</span>
+                  <strong id="commerceCostsRevenue">$0</strong>
+                  <small id="commerceCostsUnits">0 unidades</small>
+                </div>
+                <div class="costs-summary-item is-charge">
+                  <span>Cargos e inversiones</span>
+                  <strong id="commerceCostsCharges">$0</strong>
+                  <small id="commerceCostsChargesPct">0% de las ventas</small>
+                </div>
+                <div class="costs-summary-item is-net">
+                  <span>Recibiste</span>
+                  <strong id="commerceCostsReceived">$0</strong>
+                  <small id="commerceCostsReceivedPct">0% de las ventas</small>
+                </div>
+              </div>
+              <canvas id="commerceCostsChart" height="210"></canvas>
+              <div class="category-legend" id="commerceCostsLegend"></div>
+              <p class="costs-note">La inversion en publicidad no viene en la API de pedidos de Mercado Libre.</p>
+            </section>
+
             <section class="panel wide-panel" data-section="pedidos">
               <div class="panel-heading">
                 <div>
@@ -782,14 +812,14 @@
     <script src="./js/firebase/secure-api.js?v=20260717-acct4"></script>
     <!-- Dashboard modules -->
     <script src="./js/core/auth.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/store.js?v=20260717-br1"></script>
+    <script src="./js/dashboard/store.js?v=20260717-costs1"></script>
     <script src="./js/dashboard/integration-core.js?v=20260716-live1"></script>
-    <script src="./js/dashboard/charts.js?v=20260709-ola1d"></script>
+    <script src="./js/dashboard/charts.js?v=20260717-costs1"></script>
     <script src="./js/dashboard/finance.js?v=20260709-ola0mod"></script>
     <script src="./js/dashboard/meta.js?v=20260716-nav1"></script>
-    <script src="./js/dashboard/commerce.js?v=20260717-br2"></script>
+    <script src="./js/dashboard/commerce.js?v=20260717-costs1"></script>
     <script src="./js/dashboard/notifications.js?v=20260717-acct4"></script>
-    <script src="./js/dashboard/platform-nav.js?v=20260716-nav1"></script>
+    <script src="./js/dashboard/platform-nav.js?v=20260717-costs1"></script>
     <script src="./js/dashboard/router.js?v=20260716-group1"></script>
     <script src="./js/dashboard/app.js?v=20260717-acct1"></script>
     <script src="./js/pwa.js?v=20260711-push1" defer></script>

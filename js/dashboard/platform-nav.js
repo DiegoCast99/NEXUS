@@ -24,7 +24,7 @@
   // `id` tiene que coincidir con los data-section del HTML.
   var SECTIONS = {
     ecommerce: [
-      { id: "resumen", label: "Resumen", hint: "Ventas y tendencia" },
+      { id: "resumen", label: "Metricas", hint: "Ventas, costos y tendencia" },
       { id: "pedidos", label: "Pedidos", hint: "Operaciones recientes" },
       { id: "productos", label: "Productos", hint: "Top rendimiento" },
       { id: "config", label: "Configuracion", hint: "Conexion y avisos" }

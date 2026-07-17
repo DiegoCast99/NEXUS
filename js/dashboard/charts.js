@@ -286,6 +286,61 @@
     }).join("");
   }
 
+  // Dona de costos de e-commerce, con el MISMO estilo que la de gastos de
+  // Finanzas: cargos por venta + costos de envio (lo que da la API de pedidos).
+  function drawCommerceCostsChart() {
+    if (!elements.commerceCostsChart) return;
+    const { ctx, width, height } = resizeCanvas(elements.commerceCostsChart);
+    const totals = getCommerceSnapshot()?.totals || {};
+    const entries = [
+      ["Cargos por venta", Number(totals.commission) || 0],
+      ["Costos de envio", Number(totals.shipping) || 0]
+    ].filter((item) => item[1] > 0);
+    const total = entries.reduce((sum, item) => sum + item[1], 0);
+
+    ctx.clearRect(0, 0, width, height);
+    if (!entries.length) {
+      drawNoData(ctx, width, height, "Sin costos en el periodo");
+      if (elements.commerceCostsLegend) elements.commerceCostsLegend.innerHTML = "";
+      setChartTargets(elements.commerceCostsChart, []);
+      return;
+    }
+
+    const cx = width / 2;
+    const cy = height / 2;
+    const radius = Math.min(width, height) * 0.35;
+    let start = -Math.PI / 2;
+
+    entries.forEach(([, amount], index) => {
+      const angle = (amount / total) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, start, start + angle);
+      ctx.lineWidth = Math.max(16, radius * 0.22);
+      ctx.strokeStyle = categoryColors[index % categoryColors.length];
+      ctx.shadowColor = categoryColors[index % categoryColors.length];
+      ctx.shadowBlur = index < 3 ? 12 : 4;
+      ctx.stroke();
+      start += angle;
+    });
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "rgba(243,243,248,0.94)";
+    ctx.font = "700 22px ui-monospace, SFMono-Regular, Menlo, monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(currency.format(total), cx, cy - 2);
+    ctx.fillStyle = "rgba(243,243,248,0.52)";
+    ctx.font = "11px ui-monospace, SFMono-Regular, Menlo, monospace";
+    ctx.fillText("costos", cx, cy + 18);
+
+    if (elements.commerceCostsLegend) {
+      elements.commerceCostsLegend.innerHTML = entries.map(([name, amount], index) => {
+        const percent = total ? (amount / total) * 100 : 0;
+        return `<div class="legend-row"><i style="background:${categoryColors[index % categoryColors.length]}"></i><span>${escapeHtml(name)}</span><small>${percent.toFixed(1)}%</small></div>`;
+      }).join("");
+    }
+    setChartTargets(elements.commerceCostsChart, []);
+  }
+
   function drawMetaTrendChart() {
     if (!elements.metaTrendChart) return;
     const { ctx, width, height } = resizeCanvas(elements.metaTrendChart);
@@ -481,7 +536,7 @@
 
 
   Object.assign(S, {
-    applyChartMode, draw3DBar, drawCashflowChart, drawCategoryChart, drawCommerceTrendChart, drawMetaTrendChart,
+    applyChartMode, draw3DBar, drawCashflowChart, drawCategoryChart, drawCommerceCostsChart, drawCommerceTrendChart, drawMetaTrendChart,
     drawNoData, getMonthlySeries, hideChartTooltip, is3DMode, prefersReducedMotion, resizeCanvas,
     roundedRect, setChartTargets, showChartTooltip,
   });
