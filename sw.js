@@ -8,7 +8,7 @@
      va directo a la red — auth y Firestore siguen funcionando.
    Para forzar refresco tras un deploy grande: subir CACHE_VERSION.
    ============================================================ */
-const CACHE_VERSION = "nexus-cache-v5";
+const CACHE_VERSION = "nexus-cache-v6";
 const APP_SHELL = [
   "/index.html",
   "/dashboard.html",
@@ -50,19 +50,25 @@ self.addEventListener("push", (event) => {
     badge: "/img/notif-venta.png?v=1",
     tag: data.tag || "nexus-venta",
     renotify: true,
-    data: { url: "/dashboard.html#ecommerce" }
+    // El webhook manda el deep-link a la venta; sin el, portada de E-Commerce.
+    data: { url: data.url || "/dashboard.html#ecommerce" }
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// Al tocar la notificación: enfocar la PWA si está abierta, o abrirla.
+// Al tocar la notificación: abrir la PWA en el destino. Si ya está abierta,
+// enfocar NO alcanza (quedaría en la pantalla vieja): se le avisa por
+// postMessage y el dashboard navega solo.
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const target = (event.notification.data && event.notification.data.url) || "/dashboard.html";
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
       for (const client of clients) {
-        if ("focus" in client) return client.focus();
+        if ("focus" in client) {
+          client.postMessage({ type: "nexus-open-url", url: target });
+          return client.focus();
+        }
       }
       if (self.clients.openWindow) return self.clients.openWindow(target);
     })

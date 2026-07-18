@@ -99,7 +99,14 @@ async function handleNotification(body) {
   // Enviar el push a cada dispositivo. Quitar las suscripciones caducadas.
   // El cuerpo dice de que cuenta fue la venta ("Mercado Libre 1" / "...2"),
   // que es lo unico que distingue una notificacion de la otra en el celular.
-  const payload = { title: "¡Vendiste!", body: mlAccountName(accountId), tag: "ml-" + orderId };
+  // `url` es el deep-link: al tocar la notificacion, Nexus aterriza en ESA
+  // venta (cuenta + orden), no en la portada.
+  const payload = {
+    title: "¡Vendiste!",
+    body: mlAccountName(accountId),
+    tag: "ml-" + orderId,
+    url: "/dashboard.html#venta-" + accountId + "-" + orderId
+  };
   const alive = [];
   let sentCount = 0;
   for (const sub of subs) {

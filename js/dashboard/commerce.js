@@ -682,7 +682,7 @@
     const orders = snapshot?.orders || [];
     if (elements.commerceOrdersTable) {
       elements.commerceOrdersTable.innerHTML = orders.slice(0, 12).map((order) => `
-        <tr>
+        <tr data-order-id="${escapeHtml(order.id)}">
           <td>${escapeHtml(order.id)}</td>
           <td>${escapeHtml(order.customer)}</td>
           <td>${escapeHtml(order.product)}</td>
@@ -714,6 +714,44 @@
 
     drawCommerceTrendChart();
     if (ml) S.drawCommerceCostsChart();
+  }
+
+  // ---- Deep-link desde la notificacion de venta --------------
+
+  // Espera a que la fila del pedido aparezca en la tabla (el sync al entrar
+  // al panel puede tardar unos segundos en traer la venta nueva).
+  function waitForOrderRow(orderId, timeoutMs) {
+    var safe = String(orderId).replace(/"/g, '\\"');
+    return new Promise(function (resolve) {
+      var t0 = Date.now();
+      (function poll() {
+        var row = elements.commerceOrdersTable
+          ? elements.commerceOrdersTable.querySelector('[data-order-id="' + safe + '"]')
+          : null;
+        if (row) return resolve(row);
+        if (Date.now() - t0 > timeoutMs) return resolve(null);
+        window.setTimeout(poll, 400);
+      })();
+    });
+  }
+
+  // Aterriza en la venta que disparo la notificacion: abre la cuenta, va a
+  // Pedidos, espera a que el sync la traiga y la resalta. Funciona para
+  // cualquier cuenta del modulo (ML 1, ML 2, Brasil y las que vengan).
+  async function openSaleDeepLink(accountId, orderId, timeoutMs) {
+    var app = getCommerceApp(accountId);
+    if (!app) return; // cuenta desconocida: quedo la portada de E-Commerce
+    selectCommerceApp(accountId);
+    window.NexusPlatformNav?.setSection("pedidos");
+
+    var row = await waitForOrderRow(orderId, timeoutMs || 12000);
+    if (!row) {
+      setMlMessage("La venta " + orderId + " todavia no aparece en el periodo actual.", "error");
+      return;
+    }
+    row.scrollIntoView({ behavior: "smooth", block: "center" });
+    row.classList.add("order-row-flash");
+    window.setTimeout(function () { row.classList.remove("order-row-flash"); }, 7000);
   }
 
   // ---- Sync genérico -----------------------------------------
@@ -924,7 +962,7 @@
     clearSelectedCommerceApp, clearSelectedCommerceGroup, createCommerceSnapshot, disconnectML, ensureMLLiveDefaults, fetchCommerceData, fetchMLOrders,
     handleMlOAuthReturn, normalizeCommerceOrder, normalizeMLOrder,
     populateCommerceConfigForm, readCommerceConfigFromForm, renderCommerceDashboard, renderCommerceSwitcher,
-    applyPeriodChange, getPeriodRange, renderPeriodBar, selectMLAccount,
+    applyPeriodChange, getPeriodRange, openSaleDeepLink, renderPeriodBar, selectMLAccount,
     scheduleCommerceRefresh, scheduleMLRefresh, selectCommerceApp, setCommerceMessage, setMlMessage,
     startMLOAuth, syncCommerce, syncMercadoLibre,
   });

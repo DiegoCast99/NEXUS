@@ -319,3 +319,16 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================================
+   Fila resaltada al llegar desde la notificacion de venta
+   ============================================================ */
+@keyframes ordenDestacada {
+  0%, 100% { background: rgba(255, 26, 157, 0.08); }
+  50% { background: rgba(255, 26, 157, 0.24); }
+}
+
+.order-row-flash td {
+  animation: ordenDestacada 1.4s ease-in-out 4;
+  box-shadow: inset 3px 0 0 var(--accent);
+}

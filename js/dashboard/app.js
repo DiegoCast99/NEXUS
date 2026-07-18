@@ -197,6 +197,22 @@
     });
     // Cambiar de cuenta de Mercado Libre desde el panel.
     elements.mlAccountSelect?.addEventListener("change", () => S.selectMLAccount(elements.mlAccountSelect.value));
+    // Si la PWA ya estaba abierta al tocar la notificacion, el Service Worker
+    // no puede navegarla: manda el destino por postMessage y navegamos aca.
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener("message", (event) => {
+        const msg = event.data || {};
+        if (msg.type !== "nexus-open-url" || !msg.url) return;
+        const hash = String(msg.url).split("#")[1] || "";
+        const saleLink = hash.match(/^venta-([a-z0-9]+)-(.+)$/);
+        if (saleLink) {
+          setView("ecommerce", false);
+          S.openSaleDeepLink(saleLink[1], saleLink[2]);
+        } else if (hash) {
+          setView(hash, false);
+        }
+      });
+    }
     // Periodo de las metricas de ML: al cambiarlo se re-consulta ese rango.
     elements.commercePeriod?.addEventListener("change", () => S.applyPeriodChange());
     elements.commercePeriodFrom?.addEventListener("change", () => S.applyPeriodChange());
@@ -273,9 +289,14 @@
       // El "en vivo" de ML arranca aunque el negocio activo sea otro.
       S.scheduleMLRefresh();
       const initial = location.hash.replace("#", "");
+      // Deep-link de la notificacion de venta: #venta-<cuenta>-<orden>.
+      const saleLink = initial.match(/^venta-([a-z0-9]+)-(.+)$/);
       if (initial === "ml-connect") {
         setView("ecommerce", false);
         handleMlOAuthReturn();
+      } else if (saleLink) {
+        setView("ecommerce", false);
+        S.openSaleDeepLink(saleLink[1], saleLink[2]);
       } else {
         setView(initial || "welcome", false);
         // Mercado Libre "en vivo": al abrir Nexus con la cuenta conectada,
