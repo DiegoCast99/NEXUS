@@ -517,19 +517,19 @@
       ctx.fill();
     });
 
+    // Etiquetas de fecha ADELGAZADAS: con periodos largos (30+ dias) dibujar
+    // una por dia las encimaba. Se muestran ~10 repartidas + siempre la ultima.
+    const labelStep = Math.max(1, Math.ceil(trend.length / 10));
+    ctx.fillStyle = "rgba(243,243,248,0.48)";
+    ctx.font = "10px ui-monospace, SFMono-Regular, Menlo, monospace";
+    ctx.textAlign = "center";
     trend.forEach((item, index) => {
+      if (index % labelStep !== 0 && index !== trend.length - 1) return;
       const x = trend.length > 1 ? padding.left + index * step : padding.left + chartW / 2;
-      const label = item.date.slice(5).replace("-", "/");
-      ctx.fillStyle = "rgba(243,243,248,0.48)";
-      ctx.font = "10px ui-monospace, SFMono-Regular, Menlo, monospace";
-      ctx.textAlign = "center";
-      ctx.fillText(label, x, height - 14);
+      ctx.fillText(item.date.slice(5).replace("-", "/"), x, height - 12);
     });
-
-    ctx.fillStyle = "rgba(243,243,248,0.72)";
-    ctx.font = "11px ui-monospace, SFMono-Regular, Menlo, monospace";
-    ctx.textAlign = "left";
-    ctx.fillText("Barras: ventas · Línea: pedidos", padding.left, height - 12);
+    // La leyenda ya vive en HTML (encabezado del panel): no se re-dibuja en el
+    // canvas para no encimarse con las fechas.
     ctx.restore();
     setChartTargets(elements.commerceTrendChart, targets);
   }

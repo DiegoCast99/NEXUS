@@ -84,6 +84,8 @@
       units: Number(order.units ?? order.quantity ?? 1) || 1,
       commission: Number(order.commission ?? order.fee ?? 0) || 0,
       shipping: Number(order.shipping ?? order.shippingCost ?? 0) || 0,
+      thumbnail: String(order.thumbnail || order.image || ""),
+      stock: (order.stock === 0 || order.stock) ? Number(order.stock) : null,
       cancelled: Boolean(order.cancelled),
       refunded: Boolean(order.refunded),
       date: String(order.date || order.createdAt || toDateInput()).slice(0, 10)
@@ -295,6 +297,11 @@
     var items = orderItems.map(function (i) { return i.item ? i.item.title : "Producto"; });
     var product = items.join(", ") || "Producto ML";
 
+    // Id de la primera publicacion: con el traemos foto y stock aparte
+    // (la API de pedidos no los incluye).
+    var firstItem = orderItems[0] && orderItems[0].item ? orderItems[0].item : null;
+    var itemId = firstItem ? String(firstItem.id || "") : "";
+
     var statusMap = {
       paid: "Pagado", cancelled: "Cancelado", pending: "Pendiente",
       confirmed: "Confirmado", payment_required: "Pago requerido",
@@ -330,8 +337,52 @@
       shipping: shipping,
       cancelled: mlOrder.status === "cancelled",
       refunded: refunded,
+      itemId: itemId,
+      thumbnail: "",
+      stock: null,
       date: String(mlOrder.date_created || "").slice(0, 10) || toDateInput()
     };
+  }
+
+  // Trae foto (secure_thumbnail) y stock (available_quantity) de las
+  // publicaciones vendidas y se los pega a cada pedido. Usa el multiget de ML
+  // (/items?ids=...) que acepta hasta 20 ids por llamada. Best-effort: si
+  // falla, los pedidos se muestran igual, sin foto.
+  async function enrichMLOrdersWithItems(orders) {
+    var ids = [];
+    var vistos = {};
+    orders.forEach(function (o) {
+      if (o.itemId && !vistos[o.itemId]) { vistos[o.itemId] = true; ids.push(o.itemId); }
+    });
+    if (!ids.length) return orders;
+
+    var api = S.requireSecureApi();
+    var mapa = {};
+    for (var i = 0; i < ids.length; i += 20) {
+      var lote = ids.slice(i, i + 20);
+      try {
+        var endpoint = "/items?ids=" + lote.join(",") +
+          "&attributes=id,secure_thumbnail,thumbnail,available_quantity";
+        var result = await api.mlApi(endpoint, "GET", null, activeMLId());
+        var rows = (result.payload || []);
+        rows.forEach(function (row) {
+          var body = row && row.body ? row.body : null;
+          if (!body || !body.id) return;
+          mapa[String(body.id)] = {
+            thumbnail: body.secure_thumbnail || body.thumbnail || "",
+            stock: (typeof body.available_quantity === "number") ? body.available_quantity : null
+          };
+        });
+      } catch (e) {
+        console.warn("No se pudieron traer fotos/stock de ML:", e && e.message);
+      }
+    }
+
+    orders.forEach(function (o) {
+      var info = mapa[o.itemId];
+      if (info) { o.thumbnail = info.thumbnail; o.stock = info.stock; }
+    });
+    return orders;
   }
 
   // ---- Periodo (estilo panel de Mercado Libre) ---------------
@@ -681,16 +732,30 @@
 
     const orders = snapshot?.orders || [];
     if (elements.commerceOrdersTable) {
-      elements.commerceOrdersTable.innerHTML = orders.slice(0, 12).map((order) => `
+      elements.commerceOrdersTable.innerHTML = orders.slice(0, 12).map((order) => {
+        var foto = order.thumbnail
+          ? `<img class="order-thumb" src="${escapeHtml(order.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'" />`
+          : `<span class="order-thumb order-thumb-empty" aria-hidden="true"></span>`;
+        var stockLine = (order.stock === 0 || order.stock)
+          ? `<small class="order-stock">Stock: ${integerNumber.format(order.stock)} u.</small>`
+          : "";
+        return `
         <tr data-order-id="${escapeHtml(order.id)}">
           <td>${escapeHtml(order.id)}</td>
           <td>${escapeHtml(order.customer)}</td>
-          <td>${escapeHtml(order.product)}</td>
+          <td class="order-product">
+            ${foto}
+            <div class="order-product-info">
+              <b>${escapeHtml(order.product)}</b>
+              ${stockLine}
+            </div>
+          </td>
           <td><span class="type-pill income">${escapeHtml(order.status)}</span></td>
           <td>${moneyWithCents.format(order.total)}</td>
           <td class="${order.margin >= 0 ? "amount-income" : "amount-expense"}">${moneyWithCents.format(order.margin)}</td>
         </tr>
-      `).join("");
+      `;
+      }).join("");
     }
     elements.commerceEmptyState?.classList.toggle("is-visible", orders.length === 0);
 
@@ -834,6 +899,9 @@
           fetchMLOrders(range),
           fetchMLVisits(range)
         ]);
+        // Enriquecer solo los que se van a mostrar (la tabla corta en 12): la
+        // foto y el stock salen de /items, no de la API de pedidos.
+        await enrichMLOrdersWithItems(orders.slice(0, 12));
         var next = createCommerceSnapshot(orders, "live", { visits: visits, range: range });
         var mlId = activeMLId();
         var prev = state.commerce.snapshots[mlId];
