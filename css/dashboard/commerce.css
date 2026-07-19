@@ -371,3 +371,57 @@
   color: var(--muted);
   font-size: 11px;
 }
+
+/* ============================================================
+   Publicaciones: stock editable + acciones
+   ============================================================ */
+.listings-hint {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.listing-stock-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.listing-stock-input {
+  width: 74px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.listing-stock-input:focus {
+  outline: none;
+  border-color: rgba(255, 26, 157, 0.5);
+}
+
+.listing-apply {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.listing-stock-ro {
+  display: block;
+}
+
+.listing-variants-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+/* La tabla de publicaciones envuelve titulos largos como la de pedidos. */
+.listings-table td:first-child {
+  min-width: 260px;
+  white-space: normal;
+}

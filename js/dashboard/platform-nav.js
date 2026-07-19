@@ -22,10 +22,13 @@
 
   // Secciones por modulo. El orden es el que se ve en la barra.
   // `id` tiene que coincidir con los data-section del HTML.
+  // `flag` marca secciones que solo aplican a ciertas plataformas: el caller
+  // de enterPlatform decide que flags incluir (ej: "ml" solo en Mercado Libre).
   var SECTIONS = {
     ecommerce: [
       { id: "resumen", label: "Metricas", hint: "Ventas, costos y tendencia" },
       { id: "pedidos", label: "Pedidos", hint: "Operaciones recientes" },
+      { id: "publicaciones", label: "Publicaciones", hint: "Stock y estado", flag: "ml" },
       { id: "productos", label: "Productos", hint: "Top rendimiento" },
       { id: "config", label: "Configuracion", hint: "Conexion y avisos" }
     ],
@@ -42,6 +45,8 @@
 
   // Modulo cuya plataforma esta abierta ahora (null = menu de modulos).
   var current = null;
+  // Flags de la plataforma abierta (ej: ["ml"]): filtran las secciones con flag.
+  var currentFlags = [];
 
   function el(id) { return document.getElementById(id); }
 
@@ -58,7 +63,11 @@
     } catch (e) { /* almacenamiento lleno o bloqueado */ }
   }
 
-  function sectionsFor(module) { return SECTIONS[module] || []; }
+  function sectionsFor(module, flags) {
+    var lista = SECTIONS[module] || [];
+    var activos = flags || currentFlags || [];
+    return lista.filter(function (s) { return !s.flag || activos.indexOf(s.flag) !== -1; });
+  }
 
   function defaultSection(module) {
     var saved = readSections()[module];
@@ -82,6 +91,11 @@
         btn.classList.toggle("is-active", btn.getAttribute("data-section-link") === section);
       });
     }
+    // Aviso para los modulos: permite cargar datos recien cuando la seccion
+    // se abre (ej: Publicaciones trae el catalogo de ML bajo demanda).
+    try {
+      root.dispatchEvent(new CustomEvent("nexus:section", { detail: { module: module, section: section } }));
+    } catch (e) { /* CustomEvent no disponible: sin lazy-load */ }
   }
 
   function setSection(section) {
@@ -102,7 +116,8 @@
   }
 
   // Entra al modo "plataforma": la barra se enfoca en ese negocio.
-  function enterPlatform(module, platformName) {
+  function enterPlatform(module, platformName, opts) {
+    currentFlags = (opts && opts.flags) || [];
     if (!sectionsFor(module).length) return;
     current = module;
     renderLinks(module);
@@ -122,6 +137,7 @@
   function exitPlatform() {
     var module = current;
     current = null;
+    currentFlags = [];
     el("platformNav")?.classList.add("is-hidden");
     el("moduleNav")?.classList.remove("is-hidden");
     if (!module) return;

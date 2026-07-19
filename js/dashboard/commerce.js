@@ -819,6 +819,213 @@
     window.setTimeout(function () { row.classList.remove("order-row-flash"); }, 7000);
   }
 
+  // ---- Publicaciones (catalogo de ML con escritura) ----------
+
+  function setListingsMessage(msg, type) {
+    var el = elements.mlListingsMessage;
+    if (!el) return;
+    el.textContent = msg || "";
+    el.className = "meta-message" + (type ? " is-" + type : "");
+  }
+
+  function mlListingsState() {
+    var id = activeMLId();
+    if (!state.commerce.mlListings[id]) {
+      state.commerce.mlListings[id] = { items: null, loading: false, fetchedAt: null };
+    }
+    return state.commerce.mlListings[id];
+  }
+
+  var LISTING_STATUS = {
+    active: "Activa", paused: "Pausada", closed: "Cerrada",
+    under_review: "En revision", inactive: "Inactiva"
+  };
+
+  // Trae el catalogo: ids con /users/{uid}/items/search y detalle con el
+  // multiget (20 por llamada). Hasta 200 publicaciones.
+  async function loadMLListings(force) {
+    if (!isMLApp(state.commerce.selectedApp)) return;
+    var slot = mlListingsState();
+    if (slot.loading) return;
+    if (slot.items && !force) { renderMLListings(); return; }
+    var config = getCommerceConfig(activeMLId());
+    if (!config.hasToken) {
+      setListingsMessage("Conecta tu cuenta de Mercado Libre para ver tus publicaciones.", "error");
+      return;
+    }
+
+    slot.loading = true;
+    renderMLListings();
+    setListingsMessage("Cargando publicaciones...", "");
+    try {
+      var api = S.requireSecureApi();
+      var userId = await getMLUserId(api);
+      var cuenta = activeMLId();
+
+      var ids = [];
+      var offset = 0;
+      for (var page = 0; page < 4; page++) {
+        var res = await api.mlApi("/users/" + userId + "/items/search?limit=50&offset=" + offset, "GET", null, cuenta);
+        var payload = res.payload || {};
+        var lote = payload.results || [];
+        ids = ids.concat(lote);
+        var total = (payload.paging && payload.paging.total) || 0;
+        offset += 50;
+        if (!lote.length || offset >= total) break;
+      }
+
+      var items = [];
+      for (var i = 0; i < ids.length; i += 20) {
+        var grupo = ids.slice(i, i + 20);
+        var det = await api.mlApi(
+          "/items?ids=" + grupo.join(",") +
+          "&attributes=id,title,price,currency_id,available_quantity,sold_quantity,status,secure_thumbnail,thumbnail,permalink,variations",
+          "GET", null, cuenta
+        );
+        (det.payload || []).forEach(function (row) {
+          var b = row && row.body ? row.body : null;
+          if (!b || !b.id) return;
+          items.push({
+            id: String(b.id),
+            title: String(b.title || ""),
+            price: Number(b.price) || 0,
+            stock: (typeof b.available_quantity === "number") ? b.available_quantity : null,
+            sold: Number(b.sold_quantity) || 0,
+            status: String(b.status || ""),
+            thumbnail: b.secure_thumbnail || b.thumbnail || "",
+            permalink: b.permalink || "",
+            hasVariations: Array.isArray(b.variations) && b.variations.length > 0
+          });
+        });
+      }
+
+      slot.items = items;
+      slot.fetchedAt = new Date().toISOString();
+      setListingsMessage(items.length + " publicaciones cargadas.", "success");
+    } catch (e) {
+      setListingsMessage("No se pudieron cargar las publicaciones: " + (e.message || e), "error");
+    } finally {
+      slot.loading = false;
+      renderMLListings();
+    }
+  }
+
+  function renderMLListings() {
+    if (!elements.mlListingsTable) return;
+    var slot = mlListingsState();
+    var items = slot.items || [];
+
+    elements.mlListingsEmpty?.classList.toggle("is-visible", !slot.loading && items.length === 0);
+
+    elements.mlListingsTable.innerHTML = items.map(function (item) {
+      var foto = item.thumbnail
+        ? '<img class="order-thumb" src="' + escapeHtml(item.thumbnail) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'" />'
+        : '<span class="order-thumb order-thumb-empty" aria-hidden="true"></span>';
+
+      // El stock de publicaciones con variantes se maneja por variante en ML:
+      // editar el total seria ambiguo, asi que se deja solo lectura.
+      var stockCell = item.hasVariations
+        ? '<span class="listing-stock-ro">' + (item.stock === null ? "-" : integerNumber.format(item.stock)) + '</span><small class="listing-variants-note">Por variante (en ML)</small>'
+        : '<span class="listing-stock-edit">' +
+            '<input type="number" min="0" step="1" class="listing-stock-input" value="' + (item.stock === null ? "" : item.stock) + '" data-listing-stock="' + escapeHtml(item.id) + '" />' +
+            '<button class="ghost-button listing-apply" type="button" data-action="stock" data-listing-id="' + escapeHtml(item.id) + '">Aplicar</button>' +
+          '</span>';
+
+      var estado = LISTING_STATUS[item.status] || item.status || "-";
+      var toggle = "";
+      if (item.status === "active") {
+        toggle = '<button class="ghost-button" type="button" data-action="toggle" data-listing-id="' + escapeHtml(item.id) + '">Pausar</button>';
+      } else if (item.status === "paused") {
+        toggle = '<button class="ghost-button" type="button" data-action="toggle" data-listing-id="' + escapeHtml(item.id) + '">Activar</button>';
+      }
+
+      return '<tr data-listing-row="' + escapeHtml(item.id) + '">' +
+        '<td class="order-product">' + foto +
+          '<div class="order-product-info"><b>' + escapeHtml(item.title) + '</b>' +
+          '<small class="order-stock">' + escapeHtml(item.id) + '</small></div></td>' +
+        '<td>' + moneyWithCents.format(item.price) + '</td>' +
+        '<td>' + integerNumber.format(item.sold) + '</td>' +
+        '<td>' + stockCell + '</td>' +
+        '<td><span class="type-pill ' + (item.status === "active" ? "income" : "") + '">' + escapeHtml(estado) + '</span></td>' +
+        '<td>' + toggle + '</td>' +
+      '</tr>';
+    }).join("");
+  }
+
+  function findListing(id) {
+    var slot = mlListingsState();
+    return (slot.items || []).find(function (i) { return i.id === id; }) || null;
+  }
+
+  // Cambia el stock EN MERCADO LIBRE. Pide confirmacion: toca la tienda real.
+  async function updateMLStock(itemId) {
+    var item = findListing(itemId);
+    if (!item) return;
+    var input = elements.mlListingsTable?.querySelector('[data-listing-stock="' + itemId + '"]');
+    var valor = input ? String(input.value).trim() : "";
+    var nuevo = Number(valor);
+
+    if (valor === "" || !Number.isInteger(nuevo) || nuevo < 0) {
+      setListingsMessage("El stock tiene que ser un numero entero de 0 o mas.", "error");
+      return;
+    }
+    if (nuevo === item.stock) {
+      setListingsMessage("El stock ya es " + nuevo + ": no hay nada que aplicar.", "");
+      return;
+    }
+    var nombre = S.mlAccountById(activeMLId())?.name || "Mercado Libre";
+    var ok = window.confirm(
+      'Cambiar el stock de:\n\n"' + item.title + '"\n\nde ' + (item.stock === null ? "?" : item.stock) +
+      " a " + nuevo + " unidades en " + nombre + "?\n\nEl cambio se aplica en tu tienda real."
+    );
+    if (!ok) return;
+
+    try {
+      setListingsMessage("Aplicando stock en Mercado Libre...", "");
+      await S.requireSecureApi().mlApi("/items/" + itemId, "PUT", { available_quantity: nuevo }, activeMLId());
+      item.stock = nuevo;
+      renderMLListings();
+      setListingsMessage('Stock de "' + item.title + '" actualizado a ' + nuevo + " unidades.", "success");
+    } catch (e) {
+      setListingsMessage("Mercado Libre rechazo el cambio: " + (e.message || e), "error");
+    }
+  }
+
+  // Pausa o reactiva la publicacion EN MERCADO LIBRE, con confirmacion.
+  async function toggleMLListing(itemId) {
+    var item = findListing(itemId);
+    if (!item) return;
+    if (item.status !== "active" && item.status !== "paused") {
+      setListingsMessage("Esta publicacion esta en estado '" + item.status + "': se gestiona desde Mercado Libre.", "error");
+      return;
+    }
+    var target = item.status === "active" ? "paused" : "active";
+    var verbo = target === "paused" ? "PAUSAR" : "ACTIVAR";
+    var nombre = S.mlAccountById(activeMLId())?.name || "Mercado Libre";
+    var ok = window.confirm(
+      verbo + ' la publicacion:\n\n"' + item.title + '"\n\nen ' + nombre + "?\n\nEl cambio se aplica en tu tienda real."
+    );
+    if (!ok) return;
+
+    try {
+      setListingsMessage((target === "paused" ? "Pausando" : "Activando") + " publicacion...", "");
+      await S.requireSecureApi().mlApi("/items/" + itemId, "PUT", { status: target }, activeMLId());
+      item.status = target;
+      renderMLListings();
+      setListingsMessage('"' + item.title + '" quedo ' + (target === "paused" ? "pausada" : "activa") + ".", "success");
+    } catch (e) {
+      setListingsMessage("Mercado Libre rechazo el cambio: " + (e.message || e), "error");
+    }
+  }
+
+  // Lazy-load: recien al abrir la seccion Publicaciones se trae el catalogo.
+  window.addEventListener("nexus:section", function (event) {
+    var d = (event && event.detail) || {};
+    if (d.module !== "ecommerce" || d.section !== "publicaciones") return;
+    if (!isMLApp(state.commerce.selectedApp)) return;
+    loadMLListings(false);
+  });
+
   // ---- Sync genérico -----------------------------------------
 
   async function syncCommerce({ demo = false, silent = false } = {}) {
@@ -976,7 +1183,9 @@
     S.updateTopbarForView("ecommerce");
     scheduleCommerceRefresh();
     // La barra lateral se enfoca en este negocio y muestra sus secciones.
-    window.NexusPlatformNav?.enterPlatform("ecommerce", app.name);
+    // El flag "ml" habilita las secciones exclusivas de Mercado Libre
+    // (Publicaciones): Kairos/Amazon/Shopee no las muestran.
+    window.NexusPlatformNav?.enterPlatform("ecommerce", app.name, isMLApp(id) ? { flags: ["ml"] } : undefined);
     S.animateActivePanel();
     // Mercado Libre "en vivo": al entrar al panel, traer las ventas solo,
     // sin esperar el proximo tick ni que el titular apriete Sincronizar.
@@ -1030,7 +1239,7 @@
     clearSelectedCommerceApp, clearSelectedCommerceGroup, createCommerceSnapshot, disconnectML, ensureMLLiveDefaults, fetchCommerceData, fetchMLOrders,
     handleMlOAuthReturn, normalizeCommerceOrder, normalizeMLOrder,
     populateCommerceConfigForm, readCommerceConfigFromForm, renderCommerceDashboard, renderCommerceSwitcher,
-    applyPeriodChange, getPeriodRange, openSaleDeepLink, renderPeriodBar, selectMLAccount,
+    applyPeriodChange, getPeriodRange, loadMLListings, openSaleDeepLink, renderPeriodBar, selectMLAccount, toggleMLListing, updateMLStock,
     scheduleCommerceRefresh, scheduleMLRefresh, selectCommerceApp, setCommerceMessage, setMlMessage,
     startMLOAuth, syncCommerce, syncMercadoLibre,
   });

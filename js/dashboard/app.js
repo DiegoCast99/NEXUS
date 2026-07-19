@@ -195,6 +195,16 @@
         "success"
       );
     });
+    // Publicaciones de ML: recargar catalogo y acciones de escritura
+    // (aplicar stock / pausar / activar), delegadas en la tabla.
+    elements.mlListingsReload?.addEventListener("click", () => S.loadMLListings(true));
+    elements.mlListingsTable?.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-action]");
+      if (!btn) return;
+      const id = btn.dataset.listingId;
+      if (btn.dataset.action === "stock") S.updateMLStock(id);
+      else if (btn.dataset.action === "toggle") S.toggleMLListing(id);
+    });
     // Cambiar de cuenta de Mercado Libre desde el panel.
     elements.mlAccountSelect?.addEventListener("change", () => S.selectMLAccount(elements.mlAccountSelect.value));
     // Si la PWA ya estaba abierta al tocar la notificacion, el Service Worker

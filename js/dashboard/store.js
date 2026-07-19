@@ -504,6 +504,11 @@
     commerceCostsReceivedPct: document.getElementById("commerceCostsReceivedPct"),
     commerceCostsChart: document.getElementById("commerceCostsChart"),
     commerceCostsLegend: document.getElementById("commerceCostsLegend"),
+    mlListingsPanel: document.getElementById("mlListingsPanel"),
+    mlListingsReload: document.getElementById("mlListingsReload"),
+    mlListingsTable: document.getElementById("mlListingsTable"),
+    mlListingsEmpty: document.getElementById("mlListingsEmpty"),
+    mlListingsMessage: document.getElementById("mlListingsMessage"),
     commerceActiveLabel: document.getElementById("commerceActiveLabel"),
     commercePixelLabel: document.getElementById("commercePixelLabel"),
     commerceEndpointLabel: document.getElementById("commerceEndpointLabel"),
@@ -554,7 +559,10 @@
       // refreshTimer (que el router limpia al cambiar de vista) para que el
       // polling no dependa de qué negocio quedó activo.
       mlRefreshTimer: 0,
-      failCount: 0
+      failCount: 0,
+      // Catalogo de publicaciones por cuenta de ML. Vive SOLO en memoria: se
+      // carga al abrir la seccion Publicaciones (traerlo son varias llamadas).
+      mlListings: {}
     }
   };
 
