@@ -198,14 +198,23 @@
     // Publicaciones de ML: recargar catalogo y acciones de escritura
     // (aplicar stock / pausar / activar), delegadas en la tabla.
     elements.mlListingsReload?.addEventListener("click", () => S.loadMLListings(true));
+    elements.mlListingsSave?.addEventListener("click", () => S.saveMLListingChanges());
+    // Lo tipeado queda pendiente en memoria: recien se manda a ML al Guardar.
+    elements.mlListingsTable?.addEventListener("input", (event) => {
+      const inp = event.target.closest("input[data-listing-stock], input[data-variant-stock]");
+      if (!inp) return;
+      if (inp.dataset.listingStock) S.markPendingStock(inp.dataset.listingStock, null, inp.value);
+      else {
+        const [itemId, varId] = inp.dataset.variantStock.split("::");
+        S.markPendingStock(itemId, varId, inp.value);
+      }
+    });
     elements.mlListingsTable?.addEventListener("click", (event) => {
       const btn = event.target.closest("[data-action]");
       if (!btn) return;
       const id = btn.dataset.listingId;
-      if (btn.dataset.action === "stock") S.updateMLStock(id);
-      else if (btn.dataset.action === "toggle") S.toggleMLListing(id);
-      else if (btn.dataset.action === "expand") S.toggleListingExpand(id);
-      else if (btn.dataset.action === "varstock") S.updateMLVariantStock(id, btn.dataset.variantId);
+      if (btn.dataset.action === "expand") S.toggleListingExpand(id);
+      else if (btn.dataset.action === "switch") S.toggleListingStatus(id);
     });
     // Cambiar de cuenta de Mercado Libre desde el panel.
     elements.mlAccountSelect?.addEventListener("change", () => S.selectMLAccount(elements.mlAccountSelect.value));

@@ -744,10 +744,12 @@
           <td>${escapeHtml(order.id)}</td>
           <td>${escapeHtml(order.customer)}</td>
           <td class="order-product">
-            ${foto}
-            <div class="order-product-info">
-              <b>${escapeHtml(order.product)}</b>
-              ${stockLine}
+            <div class="order-product-cell">
+              ${foto}
+              <div class="order-product-info">
+                <b>${escapeHtml(order.product)}</b>
+                ${stockLine}
+              </div>
             </div>
           </td>
           <td><span class="type-pill income">${escapeHtml(order.status)}</span></td>
@@ -925,6 +927,77 @@
     }
   }
 
+  // Cambios pendientes (stock y estado) que todavia NO se mandaron a ML.
+  // Nada toca la tienda real hasta que el titular aprieta "Guardar cambios".
+  function pendingChanges() {
+    var items = mlListingsState().items || [];
+    var lista = [];
+    items.forEach(function (item) {
+      if (item.pendingStatus && item.pendingStatus !== item.status) {
+        lista.push({ type: "status", item: item, value: item.pendingStatus });
+      }
+      if (!item.hasVariations && item.pendingStock !== undefined && item.pendingStock !== item.stock) {
+        lista.push({ type: "stock", item: item, value: item.pendingStock });
+      }
+      (item.variations || []).forEach(function (v) {
+        if (v.pendingStock !== undefined && v.pendingStock !== v.stock) {
+          lista.push({ type: "varstock", item: item, variation: v, value: v.pendingStock });
+        }
+      });
+    });
+    return lista;
+  }
+
+  function renderSaveButton() {
+    var btn = elements.mlListingsSave;
+    if (!btn) return;
+    var n = pendingChanges().length;
+    btn.textContent = n ? "Guardar cambios (" + n + ")" : "Guardar cambios";
+    btn.disabled = n === 0;
+    btn.classList.toggle("has-pending", n > 0);
+  }
+
+  // Guarda en memoria lo que el titular escribe/togglea, sin llamar a ML.
+  function markPendingStock(itemId, variantId, valor) {
+    var item = findListing(itemId);
+    if (!item) return;
+    var num = String(valor).trim() === "" ? undefined : Number(valor);
+    if (variantId) {
+      var v = (item.variations || []).find(function (x) { return x.id === variantId; });
+      if (v) v.pendingStock = num;
+    } else {
+      item.pendingStock = num;
+    }
+    renderSaveButton();
+    marcarFilaSucia(itemId, variantId);
+  }
+
+  function marcarFilaSucia(itemId, variantId) {
+    var sel = variantId
+      ? '[data-variant-stock="' + itemId + '::' + variantId + '"]'
+      : '[data-listing-stock="' + itemId + '"]';
+    var input = elements.mlListingsTable?.querySelector(sel);
+    if (!input) return;
+    var item = findListing(itemId);
+    var actual = variantId
+      ? (item.variations || []).find(function (x) { return x.id === variantId; })
+      : item;
+    var sucio = actual && actual.pendingStock !== undefined && actual.pendingStock !== actual.stock;
+    input.classList.toggle("is-dirty", Boolean(sucio));
+  }
+
+  function toggleListingStatus(itemId) {
+    var item = findListing(itemId);
+    if (!item) return;
+    if (item.status !== "active" && item.status !== "paused") {
+      setListingsMessage("Esta publicacion esta en estado '" + item.status + "': se gestiona desde Mercado Libre.", "error");
+      return;
+    }
+    var actual = item.pendingStatus || item.status;
+    item.pendingStatus = actual === "active" ? "paused" : "active";
+    renderMLListings();
+  }
+
   function renderMLListings() {
     if (!elements.mlListingsTable) return;
     var slot = mlListingsState();
@@ -940,119 +1013,58 @@
       // El stock de los combos con variantes se edita variante por variante:
       // el total es solo informativo y la flechita despliega la lista.
       var nVars = (item.variations || []).length;
+      var stockVal = item.pendingStock !== undefined ? item.pendingStock : item.stock;
+      var stockSucio = item.pendingStock !== undefined && item.pendingStock !== item.stock;
       var stockCell = item.hasVariations
         ? '<span class="listing-stock-ro">' + (item.stock === null ? "-" : integerNumber.format(item.stock)) + '</span><small class="listing-variants-note">' + nVars + ' variante' + (nVars === 1 ? "" : "s") + '</small>'
-        : '<span class="listing-stock-edit">' +
-            '<input type="number" min="0" step="1" class="listing-stock-input" value="' + (item.stock === null ? "" : item.stock) + '" data-listing-stock="' + escapeHtml(item.id) + '" />' +
-            '<button class="ghost-button listing-apply" type="button" data-action="stock" data-listing-id="' + escapeHtml(item.id) + '">Aplicar</button>' +
-          '</span>';
+        : '<input type="number" min="0" step="1" class="listing-stock-input' + (stockSucio ? " is-dirty" : "") + '" value="' + (stockVal === null || stockVal === undefined ? "" : stockVal) + '" data-listing-stock="' + escapeHtml(item.id) + '" />';
 
       var chevron = item.hasVariations
         ? '<button class="listing-expand" type="button" data-action="expand" data-listing-id="' + escapeHtml(item.id) + '" aria-expanded="' + (item.expanded ? "true" : "false") + '" aria-label="Ver variantes">' + (item.expanded ? "\u25be" : "\u25b8") + '</button>'
         : '<span class="listing-expand-spacer" aria-hidden="true"></span>';
 
-      var estado = LISTING_STATUS[item.status] || item.status || "-";
-      var toggle = "";
-      if (item.status === "active") {
-        toggle = '<button class="ghost-button" type="button" data-action="toggle" data-listing-id="' + escapeHtml(item.id) + '">Pausar</button>';
-      } else if (item.status === "paused") {
-        toggle = '<button class="ghost-button" type="button" data-action="toggle" data-listing-id="' + escapeHtml(item.id) + '">Activar</button>';
-      }
+      // Interruptor de estado: prendido = activa, apagado = pausada. Refleja el
+      // valor pendiente si lo hay, para que se vea el cambio antes de guardar.
+      var estadoActual = item.pendingStatus || item.status;
+      var activa = estadoActual === "active";
+      var editable = item.status === "active" || item.status === "paused";
+      var estadoCell = editable
+        ? '<button class="listing-switch' + (activa ? " is-on" : "") + (item.pendingStatus && item.pendingStatus !== item.status ? " is-dirty" : "") + '" type="button" role="switch" aria-checked="' + (activa ? "true" : "false") + '" data-action="switch" data-listing-id="' + escapeHtml(item.id) + '" aria-label="' + (activa ? "Pausar publicacion" : "Activar publicacion") + '" title="' + (activa ? "Activa" : "Pausada") + '"><span class="listing-switch-knob"></span></button>'
+        : '<span class="type-pill">' + escapeHtml(LISTING_STATUS[item.status] || item.status || "-") + '</span>';
 
       var fila = '<tr data-listing-row="' + escapeHtml(item.id) + '">' +
-        '<td class="order-product">' + chevron + foto +
+        '<td class="order-product"><div class="order-product-cell">' + chevron + foto +
           '<div class="order-product-info"><b>' + escapeHtml(item.title) + '</b>' +
-          '<small class="order-stock">' + escapeHtml(item.id) + '</small></div></td>' +
-        '<td class="listing-num">' + moneyWithCents.format(item.price) + '</td>' +
-        '<td class="listing-num">' + integerNumber.format(item.sold) + '</td>' +
+          '<small class="order-stock">' + escapeHtml(item.id) + '</small></div></div></td>' +
+        '<td>' + moneyWithCents.format(item.price) + '</td>' +
+        '<td>' + integerNumber.format(item.sold) + '</td>' +
         '<td>' + stockCell + '</td>' +
-        '<td><span class="type-pill ' + (item.status === "active" ? "income" : "") + '">' + escapeHtml(estado) + '</span></td>' +
-        '<td>' + toggle + '</td>' +
+        '<td>' + estadoCell + '</td>' +
       '</tr>';
 
       // Variantes desplegadas: una fila por sabor, con su stock editable.
       if (item.hasVariations && item.expanded) {
         fila += item.variations.map(function (v) {
+          var vVal = v.pendingStock !== undefined ? v.pendingStock : v.stock;
+          var vSucio = v.pendingStock !== undefined && v.pendingStock !== v.stock;
           return '<tr class="listing-variant-row" data-variant-of="' + escapeHtml(item.id) + '">' +
             '<td class="listing-variant-name">' + escapeHtml(v.label) + '</td>' +
-            '<td class="listing-num">' + moneyWithCents.format(v.price) + '</td>' +
-            '<td class="listing-num">' + integerNumber.format(v.sold) + '</td>' +
-            '<td><span class="listing-stock-edit">' +
-              '<input type="number" min="0" step="1" class="listing-stock-input" value="' + (v.stock === null ? "" : v.stock) + '" data-variant-stock="' + escapeHtml(item.id) + '::' + escapeHtml(v.id) + '" />' +
-              '<button class="ghost-button listing-apply" type="button" data-action="varstock" data-listing-id="' + escapeHtml(item.id) + '" data-variant-id="' + escapeHtml(v.id) + '">Aplicar</button>' +
-            '</span></td>' +
-            '<td></td><td></td>' +
+            '<td>' + moneyWithCents.format(v.price) + '</td>' +
+            '<td>' + integerNumber.format(v.sold) + '</td>' +
+            '<td><input type="number" min="0" step="1" class="listing-stock-input' + (vSucio ? " is-dirty" : "") + '" value="' + (vVal === null || vVal === undefined ? "" : vVal) + '" data-variant-stock="' + escapeHtml(item.id) + '::' + escapeHtml(v.id) + '" /></td>' +
+            '<td></td>' +
           '</tr>';
         }).join("");
       }
       return fila;
     }).join("");
+
+    renderSaveButton();
   }
 
   function findListing(id) {
     var slot = mlListingsState();
     return (slot.items || []).find(function (i) { return i.id === id; }) || null;
-  }
-
-  // Cambia el stock EN MERCADO LIBRE. Pide confirmacion: toca la tienda real.
-  async function updateMLStock(itemId) {
-    var item = findListing(itemId);
-    if (!item) return;
-    var input = elements.mlListingsTable?.querySelector('[data-listing-stock="' + itemId + '"]');
-    var valor = input ? String(input.value).trim() : "";
-    var nuevo = Number(valor);
-
-    if (valor === "" || !Number.isInteger(nuevo) || nuevo < 0) {
-      setListingsMessage("El stock tiene que ser un numero entero de 0 o mas.", "error");
-      return;
-    }
-    if (nuevo === item.stock) {
-      setListingsMessage("El stock ya es " + nuevo + ": no hay nada que aplicar.", "");
-      return;
-    }
-    var nombre = S.mlAccountById(activeMLId())?.name || "Mercado Libre";
-    var ok = window.confirm(
-      'Cambiar el stock de:\n\n"' + item.title + '"\n\nde ' + (item.stock === null ? "?" : item.stock) +
-      " a " + nuevo + " unidades en " + nombre + "?\n\nEl cambio se aplica en tu tienda real."
-    );
-    if (!ok) return;
-
-    try {
-      setListingsMessage("Aplicando stock en Mercado Libre...", "");
-      await S.requireSecureApi().mlApi("/items/" + itemId, "PUT", { available_quantity: nuevo }, activeMLId());
-      item.stock = nuevo;
-      renderMLListings();
-      setListingsMessage('Stock de "' + item.title + '" actualizado a ' + nuevo + " unidades.", "success");
-    } catch (e) {
-      setListingsMessage("Mercado Libre rechazo el cambio: " + (e.message || e), "error");
-    }
-  }
-
-  // Pausa o reactiva la publicacion EN MERCADO LIBRE, con confirmacion.
-  async function toggleMLListing(itemId) {
-    var item = findListing(itemId);
-    if (!item) return;
-    if (item.status !== "active" && item.status !== "paused") {
-      setListingsMessage("Esta publicacion esta en estado '" + item.status + "': se gestiona desde Mercado Libre.", "error");
-      return;
-    }
-    var target = item.status === "active" ? "paused" : "active";
-    var verbo = target === "paused" ? "PAUSAR" : "ACTIVAR";
-    var nombre = S.mlAccountById(activeMLId())?.name || "Mercado Libre";
-    var ok = window.confirm(
-      verbo + ' la publicacion:\n\n"' + item.title + '"\n\nen ' + nombre + "?\n\nEl cambio se aplica en tu tienda real."
-    );
-    if (!ok) return;
-
-    try {
-      setListingsMessage((target === "paused" ? "Pausando" : "Activando") + " publicacion...", "");
-      await S.requireSecureApi().mlApi("/items/" + itemId, "PUT", { status: target }, activeMLId());
-      item.status = target;
-      renderMLListings();
-      setListingsMessage('"' + item.title + '" quedo ' + (target === "paused" ? "pausada" : "activa") + ".", "success");
-    } catch (e) {
-      setListingsMessage("Mercado Libre rechazo el cambio: " + (e.message || e), "error");
-    }
   }
 
   function toggleListingExpand(itemId) {
@@ -1062,48 +1074,88 @@
     renderMLListings();
   }
 
-  // Cambia el stock de UNA variante (sabor) en Mercado Libre. Es la unica via
-  // de edicion para combos con variantes: ML lleva el stock por variante.
-  async function updateMLVariantStock(itemId, variantId) {
-    var item = findListing(itemId);
-    if (!item) return;
-    var variante = (item.variations || []).find(function (v) { return v.id === variantId; });
-    if (!variante) return;
+  // Aplica TODOS los cambios pendientes en Mercado Libre, con una sola
+  // confirmacion que los lista. Cada publicacion es una llamada PUT; si una
+  // falla, sigue con las demas y al final informa el detalle.
+  async function saveMLListingChanges() {
+    var cambios = pendingChanges();
+    if (!cambios.length) return;
 
-    var input = elements.mlListingsTable?.querySelector('[data-variant-stock="' + itemId + '::' + variantId + '"]');
-    var valor = input ? String(input.value).trim() : "";
-    var nuevo = Number(valor);
-
-    if (valor === "" || !Number.isInteger(nuevo) || nuevo < 0) {
-      setListingsMessage("El stock tiene que ser un numero entero de 0 o mas.", "error");
+    // Validacion previa: nada se manda si hay un valor invalido.
+    var invalidos = cambios.filter(function (c) {
+      if (c.type === "status") return false;
+      return c.value === undefined || !Number.isInteger(c.value) || c.value < 0;
+    });
+    if (invalidos.length) {
+      setListingsMessage("Hay stocks invalidos: tienen que ser numeros enteros de 0 o mas.", "error");
       return;
     }
-    if (nuevo === variante.stock) {
-      setListingsMessage("El stock de esa variante ya es " + nuevo + ".", "");
-      return;
-    }
+
     var nombre = S.mlAccountById(activeMLId())?.name || "Mercado Libre";
+    var detalle = cambios.map(function (c) {
+      if (c.type === "status") {
+        return "- " + c.item.title + ": " + (c.value === "paused" ? "PAUSAR" : "ACTIVAR");
+      }
+      if (c.type === "varstock") {
+        return "- " + c.item.title + " (" + c.variation.label + "): stock " +
+          (c.variation.stock === null ? "?" : c.variation.stock) + " -> " + c.value;
+      }
+      return "- " + c.item.title + ": stock " + (c.item.stock === null ? "?" : c.item.stock) + " -> " + c.value;
+    }).join("\n");
+
     var ok = window.confirm(
-      'Cambiar el stock de la variante:\n\n"' + item.title + '"\n' + variante.label +
-      "\n\nde " + (variante.stock === null ? "?" : variante.stock) + " a " + nuevo +
-      " unidades en " + nombre + "?\n\nEl cambio se aplica en tu tienda real."
+      "Aplicar " + cambios.length + " cambio(s) en " + nombre + "?\n\n" + detalle +
+      "\n\nSe aplican en tu tienda real."
     );
     if (!ok) return;
 
-    try {
-      setListingsMessage("Aplicando stock de la variante...", "");
-      await S.requireSecureApi().mlApi(
-        "/items/" + itemId, "PUT",
-        { variations: [{ id: Number(variantId), available_quantity: nuevo }] },
-        activeMLId()
+    // Una llamada por publicacion, juntando sus cambios (stock + estado + variantes).
+    var porItem = new Map();
+    cambios.forEach(function (c) {
+      if (!porItem.has(c.item.id)) porItem.set(c.item.id, { item: c.item, body: {}, vars: [] });
+      var entrada = porItem.get(c.item.id);
+      if (c.type === "status") entrada.body.status = c.value;
+      else if (c.type === "stock") entrada.body.available_quantity = c.value;
+      else entrada.vars.push({ id: Number(c.variation.id), available_quantity: c.value, ref: c.variation });
+    });
+
+    var okCount = 0;
+    var errores = [];
+    setListingsMessage("Guardando " + cambios.length + " cambio(s) en Mercado Libre...", "");
+
+    for (var entrada of porItem.values()) {
+      var body = Object.assign({}, entrada.body);
+      if (entrada.vars.length) {
+        body.variations = entrada.vars.map(function (v) {
+          return { id: v.id, available_quantity: v.available_quantity };
+        });
+      }
+      try {
+        await S.requireSecureApi().mlApi("/items/" + entrada.item.id, "PUT", body, activeMLId());
+        // Confirmado en ML: el valor pendiente pasa a ser el real.
+        if (body.status) { entrada.item.status = body.status; entrada.item.pendingStatus = undefined; }
+        if (body.available_quantity !== undefined) {
+          entrada.item.stock = body.available_quantity;
+          entrada.item.pendingStock = undefined;
+        }
+        entrada.vars.forEach(function (v) { v.ref.stock = v.available_quantity; v.ref.pendingStock = undefined; });
+        if (entrada.vars.length) {
+          entrada.item.stock = (entrada.item.variations || []).reduce(function (a, v) { return a + (v.stock || 0); }, 0);
+        }
+        okCount += 1;
+      } catch (e) {
+        errores.push(entrada.item.title + ": " + (e.message || e));
+      }
+    }
+
+    renderMLListings();
+    if (errores.length) {
+      setListingsMessage(
+        okCount + " publicacion(es) actualizada(s). " + errores.length + " con error:\n" + errores.join("\n"),
+        "error"
       );
-      variante.stock = nuevo;
-      // El total del combo es la suma de sus variantes.
-      item.stock = (item.variations || []).reduce(function (s2, v) { return s2 + (v.stock || 0); }, 0);
-      renderMLListings();
-      setListingsMessage('Variante "' + variante.label + '" actualizada a ' + nuevo + " unidades.", "success");
-    } catch (e) {
-      setListingsMessage("Mercado Libre rechazo el cambio: " + (e.message || e), "error");
+    } else {
+      setListingsMessage("Listo: " + okCount + " publicacion(es) actualizada(s) en Mercado Libre.", "success");
     }
   }
 
@@ -1328,7 +1380,7 @@
     clearSelectedCommerceApp, clearSelectedCommerceGroup, createCommerceSnapshot, disconnectML, ensureMLLiveDefaults, fetchCommerceData, fetchMLOrders,
     handleMlOAuthReturn, normalizeCommerceOrder, normalizeMLOrder,
     populateCommerceConfigForm, readCommerceConfigFromForm, renderCommerceDashboard, renderCommerceSwitcher,
-    applyPeriodChange, getPeriodRange, loadMLListings, openSaleDeepLink, renderPeriodBar, selectMLAccount, toggleListingExpand, toggleMLListing, updateMLStock, updateMLVariantStock,
+    applyPeriodChange, getPeriodRange, loadMLListings, markPendingStock, openSaleDeepLink, renderPeriodBar, saveMLListingChanges, selectMLAccount, toggleListingExpand, toggleListingStatus,
     scheduleCommerceRefresh, scheduleMLRefresh, selectCommerceApp, setCommerceMessage, setMlMessage,
     startMLOAuth, syncCommerce, syncMercadoLibre,
   });

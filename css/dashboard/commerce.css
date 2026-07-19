@@ -336,10 +336,14 @@
 /* ============================================================
    Foto + stock del producto en la tabla de pedidos (estilo ML)
    ============================================================ */
-.order-product {
+/* El flex va en un DIV interno, no en el <td>: un td con display:flex se sale
+   del layout de tabla y se encoge al contenido en vez de llenar la columna. */
+.order-product-cell {
   display: flex;
   align-items: center;
   gap: 12px;
+  width: 100%;
+  min-width: 0;
 }
 
 .order-thumb {
@@ -420,42 +424,66 @@
   font-size: 10px;
 }
 
-/* La tabla de publicaciones envuelve titulos largos como la de pedidos. */
-.listings-table td:first-child {
-  white-space: normal;
-}
-
-/* Anchos fijos por columna. `table-layout: fixed` es imprescindible: sin el,
-   el navegador reparte segun contenido e ignora los width, que era lo que
-   dejaba Vendidos pegado a Stock y Stock pegado a Estado. */
+/* ============================================================
+   Tabla de publicaciones: anchos fijos y todo alineado al encabezado
+   ============================================================ */
 .listings-table {
+  /* Imprescindible: sin esto el navegador reparte segun contenido e ignora
+     los anchos, que era lo que amontonaba las columnas. */
   table-layout: fixed;
   width: 100%;
   /* Debajo de esto la fila no entra y el contenedor hace scroll horizontal
      (mejor que aplastar el input de stock). */
-  min-width: 880px;
+  min-width: 940px;
 }
 
-/* Porcentajes que suman 100: con anchos en px la primera columna colapsaba a
-   0 (en layout fijo el min-width de la celda no se respeta). */
+/* Porcentajes que suman 100. Con anchos en px la primera columna colapsaba
+   a 0, porque en layout fijo el min-width de la celda no se respeta. */
 .listings-table th:nth-child(1),
-.listings-table td:nth-child(1) { width: 34%; }
+.listings-table td:nth-child(1) { width: 50%; }
 .listings-table th:nth-child(2),
-.listings-table td:nth-child(2) { width: 14%; }
+.listings-table td:nth-child(2) { width: 15%; }
 .listings-table th:nth-child(3),
 .listings-table td:nth-child(3) { width: 11%; }
 .listings-table th:nth-child(4),
-.listings-table td:nth-child(4) { width: 21%; }
+.listings-table td:nth-child(4) { width: 13%; }
 .listings-table th:nth-child(5),
-.listings-table td:nth-child(5) { width: 10%; }
-.listings-table th:nth-child(6),
-.listings-table td:nth-child(6) { width: 10%; }
+.listings-table td:nth-child(5) { width: 11%; }
 
-/* Numeros alineados a la derecha: se leen mucho mejor en columna. */
-.listings-table th:nth-child(2),
-.listings-table th:nth-child(3),
-.listing-num {
-  text-align: right;
+/* Todo lo que no es el nombre va centrado, encabezado incluido: asi cada
+   valor queda exactamente debajo de su titulo. */
+.listings-table th:nth-child(n + 2),
+.listings-table td:nth-child(n + 2) {
+  text-align: center;
+  vertical-align: middle;
+}
+
+.listings-table td:first-child {
+  vertical-align: middle;
+  white-space: normal;
+}
+
+/* El titulo no puede desbordar la fila: maximo 2 lineas y despues "...". */
+.listings-table .order-product-info b {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.4;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* flex:1 para que el bloque del titulo ocupe TODO el ancho libre de la celda:
+   con el `auto` por defecto se quedaba corto y truncaba antes de tiempo. */
+.listings-table .order-product-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.order-product-info {
+  flex: 1;
+  min-width: 0;
 }
 
 /* Flechita para desplegar las variantes de un combo. */
@@ -481,18 +509,110 @@
   display: inline-block;
 }
 
+/* Input + boton centrados como bloque, alineados bajo el titulo STOCK. */
+.listing-stock-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.listing-stock-ro {
+  display: block;
+  line-height: 1.3;
+}
+
+.listing-variants-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
 /* Filas de variante: indentadas y mas tenues que la publicacion padre. */
 .listing-variant-row {
   background: rgba(255, 255, 255, 0.018);
 }
 
 .listing-variant-name {
-  padding-left: 84px !important;
+  padding-left: 76px !important;
   color: var(--muted);
   font-size: 12px;
   white-space: normal;
+  text-align: left !important;
 }
 
 .listing-variant-row .listing-stock-input {
   width: 66px;
+}
+
+
+/* ============================================================
+   Publicaciones: guardado en lote e interruptor de estado
+   ============================================================ */
+.listings-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#mlListingsSave:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Con cambios sin guardar el boton late, para que no se pasen por alto. */
+#mlListingsSave.has-pending {
+  animation: guardarPendiente 1.8s ease-in-out infinite;
+}
+
+@keyframes guardarPendiente {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 26, 157, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 26, 157, 0); }
+}
+
+/* Campo con un valor editado y todavia sin aplicar en Mercado Libre. */
+.listing-stock-input.is-dirty {
+  border-color: rgba(255, 26, 157, 0.75);
+  background: rgba(255, 26, 157, 0.09);
+}
+
+/* Interruptor de estado, al estilo del de Mercado Libre. */
+.listing-switch {
+  position: relative;
+  width: 42px;
+  height: 23px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.listing-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.75);
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.listing-switch.is-on {
+  border-color: rgba(49, 230, 173, 0.55);
+  background: rgba(49, 230, 173, 0.32);
+}
+
+.listing-switch.is-on .listing-switch-knob {
+  transform: translateX(19px);
+  background: var(--green);
+}
+
+/* Estado cambiado y sin guardar. */
+.listing-switch.is-dirty {
+  border-color: rgba(255, 26, 157, 0.8);
+  box-shadow: 0 0 0 2px rgba(255, 26, 157, 0.18);
 }

@@ -31,7 +31,7 @@
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260712-dedup1" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260718-vars1" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260718-save1" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260716-nav1" />
   </head>
@@ -791,9 +791,12 @@
                   <span>Publicaciones</span>
                   <h2>Stock y estado de tus publicaciones</h2>
                 </div>
-                <button class="ghost-button" type="button" id="mlListingsReload">Actualizar</button>
+                <div class="listings-actions">
+                  <button class="primary-button" type="button" id="mlListingsSave" disabled>Guardar cambios</button>
+                  <button class="ghost-button" type="button" id="mlListingsReload">Actualizar</button>
+                </div>
               </div>
-              <p class="listings-hint">Los cambios de stock y estado se aplican en Mercado Libre al confirmarlos.</p>
+              <p class="listings-hint">Edita el stock y el estado que necesites y aplicalos todos juntos con Guardar cambios. Nada se toca en Mercado Libre hasta confirmar.</p>
               <div class="table-wrap">
                 <table class="meta-table listings-table">
                   <thead>
@@ -803,7 +806,6 @@
                       <th>Vendidos</th>
                       <th>Stock</th>
                       <th>Estado</th>
-                      <th>Acciones</th>
                     </tr>
                   </thead>
                   <tbody id="mlListingsTable"></tbody>
@@ -845,16 +847,16 @@
     <script src="./js/firebase/secure-api.js?v=20260717-acct4"></script>
     <!-- Dashboard modules -->
     <script src="./js/core/auth.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/store.js?v=20260718-pubs1"></script>
+    <script src="./js/dashboard/store.js?v=20260718-save1"></script>
     <script src="./js/dashboard/integration-core.js?v=20260716-live1"></script>
     <script src="./js/dashboard/charts.js?v=20260718-orders1"></script>
     <script src="./js/dashboard/finance.js?v=20260709-ola0mod"></script>
     <script src="./js/dashboard/meta.js?v=20260716-nav1"></script>
-    <script src="./js/dashboard/commerce.js?v=20260718-vars1"></script>
+    <script src="./js/dashboard/commerce.js?v=20260718-save1"></script>
     <script src="./js/dashboard/notifications.js?v=20260717-acct4"></script>
     <script src="./js/dashboard/platform-nav.js?v=20260718-pubs1"></script>
     <script src="./js/dashboard/router.js?v=20260716-group1"></script>
-    <script src="./js/dashboard/app.js?v=20260718-vars1"></script>
+    <script src="./js/dashboard/app.js?v=20260718-save1"></script>
     <script src="./js/pwa.js?v=20260711-push1" defer></script>
   </body>
 </html>

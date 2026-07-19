@@ -506,6 +506,7 @@
     commerceCostsLegend: document.getElementById("commerceCostsLegend"),
     mlListingsPanel: document.getElementById("mlListingsPanel"),
     mlListingsReload: document.getElementById("mlListingsReload"),
+    mlListingsSave: document.getElementById("mlListingsSave"),
     mlListingsTable: document.getElementById("mlListingsTable"),
     mlListingsEmpty: document.getElementById("mlListingsEmpty"),
     mlListingsMessage: document.getElementById("mlListingsMessage"),
