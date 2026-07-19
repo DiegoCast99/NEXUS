@@ -1159,12 +1159,35 @@
     }
   }
 
+  // Espera a que el canvas tenga ancho real y recien ahi dibuja. Al mostrar una
+  // seccion el navegador no aplica el layout en el mismo frame, asi que un solo
+  // requestAnimationFrame llegaba con ancho 0 y el grafico no se dibujaba.
+  function dibujarCuandoSeVea(canvas, dibujar, intentos) {
+    if (!canvas || typeof dibujar !== "function") return;
+    var quedan = intentos === undefined ? 12 : intentos;
+    if (canvas.getBoundingClientRect().width > 0) { dibujar(); return; }
+    if (quedan <= 0) return;
+    requestAnimationFrame(function () { dibujarCuandoSeVea(canvas, dibujar, quedan - 1); });
+  }
+
   // Lazy-load: recien al abrir la seccion Publicaciones se trae el catalogo.
+  // Y al abrir Metricas hay que redibujar los graficos: mientras la seccion
+  // estuvo oculta el canvas media 0 y no se pudo dibujar nada.
   window.addEventListener("nexus:section", function (event) {
     var d = (event && event.detail) || {};
-    if (d.module !== "ecommerce" || d.section !== "publicaciones") return;
-    if (!isMLApp(state.commerce.selectedApp)) return;
-    loadMLListings(false);
+    if (d.module !== "ecommerce") return;
+
+    if (d.section === "publicaciones") {
+      if (isMLApp(state.commerce.selectedApp)) loadMLListings(false);
+      return;
+    }
+
+    if (d.section === "resumen") {
+      dibujarCuandoSeVea(elements.commerceTrendChart, drawCommerceTrendChart);
+      if (isMLApp(state.commerce.selectedApp)) {
+        dibujarCuandoSeVea(elements.commerceCostsChart, S.drawCommerceCostsChart);
+      }
+    }
   });
 
   // ---- Sync genérico -----------------------------------------

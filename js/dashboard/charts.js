@@ -18,8 +18,12 @@
     });
   }
 
+  // Devuelve null si el canvas no esta visible. Dibujar con ancho 0 dejaba un
+  // canvas de 1px que despues se estiraba al mostrar la seccion: de ahi salia
+  // la franja de color en vez del grafico.
   function resizeCanvas(canvas) {
     const rect = canvas.getBoundingClientRect();
+    if (!rect.width) return null;
     const fallbackHeight = Number(canvas.getAttribute("height") || rect.height || 220);
     const cssHeight = rect.height || fallbackHeight;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -137,7 +141,9 @@
 
   function drawCashflowChart() {
     if (!elements.cashflowChart) return;
-    const { ctx, width, height } = resizeCanvas(elements.cashflowChart);
+    const size = resizeCanvas(elements.cashflowChart);
+    if (!size) return;            // seccion oculta: se redibuja al mostrarla
+    const { ctx, width, height } = size;
     const series = getMonthlySeries();
     const maxValue = Math.max(...series.flatMap((item) => [item.income, item.expense]), 1) * 1.18;
     ctx.clearRect(0, 0, width, height);
@@ -239,7 +245,9 @@
 
   function drawCategoryChart() {
     if (!elements.categoryChart) return;
-    const { ctx, width, height } = resizeCanvas(elements.categoryChart);
+    const size = resizeCanvas(elements.categoryChart);
+    if (!size) return;            // seccion oculta: se redibuja al mostrarla
+    const { ctx, width, height } = size;
     const expenses = getFilteredMovements().filter((movement) => movement.type === "expense");
     const totals = new Map();
     expenses.forEach((movement) => totals.set(movement.category, (totals.get(movement.category) || 0) + Number(movement.amount)));
@@ -290,7 +298,9 @@
   // Finanzas: cargos por venta + costos de envio (lo que da la API de pedidos).
   function drawCommerceCostsChart() {
     if (!elements.commerceCostsChart) return;
-    const { ctx, width, height } = resizeCanvas(elements.commerceCostsChart);
+    const size = resizeCanvas(elements.commerceCostsChart);
+    if (!size) return;            // seccion oculta: se redibuja al mostrarla
+    const { ctx, width, height } = size;
     const totals = getCommerceSnapshot()?.totals || {};
     const entries = [
       ["Cargos por venta", Number(totals.commission) || 0],
@@ -343,7 +353,9 @@
 
   function drawMetaTrendChart() {
     if (!elements.metaTrendChart) return;
-    const { ctx, width, height } = resizeCanvas(elements.metaTrendChart);
+    const size = resizeCanvas(elements.metaTrendChart);
+    if (!size) return;            // seccion oculta: se redibuja al mostrarla
+    const { ctx, width, height } = size;
     const trend = state.meta.snapshot?.trend || [];
     const maxSpend = Math.max(...trend.map((item) => item.spend), 1);
     const maxRoas = Math.max(...trend.map((item) => item.roas), 1);
@@ -440,7 +452,9 @@
 
   function drawCommerceTrendChart() {
     if (!elements.commerceTrendChart) return;
-    const { ctx, width, height } = resizeCanvas(elements.commerceTrendChart);
+    const size = resizeCanvas(elements.commerceTrendChart);
+    if (!size) return;            // seccion oculta: se redibuja al mostrarla
+    const { ctx, width, height } = size;
     const trend = getCommerceSnapshot()?.trend || [];
     const maxRevenue = Math.max(...trend.map((item) => item.revenue), 1);
     const maxOrders = Math.max(...trend.map((item) => item.orders), 1);
