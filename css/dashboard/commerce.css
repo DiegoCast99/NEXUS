@@ -422,6 +422,77 @@
 
 /* La tabla de publicaciones envuelve titulos largos como la de pedidos. */
 .listings-table td:first-child {
-  min-width: 260px;
   white-space: normal;
+}
+
+/* Anchos fijos por columna. `table-layout: fixed` es imprescindible: sin el,
+   el navegador reparte segun contenido e ignora los width, que era lo que
+   dejaba Vendidos pegado a Stock y Stock pegado a Estado. */
+.listings-table {
+  table-layout: fixed;
+  width: 100%;
+  /* Debajo de esto la fila no entra y el contenedor hace scroll horizontal
+     (mejor que aplastar el input de stock). */
+  min-width: 880px;
+}
+
+/* Porcentajes que suman 100: con anchos en px la primera columna colapsaba a
+   0 (en layout fijo el min-width de la celda no se respeta). */
+.listings-table th:nth-child(1),
+.listings-table td:nth-child(1) { width: 34%; }
+.listings-table th:nth-child(2),
+.listings-table td:nth-child(2) { width: 14%; }
+.listings-table th:nth-child(3),
+.listings-table td:nth-child(3) { width: 11%; }
+.listings-table th:nth-child(4),
+.listings-table td:nth-child(4) { width: 21%; }
+.listings-table th:nth-child(5),
+.listings-table td:nth-child(5) { width: 10%; }
+.listings-table th:nth-child(6),
+.listings-table td:nth-child(6) { width: 10%; }
+
+/* Numeros alineados a la derecha: se leen mucho mejor en columna. */
+.listings-table th:nth-child(2),
+.listings-table th:nth-child(3),
+.listing-num {
+  text-align: right;
+}
+
+/* Flechita para desplegar las variantes de un combo. */
+.listing-expand {
+  flex: 0 0 18px;
+  width: 18px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.16s ease;
+}
+
+.listing-expand:hover {
+  color: var(--accent);
+}
+
+.listing-expand-spacer {
+  flex: 0 0 18px;
+  display: inline-block;
+}
+
+/* Filas de variante: indentadas y mas tenues que la publicacion padre. */
+.listing-variant-row {
+  background: rgba(255, 255, 255, 0.018);
+}
+
+.listing-variant-name {
+  padding-left: 84px !important;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: normal;
+}
+
+.listing-variant-row .listing-stock-input {
+  width: 66px;
 }

@@ -204,6 +204,8 @@
       const id = btn.dataset.listingId;
       if (btn.dataset.action === "stock") S.updateMLStock(id);
       else if (btn.dataset.action === "toggle") S.toggleMLListing(id);
+      else if (btn.dataset.action === "expand") S.toggleListingExpand(id);
+      else if (btn.dataset.action === "varstock") S.updateMLVariantStock(id, btn.dataset.variantId);
     });
     // Cambiar de cuenta de Mercado Libre desde el panel.
     elements.mlAccountSelect?.addEventListener("change", () => S.selectMLAccount(elements.mlAccountSelect.value));

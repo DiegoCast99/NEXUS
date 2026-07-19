@@ -894,7 +894,22 @@
             status: String(b.status || ""),
             thumbnail: b.secure_thumbnail || b.thumbnail || "",
             permalink: b.permalink || "",
-            hasVariations: Array.isArray(b.variations) && b.variations.length > 0
+            hasVariations: Array.isArray(b.variations) && b.variations.length > 0,
+            expanded: false,
+            // Detalle por variante: el stock de estos combos se edita ACA,
+            // variante por variante (sabor por sabor), nunca por el total.
+            variations: (b.variations || []).map(function (v) {
+              var etiqueta = (v.attribute_combinations || [])
+                .map(function (c) { return c.value_name; })
+                .filter(Boolean).join(" / ");
+              return {
+                id: String(v.id),
+                label: etiqueta || ("Variante " + v.id),
+                price: Number(v.price) || 0,
+                sold: Number(v.sold_quantity) || 0,
+                stock: (typeof v.available_quantity === "number") ? v.available_quantity : null
+              };
+            })
           });
         });
       }
@@ -922,14 +937,19 @@
         ? '<img class="order-thumb" src="' + escapeHtml(item.thumbnail) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'" />'
         : '<span class="order-thumb order-thumb-empty" aria-hidden="true"></span>';
 
-      // El stock de publicaciones con variantes se maneja por variante en ML:
-      // editar el total seria ambiguo, asi que se deja solo lectura.
+      // El stock de los combos con variantes se edita variante por variante:
+      // el total es solo informativo y la flechita despliega la lista.
+      var nVars = (item.variations || []).length;
       var stockCell = item.hasVariations
-        ? '<span class="listing-stock-ro">' + (item.stock === null ? "-" : integerNumber.format(item.stock)) + '</span><small class="listing-variants-note">Por variante (en ML)</small>'
+        ? '<span class="listing-stock-ro">' + (item.stock === null ? "-" : integerNumber.format(item.stock)) + '</span><small class="listing-variants-note">' + nVars + ' variante' + (nVars === 1 ? "" : "s") + '</small>'
         : '<span class="listing-stock-edit">' +
             '<input type="number" min="0" step="1" class="listing-stock-input" value="' + (item.stock === null ? "" : item.stock) + '" data-listing-stock="' + escapeHtml(item.id) + '" />' +
             '<button class="ghost-button listing-apply" type="button" data-action="stock" data-listing-id="' + escapeHtml(item.id) + '">Aplicar</button>' +
           '</span>';
+
+      var chevron = item.hasVariations
+        ? '<button class="listing-expand" type="button" data-action="expand" data-listing-id="' + escapeHtml(item.id) + '" aria-expanded="' + (item.expanded ? "true" : "false") + '" aria-label="Ver variantes">' + (item.expanded ? "\u25be" : "\u25b8") + '</button>'
+        : '<span class="listing-expand-spacer" aria-hidden="true"></span>';
 
       var estado = LISTING_STATUS[item.status] || item.status || "-";
       var toggle = "";
@@ -939,16 +959,33 @@
         toggle = '<button class="ghost-button" type="button" data-action="toggle" data-listing-id="' + escapeHtml(item.id) + '">Activar</button>';
       }
 
-      return '<tr data-listing-row="' + escapeHtml(item.id) + '">' +
-        '<td class="order-product">' + foto +
+      var fila = '<tr data-listing-row="' + escapeHtml(item.id) + '">' +
+        '<td class="order-product">' + chevron + foto +
           '<div class="order-product-info"><b>' + escapeHtml(item.title) + '</b>' +
           '<small class="order-stock">' + escapeHtml(item.id) + '</small></div></td>' +
-        '<td>' + moneyWithCents.format(item.price) + '</td>' +
-        '<td>' + integerNumber.format(item.sold) + '</td>' +
+        '<td class="listing-num">' + moneyWithCents.format(item.price) + '</td>' +
+        '<td class="listing-num">' + integerNumber.format(item.sold) + '</td>' +
         '<td>' + stockCell + '</td>' +
         '<td><span class="type-pill ' + (item.status === "active" ? "income" : "") + '">' + escapeHtml(estado) + '</span></td>' +
         '<td>' + toggle + '</td>' +
       '</tr>';
+
+      // Variantes desplegadas: una fila por sabor, con su stock editable.
+      if (item.hasVariations && item.expanded) {
+        fila += item.variations.map(function (v) {
+          return '<tr class="listing-variant-row" data-variant-of="' + escapeHtml(item.id) + '">' +
+            '<td class="listing-variant-name">' + escapeHtml(v.label) + '</td>' +
+            '<td class="listing-num">' + moneyWithCents.format(v.price) + '</td>' +
+            '<td class="listing-num">' + integerNumber.format(v.sold) + '</td>' +
+            '<td><span class="listing-stock-edit">' +
+              '<input type="number" min="0" step="1" class="listing-stock-input" value="' + (v.stock === null ? "" : v.stock) + '" data-variant-stock="' + escapeHtml(item.id) + '::' + escapeHtml(v.id) + '" />' +
+              '<button class="ghost-button listing-apply" type="button" data-action="varstock" data-listing-id="' + escapeHtml(item.id) + '" data-variant-id="' + escapeHtml(v.id) + '">Aplicar</button>' +
+            '</span></td>' +
+            '<td></td><td></td>' +
+          '</tr>';
+        }).join("");
+      }
+      return fila;
     }).join("");
   }
 
@@ -1013,6 +1050,58 @@
       item.status = target;
       renderMLListings();
       setListingsMessage('"' + item.title + '" quedo ' + (target === "paused" ? "pausada" : "activa") + ".", "success");
+    } catch (e) {
+      setListingsMessage("Mercado Libre rechazo el cambio: " + (e.message || e), "error");
+    }
+  }
+
+  function toggleListingExpand(itemId) {
+    var item = findListing(itemId);
+    if (!item) return;
+    item.expanded = !item.expanded;
+    renderMLListings();
+  }
+
+  // Cambia el stock de UNA variante (sabor) en Mercado Libre. Es la unica via
+  // de edicion para combos con variantes: ML lleva el stock por variante.
+  async function updateMLVariantStock(itemId, variantId) {
+    var item = findListing(itemId);
+    if (!item) return;
+    var variante = (item.variations || []).find(function (v) { return v.id === variantId; });
+    if (!variante) return;
+
+    var input = elements.mlListingsTable?.querySelector('[data-variant-stock="' + itemId + '::' + variantId + '"]');
+    var valor = input ? String(input.value).trim() : "";
+    var nuevo = Number(valor);
+
+    if (valor === "" || !Number.isInteger(nuevo) || nuevo < 0) {
+      setListingsMessage("El stock tiene que ser un numero entero de 0 o mas.", "error");
+      return;
+    }
+    if (nuevo === variante.stock) {
+      setListingsMessage("El stock de esa variante ya es " + nuevo + ".", "");
+      return;
+    }
+    var nombre = S.mlAccountById(activeMLId())?.name || "Mercado Libre";
+    var ok = window.confirm(
+      'Cambiar el stock de la variante:\n\n"' + item.title + '"\n' + variante.label +
+      "\n\nde " + (variante.stock === null ? "?" : variante.stock) + " a " + nuevo +
+      " unidades en " + nombre + "?\n\nEl cambio se aplica en tu tienda real."
+    );
+    if (!ok) return;
+
+    try {
+      setListingsMessage("Aplicando stock de la variante...", "");
+      await S.requireSecureApi().mlApi(
+        "/items/" + itemId, "PUT",
+        { variations: [{ id: Number(variantId), available_quantity: nuevo }] },
+        activeMLId()
+      );
+      variante.stock = nuevo;
+      // El total del combo es la suma de sus variantes.
+      item.stock = (item.variations || []).reduce(function (s2, v) { return s2 + (v.stock || 0); }, 0);
+      renderMLListings();
+      setListingsMessage('Variante "' + variante.label + '" actualizada a ' + nuevo + " unidades.", "success");
     } catch (e) {
       setListingsMessage("Mercado Libre rechazo el cambio: " + (e.message || e), "error");
     }
@@ -1239,7 +1328,7 @@
     clearSelectedCommerceApp, clearSelectedCommerceGroup, createCommerceSnapshot, disconnectML, ensureMLLiveDefaults, fetchCommerceData, fetchMLOrders,
     handleMlOAuthReturn, normalizeCommerceOrder, normalizeMLOrder,
     populateCommerceConfigForm, readCommerceConfigFromForm, renderCommerceDashboard, renderCommerceSwitcher,
-    applyPeriodChange, getPeriodRange, loadMLListings, openSaleDeepLink, renderPeriodBar, selectMLAccount, toggleMLListing, updateMLStock,
+    applyPeriodChange, getPeriodRange, loadMLListings, openSaleDeepLink, renderPeriodBar, selectMLAccount, toggleListingExpand, toggleMLListing, updateMLStock, updateMLVariantStock,
     scheduleCommerceRefresh, scheduleMLRefresh, selectCommerceApp, setCommerceMessage, setMlMessage,
     startMLOAuth, syncCommerce, syncMercadoLibre,
   });
