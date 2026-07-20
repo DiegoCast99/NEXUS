@@ -37,11 +37,19 @@
       { id: "campanas", label: "Campanas", hint: "Vista operacional" },
       { id: "pixel", label: "Pixel", hint: "Eventos y conversiones" },
       { id: "config", label: "Configuracion", hint: "Credenciales" }
+    ],
+    tools: [
+      { id: "publicador", label: "Publicador", hint: "Clonar entre cuentas" },
+      { id: "historial", label: "Historial", hint: "Importaciones previas" }
     ]
   };
 
-  var MODULE_LABEL = { ecommerce: "E-Commerce", meta: "Meta Ads" };
-  var BACK_LABEL = { ecommerce: "Volver a negocios", meta: "Volver a plataformas" };
+  var MODULE_LABEL = { ecommerce: "E-Commerce", meta: "Meta Ads", tools: "Herramientas" };
+  var BACK_LABEL = {
+    ecommerce: "Volver a negocios",
+    meta: "Volver a plataformas",
+    tools: "Volver a herramientas"
+  };
 
   // Modulo cuya plataforma esta abierta ahora (null = menu de modulos).
   var current = null;
@@ -182,6 +190,7 @@
       // Delegar en el modulo: cada uno sabe como volver a su selector.
       if (current === "ecommerce") root.NexusDash?.clearSelectedCommerceApp?.();
       else if (current === "meta") root.NexusDash?.clearSelectedMetaPlatform?.();
+      else if (current === "tools") root.NexusDash?.clearSelectedTool?.();
     });
   }
 

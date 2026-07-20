@@ -14,6 +14,7 @@
     if (view === "meta" || view === "meta-ads") return { view: "meta", metaPlatform: null };
     if (view === "ecommerce" || view === "e-commerce") return { view: "ecommerce", metaPlatform: null };
     if (view === "finance" || view === "finanzas" || view === "finanzas-personales") return { view: "finance", metaPlatform: null };
+    if (view === "tools" || view === "herramientas") return { view: "tools", metaPlatform: null };
     return { view: "welcome", metaPlatform: null };
   }
 
@@ -82,6 +83,17 @@
       state.commerce.refreshTimer = 0;
       window.setTimeout(renderCommerceDashboard, 30);
       if (shouldPushHash) history.replaceState(null, "", "#ecommerce");
+      animateActivePanel();
+      return;
+    }
+
+    if (nextView === "tools") {
+      // Igual que E-Commerce: entrar al modulo siempre muestra las tarjetas.
+      // Volver a abrir la herramienta retoma donde estaba (el bucle de
+      // clonado sigue vivo aunque cambies de vista).
+      state.tools.pub.abierta = false;
+      window.setTimeout(S.renderToolsDashboard, 30);
+      if (shouldPushHash) history.replaceState(null, "", "#herramientas");
       animateActivePanel();
       return;
     }

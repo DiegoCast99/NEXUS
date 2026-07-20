@@ -25,13 +25,14 @@
         } catch (error) {}
       })();
     </script>
-    <link rel="stylesheet" href="./css/dashboard/base.css?v=20260709-ola4" />
+    <link rel="stylesheet" href="./css/dashboard/base.css?v=20260720-pub1" />
     <link rel="stylesheet" href="./css/dashboard/layout.css?v=20260716-nav2" />
     <link rel="stylesheet" href="./css/dashboard/controls.css?v=20260717-costs1" />
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260712-dedup1" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260718-save1" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260720-pub1" />
+    <link rel="stylesheet" href="./css/dashboard/tools.css?v=20260720-pub1" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260716-nav1" />
   </head>
@@ -109,6 +110,15 @@
             <span>
               <b>E-Commerce</b>
               <small>Negocios y ventas</small>
+            </span>
+          </button>
+          <button class="module-link" type="button" data-view="tools">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M14.7 6.3a4 4 0 0 1-5 5L5 16v3h3l4.7-4.7a4 4 0 0 0 5-5l-2.3 2.3-2-2 2.3-2.3Z" />
+            </svg>
+            <span>
+              <b>Herramientas</b>
+              <small>Utilidades de operacion</small>
             </span>
           </button>
         </nav>
@@ -831,6 +841,172 @@
           </div>
           </div>
         </section>
+
+        <!-- ============ HERRAMIENTAS ============ -->
+        <section class="view-panel" data-panel="tools">
+          <div class="tool-card-grid" id="toolsCards">
+            <article class="welcome-card" data-tool="publicador">
+              <span>Mercado Libre</span>
+              <h3>Publicador Masivo</h3>
+              <p>Cloná publicaciones de una cuenta a otra, en lote. Todo se crea pausado y sin stock: nada se activa solo.</p>
+              <button class="primary-button" type="button" data-tool="publicador">Entrar</button>
+            </article>
+          </div>
+
+          <div class="tools-layout">
+            <!-- ---- Publicador ---- -->
+            <section class="panel wide-panel" data-section="publicador" id="pubPanel">
+              <div class="nx-stepper" id="pubSteps" role="list"></div>
+
+              <!-- Paso 1: cuentas -->
+              <div id="pubSetup">
+                <div class="panel-heading">
+                  <div>
+                    <span>Paso 1</span>
+                    <h2>Elegí origen y destino</h2>
+                  </div>
+                </div>
+                <div class="period-bar">
+                  <label class="field compact-field">
+                    <span>Cuenta origen</span>
+                    <select id="pubSource"></select>
+                  </label>
+                  <label class="field compact-field">
+                    <span>Cuenta destino</span>
+                    <select id="pubTarget"></select>
+                  </label>
+                  <div class="period-bar-end">
+                    <span class="source-pill">Siempre pausadas</span>
+                    <small class="period-sync">Nada se activa solo</small>
+                  </div>
+                </div>
+                <div class="bulk-bar" style="margin-top:14px">
+                  <span class="bulk-bar-count">Se leen las publicaciones de las dos cuentas para detectar duplicados.</span>
+                  <div class="bulk-bar-actions">
+                    <button class="primary-button" type="button" id="pubLoad">Cargar publicaciones</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Paso 2: seleccion -->
+              <div id="pubSelection" class="is-hidden">
+                <div class="panel-heading">
+                  <div>
+                    <span>Paso 2</span>
+                    <h2>Elegí qué clonar a <span id="pubTargetName">la otra cuenta</span></h2>
+                  </div>
+                  <div class="bulk-bar-actions">
+                    <label class="field compact-field">
+                      <span>Buscar</span>
+                      <input type="search" id="pubSearch" placeholder="Titulo o MLU..." />
+                    </label>
+                  </div>
+                </div>
+                <div class="bulk-bar">
+                  <button class="bulk-check" type="button" role="checkbox" aria-checked="false"
+                          id="pubCheckAll" aria-label="Seleccionar todas"></button>
+                  <span class="bulk-bar-count" id="pubCount"></span>
+                  <div class="bulk-bar-actions">
+                    <button class="ghost-button" type="button" id="pubBack">Volver</button>
+                    <button class="primary-button" type="button" id="pubClone">Clonar</button>
+                  </div>
+                </div>
+                <div class="table-wrap">
+                  <table class="meta-table pub-table">
+                    <thead>
+                      <tr>
+                        <th><span class="sr-only">Elegir</span></th>
+                        <th>Publicacion</th>
+                        <th>Precio</th>
+                        <th>Stock</th>
+                        <th>Duplicado</th>
+                      </tr>
+                    </thead>
+                    <tbody id="pubTableBody"></tbody>
+                  </table>
+                  <div class="empty-state" id="pubEmpty">
+                    <span></span>
+                    <h3>Sin publicaciones</h3>
+                    <p>Esa cuenta no tiene publicaciones para clonar, o la busqueda no encontro nada.</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Paso 3: clonando -->
+              <div id="pubProgress" class="is-hidden">
+                <div class="panel-heading">
+                  <div>
+                    <span>Paso 3</span>
+                    <h2>Clonando</h2>
+                  </div>
+                  <div class="bulk-bar-actions">
+                    <button class="ghost-button" type="button" id="pubPause">Pausar</button>
+                    <button class="primary-button is-hidden" type="button" id="pubResume">Reanudar</button>
+                  </div>
+                </div>
+                <div class="nx-progress" id="pubProgressBlock">
+                  <div class="nx-progress-head">
+                    <span>Progreso</span>
+                    <b id="pubProgressCount">0 / 0</b>
+                  </div>
+                  <div class="nx-progress-track" role="progressbar" aria-valuemin="0" aria-valuenow="0" aria-valuemax="0">
+                    <div class="nx-progress-fill" id="pubProgressFill"></div>
+                  </div>
+                </div>
+                <div class="pub-issues" id="pubProgressDetail"></div>
+              </div>
+
+              <!-- Paso 4: resultado -->
+              <div id="pubResult" class="is-hidden">
+                <div class="panel-heading">
+                  <div>
+                    <span>Paso 4</span>
+                    <h2>Resultado</h2>
+                  </div>
+                  <div class="bulk-bar-actions">
+                    <button class="ghost-button" type="button" id="pubNewJob">Nueva importacion</button>
+                    <button class="primary-button" type="button" id="pubActivate">Activar con stock</button>
+                  </div>
+                </div>
+                <div class="pub-result-stats metric-grid" id="pubResultStats"></div>
+                <p class="pub-result-note" id="pubResultNote"></p>
+                <div class="pub-issues" id="pubResultIssues"></div>
+              </div>
+
+              <p class="meta-message" id="pubMessage"></p>
+            </section>
+
+            <!-- ---- Historial ---- -->
+            <section class="panel wide-panel" data-section="historial" id="pubHistoryPanel">
+              <div class="panel-heading">
+                <div>
+                  <span>Historial</span>
+                  <h2>Importaciones anteriores</h2>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table class="meta-table">
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Cuentas</th>
+                      <th>Clonadas</th>
+                      <th>Errores</th>
+                      <th>Omitidas</th>
+                      <th>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody id="pubHistoryBody"></tbody>
+                </table>
+                <div class="empty-state" id="pubHistoryEmpty">
+                  <span></span>
+                  <h3>Todavia no importaste nada</h3>
+                  <p>Cuando clones publicaciones, cada importacion queda registrada aca.</p>
+                </div>
+              </div>
+            </section>
+          </div>
+        </section>
       </main>
     </div>
 
@@ -844,19 +1020,20 @@
     <script src="./js/firebase/config.js?v=20260709-ola1c"></script>
     <script src="./js/firebase/auth.js?v=20260709-ola1"></script>
     <script src="./js/firebase/db.js?v=20260709-ola1"></script>
-    <script src="./js/firebase/secure-api.js?v=20260717-acct4"></script>
+    <script src="./js/firebase/secure-api.js?v=20260720-pub1"></script>
     <!-- Dashboard modules -->
     <script src="./js/core/auth.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/store.js?v=20260718-save1"></script>
+    <script src="./js/dashboard/store.js?v=20260720-pub1"></script>
     <script src="./js/dashboard/integration-core.js?v=20260716-live1"></script>
     <script src="./js/dashboard/charts.js?v=20260718-fixchart"></script>
     <script src="./js/dashboard/finance.js?v=20260709-ola0mod"></script>
     <script src="./js/dashboard/meta.js?v=20260716-nav1"></script>
     <script src="./js/dashboard/commerce.js?v=20260718-fixchart"></script>
     <script src="./js/dashboard/notifications.js?v=20260717-acct4"></script>
-    <script src="./js/dashboard/platform-nav.js?v=20260718-pubs1"></script>
-    <script src="./js/dashboard/router.js?v=20260716-group1"></script>
-    <script src="./js/dashboard/app.js?v=20260718-save1"></script>
+    <script src="./js/dashboard/tools.js?v=20260720-pub1"></script>
+    <script src="./js/dashboard/platform-nav.js?v=20260720-pub1"></script>
+    <script src="./js/dashboard/router.js?v=20260720-pub1"></script>
+    <script src="./js/dashboard/app.js?v=20260720-pub1"></script>
     <script src="./js/pwa.js?v=20260711-push1" defer></script>
   </body>
 </html>

@@ -519,6 +519,38 @@
     commerceProductList: document.getElementById("commerceProductList"),
     commerceTrendChart: document.getElementById("commerceTrendChart"),
     chartTooltip: document.getElementById("chartTooltip"),
+    toolsCards: document.getElementById("toolsCards"),
+    pubPanel: document.getElementById("pubPanel"),
+    pubSteps: document.getElementById("pubSteps"),
+    pubSetup: document.getElementById("pubSetup"),
+    pubSource: document.getElementById("pubSource"),
+    pubTarget: document.getElementById("pubTarget"),
+    pubLoad: document.getElementById("pubLoad"),
+    pubSelection: document.getElementById("pubSelection"),
+    pubSearch: document.getElementById("pubSearch"),
+    pubCheckAll: document.getElementById("pubCheckAll"),
+    pubCount: document.getElementById("pubCount"),
+    pubClone: document.getElementById("pubClone"),
+    pubBack: document.getElementById("pubBack"),
+    pubTargetName: document.getElementById("pubTargetName"),
+    pubTableBody: document.getElementById("pubTableBody"),
+    pubEmpty: document.getElementById("pubEmpty"),
+    pubProgress: document.getElementById("pubProgress"),
+    pubProgressBlock: document.getElementById("pubProgressBlock"),
+    pubProgressFill: document.getElementById("pubProgressFill"),
+    pubProgressCount: document.getElementById("pubProgressCount"),
+    pubProgressDetail: document.getElementById("pubProgressDetail"),
+    pubPause: document.getElementById("pubPause"),
+    pubResume: document.getElementById("pubResume"),
+    pubResult: document.getElementById("pubResult"),
+    pubResultStats: document.getElementById("pubResultStats"),
+    pubResultNote: document.getElementById("pubResultNote"),
+    pubResultIssues: document.getElementById("pubResultIssues"),
+    pubActivate: document.getElementById("pubActivate"),
+    pubNewJob: document.getElementById("pubNewJob"),
+    pubMessage: document.getElementById("pubMessage"),
+    pubHistoryBody: document.getElementById("pubHistoryBody"),
+    pubHistoryEmpty: document.getElementById("pubHistoryEmpty"),
     logoutButton: document.querySelector("[data-logout]"),
     exportButton: document.querySelector("[data-export]"),
     importButton: document.querySelector("[data-import]"),
@@ -564,6 +596,25 @@
       // Catalogo de publicaciones por cuenta de ML. Vive SOLO en memoria: se
       // carga al abrir la seccion Publicaciones (traerlo son varias llamadas).
       mlListings: {}
+    },
+    tools: {
+      pub: {
+        abierta: false,        // false = pantalla de tarjetas del modulo
+        paso: 1,               // 1 cuentas · 2 seleccion · 3 clonado · 4 resultado
+        origen: "mercadolibre",
+        destino: "mercadolibre2",
+        // Los catalogos son caros de traer y no vale la pena persistirlos.
+        srcItems: null,
+        dstItems: null,
+        seleccion: {},
+        busqueda: "",
+        cargando: false,
+        // El job SI se persiste (nexus.tools.pub.job.v1): es lo que permite
+        // retomar una importacion que quedo por la mitad.
+        job: null,
+        corriendo: false,      // cerrojo del bucle: nunca dos a la vez
+        pausaPedida: false
+      }
     }
   };
 
@@ -966,6 +1017,18 @@
       elements.viewTitle.textContent = "E-Commerce";
       document.title = "Nexus Dashboard - E-Commerce";
       elements.viewDescription.textContent = "Elegí un negocio para ver ventas, pedidos, productos y facturación.";
+      return;
+    }
+
+    if (view === "tools") {
+      const dentro = state.tools.pub.abierta;
+      elements.viewTitle.textContent = dentro ? "Herramientas / Publicador Masivo" : "Herramientas";
+      document.title = dentro
+        ? "Nexus Dashboard - Herramientas / Publicador Masivo"
+        : "Nexus Dashboard - Herramientas";
+      elements.viewDescription.textContent = dentro
+        ? "Cloná publicaciones de una cuenta de Mercado Libre a otra. Todo se crea pausado."
+        : "Utilidades para operar tus cuentas sin trabajo repetitivo.";
       return;
     }
 

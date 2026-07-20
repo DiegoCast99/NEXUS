@@ -300,10 +300,12 @@
       renderCommerceSwitcher();
       populateCommerceConfigForm();
       bindEvents();
+      S.bindTools();
       applyChartMode();
       renderAll();
       renderMetaDashboard();
       renderCommerceDashboard();
+      S.renderToolsDashboard();
       scheduleMetaRefresh();
       S.ensureMLLiveDefaults();
       scheduleCommerceRefresh();

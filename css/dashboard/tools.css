@@ -1,0 +1,328 @@
+/* ============================================================
+   NEXUS · Herramientas / Publicador Masivo
+   ------------------------------------------------------------
+   Componentes nuevos: pasos, casilla de seleccion, barra de
+   acciones masivas, barra de progreso y filas de excepcion.
+   Todo con los tokens de base.css: nada de colores sueltos.
+
+   Ojo con .is-hidden: finance.css la define como display:none,
+   pero este archivo carga despues, asi que cualquier componente
+   con display propio necesita re-declararla o no se oculta.
+   ============================================================ */
+
+.tools-layout {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+/* ---- Pasos ---- */
+
+.nx-stepper {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 0 0 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-strong);
+}
+.nx-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-right: 14px;
+}
+.nx-step::after {
+  content: "";
+  width: 34px;
+  height: 1px;
+  margin-left: 14px;
+  background: rgba(255, 255, 255, 0.14);
+}
+.nx-step:last-child { padding-right: 0; }
+.nx-step:last-child::after { display: none; }
+.nx-step i {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.045);
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  transition: background 180ms ease, border-color 180ms ease, color 180ms ease;
+}
+.nx-step b {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transition: color 180ms ease;
+}
+.nx-step.is-active i {
+  border-color: rgba(255, 26, 157, 0.55);
+  background: linear-gradient(135deg, rgba(255, 26, 157, 0.85), rgba(178, 77, 255, 0.4));
+  color: #fff;
+  box-shadow: 0 0 18px rgba(255, 26, 157, 0.28);
+}
+.nx-step.is-active b { color: var(--text); }
+.nx-step.is-done i {
+  border-color: rgba(49, 230, 173, 0.5);
+  background: rgba(49, 230, 173, 0.22);
+  color: var(--green);
+}
+
+/* ---- Casilla de seleccion ---- */
+
+.bulk-check {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.045);
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+.bulk-check:hover { border-color: rgba(255, 26, 157, 0.5); }
+.bulk-check.is-on {
+  border-color: rgba(255, 26, 157, 0.75);
+  background: rgba(255, 26, 157, 0.28);
+}
+.bulk-check.is-on::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 1px;
+  width: 5px;
+  height: 10px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.bulk-check.is-partial {
+  border-color: rgba(255, 26, 157, 0.6);
+  background: rgba(255, 26, 157, 0.16);
+}
+.bulk-check.is-partial::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 7px;
+  width: 10px;
+  height: 2px;
+  background: #fff;
+  border: 0;
+  transform: none;
+}
+
+/* ---- Barra de seleccion masiva ---- */
+
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 14px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-strong);
+  transition: border-color 180ms ease, background 180ms ease;
+}
+.bulk-bar.is-hidden { display: none; }
+.bulk-bar-count {
+  color: var(--text);
+  font-size: 13px;
+}
+.bulk-bar-count b { color: var(--accent); }
+.bulk-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+/* ---- Tabla de seleccion ---- */
+
+/* Mismas lecciones que la tabla de Publicaciones: layout fijo o el
+   navegador ignora los anchos, y porcentajes que sumen 100 (con px la
+   primera columna colapsa). Debajo del min-width el contenedor scrollea. */
+.pub-table {
+  table-layout: fixed;
+  width: 100%;
+  min-width: 820px;
+}
+.pub-table th:nth-child(1), .pub-table td:nth-child(1) { width: 6%; }
+.pub-table th:nth-child(2), .pub-table td:nth-child(2) { width: 52%; }
+.pub-table th:nth-child(3), .pub-table td:nth-child(3) { width: 14%; }
+.pub-table th:nth-child(4), .pub-table td:nth-child(4) { width: 12%; }
+.pub-table th:nth-child(5), .pub-table td:nth-child(5) { width: 16%; }
+
+/* Todo lo que no es el nombre va centrado, encabezado incluido. */
+.pub-table th:nth-child(n + 3), .pub-table td:nth-child(n + 3) {
+  text-align: center;
+  vertical-align: middle;
+}
+.pub-table td:nth-child(1), .pub-table td:nth-child(2) { vertical-align: middle; }
+.pub-table td:nth-child(2) { white-space: normal; }
+.pub-table .order-product-info b {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.4;
+  font-size: 13px;
+  font-weight: 500;
+}
+.pub-table .order-product-info { flex: 1; min-width: 0; }
+
+/* Filas marcadas: solo las excepciones se distinguen, el resto queda
+   neutro para que la vista no sea un semaforo.
+   La franja va SOLO en la primera celda: puesta en todos los td dibuja una
+   linea de color en el borde izquierdo de cada columna. */
+.pub-row-warn td { background: rgba(255, 200, 90, 0.05); }
+.pub-row-error td { background: rgba(255, 107, 147, 0.06); }
+.pub-row-warn td:first-child { box-shadow: inset 3px 0 0 var(--warning); }
+.pub-row-error td:first-child { box-shadow: inset 3px 0 0 var(--danger); }
+
+.type-pill.pub-warn {
+  border-color: rgba(255, 200, 90, 0.42);
+  color: var(--warning);
+}
+.pub-dup-none { color: var(--faint); }
+
+/* ---- Barra de progreso ---- */
+
+.nx-progress { display: grid; gap: 8px; margin: 0 0 18px; }
+.nx-progress-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.nx-progress-head span {
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.nx-progress-head b { font-size: 13px; }
+.nx-progress-track {
+  position: relative;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+}
+.nx-progress-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--violet));
+  box-shadow: 0 0 16px rgba(255, 26, 157, 0.36);
+  transition: width 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.nx-progress.is-done .nx-progress-fill {
+  background: linear-gradient(90deg, var(--green), var(--cyan));
+  box-shadow: 0 0 16px rgba(49, 230, 173, 0.36);
+}
+.nx-progress.has-errors .nx-progress-fill {
+  background: linear-gradient(90deg, var(--danger), var(--warning));
+}
+
+/* ---- Excepciones ---- */
+
+.pub-issues {
+  display: grid;
+  gap: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0;
+}
+.pub-issue-row {
+  display: block;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left-width: 3px;
+  border-radius: 0 7px 7px 0;
+  background: rgba(255, 255, 255, 0.025);
+  color: rgba(243, 243, 248, 0.78);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.pub-issue-row b {
+  color: var(--muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+.pub-issue-warn { border-left-color: var(--warning); }
+.pub-issue-warn b { color: var(--warning); }
+.pub-issue-error { border-left-color: var(--danger); }
+.pub-issue-error b { color: var(--danger); }
+
+/* El unico caso que puede dejar algo vendible sin querer: se ve distinto y
+   lleva el enlace directo para pausarlo a mano. */
+.pub-issue-critico {
+  border-color: rgba(255, 107, 147, 0.45);
+  background: rgba(255, 107, 147, 0.1);
+}
+.pub-issue-critico a {
+  color: var(--danger);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pub-quiet { color: var(--muted); font-size: 12px; }
+
+/* ---- Resultado ---- */
+
+.pub-result-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 18px;
+}
+.pub-result-note {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* ---- Tarjeta de herramienta ---- */
+
+.tool-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.tool-card-grid.is-hidden { display: none; }
+
+/* ---- Responsive ---- */
+
+@media (max-width: 1180px) {
+  .pub-result-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .nx-stepper { gap: 10px; }
+  .nx-step::after { display: none; }
+  .nx-step { padding-right: 0; }
+  .nx-step b { font-size: 10px; }
+  .bulk-bar-actions { margin-left: 0; width: 100%; }
+  .bulk-bar-actions .primary-button,
+  .bulk-bar-actions .ghost-button { flex: 1; }
+  .pub-result-stats { grid-template-columns: 1fr; }
+  .tool-card-grid { grid-template-columns: 1fr; }
+}

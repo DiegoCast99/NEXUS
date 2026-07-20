@@ -36,7 +36,15 @@
     }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      throw new Error(data.error || "El servidor seguro respondió con error " + res.status + ".");
+      const error = new Error(data.error || "El servidor seguro respondió con error " + res.status + ".");
+      // El detalle del rechazo viaja adjunto al Error: sin esto el llamador
+      // solo ve un mensaje genérico y no puede distinguir un error de
+      // validación (no reintentar) de uno pasajero (reintentar).
+      error.httpStatus = res.status;
+      error.code = data.code || "";
+      error.payload = data.payload || data.mlPayload || null;
+      error.partial = data.partial || null;
+      throw error;
     }
     return data;
   }
@@ -67,6 +75,17 @@
     // Proxy seguro a la API de Mercado Libre, sobre la cuenta indicada.
     mlApi: function (endpoint, method, body, account) {
       return call("ml-api-proxy", { endpoint: endpoint, method: method || "GET", body: body, account: account });
+    },
+    // Clona una publicación de una cuenta de ML a otra. El clon se crea
+    // pausado y sin stock: activarlo es una acción aparte y manual.
+    // Con dryRun no toca nada, solo devuelve lo que habría enviado.
+    mlCloneItem: function (sourceAccount, destAccount, sourceItemId, dryRun) {
+      return call("ml-clone-item", {
+        sourceAccount: sourceAccount,
+        destAccount: destAccount,
+        sourceItemId: sourceItemId,
+        dryRun: dryRun === true
+      });
     },
     // Guarda la suscripción Web Push del dispositivo.
     savePushSub: function (subscription, sellerId) {

@@ -109,16 +109,20 @@ html.nexus-dashboard-reveal-pending .module-link:nth-of-type(4) {
   transition-delay: 470ms;
 }
 
-html.nexus-dashboard-reveal-pending .sidebar-status {
+html.nexus-dashboard-reveal-pending .module-link:nth-of-type(5) {
   transition-delay: 560ms;
 }
 
-html.nexus-dashboard-reveal-pending .landing-link {
+html.nexus-dashboard-reveal-pending .sidebar-status {
   transition-delay: 650ms;
 }
 
+html.nexus-dashboard-reveal-pending .landing-link {
+  transition-delay: 740ms;
+}
+
 html.nexus-dashboard-reveal-pending .logout-button {
-  transition-delay: 730ms;
+  transition-delay: 820ms;
 }
 
 html.nexus-dashboard-reveal-pending .data-tools {

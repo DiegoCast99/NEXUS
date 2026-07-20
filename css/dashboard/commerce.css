@@ -330,6 +330,11 @@
 
 .order-row-flash td {
   animation: ordenDestacada 1.4s ease-in-out 4;
+}
+
+/* La franja va solo en la primera celda: en todos los td dibuja una linea
+   magenta en el borde izquierdo de cada columna, no una marca de fila. */
+.order-row-flash td:first-child {
   box-shadow: inset 3px 0 0 var(--accent);
 }
 
