@@ -711,6 +711,7 @@
     sin_conexion: "se corto la conexion con la cuenta; reconectala y reanuda",
     video_descartado: "se publico sin el video (Mercado Libre lo rechazo)",
     sin_descripcion: "el original no tenia descripcion",
+    descripcion_no_cargada: "la descripcion no se pudo cargar: reintenta el clonado o cargala a mano",
     sin_fotos: "el original no tenia fotos",
     titulo_recortado: "el titulo se recorto a 60 caracteres",
     titulo_en_family_name: "el titulo viajo como nombre de familia (modelo nuevo de ML)",

@@ -155,6 +155,32 @@ exports.handler = async (event) => {
       }
     }
 
+    // ---- 5b. Garantizar la descripcion ---------------------------
+    // La descripcion viaja inline en el POST /items, pero las cuentas del
+    // modelo nuevo la IGNORAN en silencio (visto en produccion 2026-07-21:
+    // el clon nacio sin descripcion y sin error alguno). Se verifica lo que
+    // quedo y, si falta, se carga con el endpoint dedicado: POST si no
+    // tiene, PUT si ya tiene una.
+    if (descripcion) {
+      try {
+        let quedo = "";
+        try {
+          const d = await mlFetch(tokenDestino, "/items/" + nuevoId + "/description");
+          quedo = String(d.plain_text || d.text || "").trim();
+        } catch (e) { /* 404 = sin descripcion todavia */ }
+        if (!quedo) {
+          try {
+            await mlFetch(tokenDestino, "/items/" + nuevoId + "/description", "POST", { plain_text: descripcion });
+          } catch (e) {
+            await mlFetch(tokenDestino, "/items/" + nuevoId + "/description", "PUT", { plain_text: descripcion });
+          }
+        }
+      } catch (e) {
+        // El clon queda valido igual; la descripcion se puede reintentar.
+        avisos.push("descripcion_no_cargada");
+      }
+    }
+
     // ---- 6. Mapear las fotos de cada variante --------------------
     // Las fotos se crearon nuevas en la cuenta destino, asi que los ids
     // de las variantes del original no sirven. Como ML asigna los ids
