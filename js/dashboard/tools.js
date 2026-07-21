@@ -713,6 +713,7 @@
     sin_descripcion: "el original no tenia descripcion",
     sin_fotos: "el original no tenia fotos",
     titulo_recortado: "el titulo se recorto a 60 caracteres",
+    titulo_en_family_name: "el titulo viajo como nombre de familia (modelo nuevo de ML)",
     catalogo_descartado: "se publico fuera del catalogo",
     garantia_descartada: "se publico sin los datos de garantia",
     publicacion_de_catalogo: "es publicacion de catalogo: revisa como quedo",

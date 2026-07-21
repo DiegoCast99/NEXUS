@@ -311,6 +311,20 @@ function repararCuerpo(cuerpo, mlPayload, avisos) {
   const copia = JSON.parse(JSON.stringify(cuerpo));
   let toco = false;
 
+  // Cuentas migradas al modelo User Products: el nombre de la publicacion
+  // viaja en family_name y ML rechaza que ADEMAS venga title ("The fields
+  // [title] are invalid"). Sacar title no pierde nada — family_name ya lleva
+  // el nombre completo, sin el recorte a 60 del title. Visto en produccion
+  // el 2026-07-21 con la cuenta mercadolibre2.
+  if (copia.title && copia.family_name && /\bTITLE\b/.test(causas)) {
+    delete copia.title;
+    // El aviso de recorte ya no aplica: family_name lleva el nombre entero.
+    const idxRecorte = avisos.indexOf("titulo_recortado");
+    if (idxRecorte !== -1) avisos.splice(idxRecorte, 1);
+    avisos.push("titulo_en_family_name");
+    toco = true;
+  }
+
   // Reparacion generica: ML nombra los campos invalidos en `references` (y a
   // veces dentro del message, como "The fields [x, y] are invalid"). Todo
   // campo nombrado que sea descartable se saca; asi un "body.invalid_fields"
@@ -504,9 +518,15 @@ async function mlFetch(tokens, endpoint, metodo, cuerpo) {
       .filter(Boolean)
       .join(" · ");
     const base = payload.message || "Mercado Libre respondio " + res.status + ".";
+    // ML reparte el texto util entre message, cause y (a veces) el campo
+    // `error` — visto en produccion: message="body.invalid_fields" y el
+    // detalle real ("The fields [title] are invalid...") en `error`.
+    const conError = !detalle && typeof payload.error === "string" && payload.error !== base
+      ? payload.error
+      : detalle;
     // Sin duplicar: si el detalle ya arranca con el mismo texto que el
     // mensaje general, alcanza con el detalle.
-    const e = new Error(!detalle ? base : (detalle.indexOf(base) === 0 ? detalle : base + ": " + detalle));
+    const e = new Error(!conError ? base : (conError.indexOf(base) === 0 ? conError : base + ": " + conError));
     e.mlStatus = res.status;
     e.mlPayload = payload;
     throw e;
