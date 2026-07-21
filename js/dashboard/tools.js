@@ -192,15 +192,33 @@
 
   /* ---------------- carga de catalogos ---------------- */
 
+  // Lectura con reintentos: la API de ML tira 5xx pasajeros cada tanto, y la
+  // carga del catalogo son muchas llamadas seguidas — sin esto, un solo 503
+  // aborta la carga entera. Solo reintenta lo pasajero (5xx/429/red); un 401
+  // (token) o 400 corta de una porque repetirlo no cambia nada.
+  async function mlApiLectura(api, endpoint, cuenta) {
+    const esperas = [1000, 3000, 8000];
+    for (let intento = 0; ; intento++) {
+      try {
+        return await api.mlApi(endpoint, "GET", null, cuenta);
+      } catch (error) {
+        const s = error.httpStatus || 0;
+        const pasajero = s === 0 || s === 429 || s >= 500;
+        if (!pasajero || intento >= esperas.length) throw error;
+        await dormir(esperas[intento]);
+      }
+    }
+  }
+
   async function cargarCatalogo(api, cuenta) {
-    const me = await api.mlApi("/users/me", "GET", null, cuenta);
+    const me = await mlApiLectura(api, "/users/me", cuenta);
     const userId = (me.payload || {}).id;
     if (!userId) throw new Error("No se pudo identificar la cuenta " + cuenta + ".");
 
     let ids = [];
     let offset = 0;
     for (let page = 0; page < 10; page++) {
-      const res = await api.mlApi("/users/" + userId + "/items/search?limit=50&offset=" + offset, "GET", null, cuenta);
+      const res = await mlApiLectura(api, "/users/" + userId + "/items/search?limit=50&offset=" + offset, cuenta);
       const payload = res.payload || {};
       const lote = payload.results || [];
       ids = ids.concat(lote);
@@ -212,11 +230,12 @@
     const items = [];
     for (let i = 0; i < ids.length; i += 20) {
       const grupo = ids.slice(i, i + 20);
-      const det = await api.mlApi(
+      const det = await mlApiLectura(
+        api,
         "/items?ids=" + grupo.join(",") +
         "&attributes=id,title,price,currency_id,available_quantity,status,secure_thumbnail,thumbnail," +
         "permalink,seller_custom_field,category_id,catalog_listing,pictures,variations",
-        "GET", null, cuenta
+        cuenta
       );
       (det.payload || []).forEach((row) => {
         const b = row && row.body ? row.body : null;
@@ -271,7 +290,13 @@
       setMensaje("", "");
       irAPaso(2);
     } catch (error) {
-      setMensaje(error.message || "No se pudieron cargar las publicaciones.", "error");
+      const s = error.httpStatus || 0;
+      // "ML API error 503" no le dice nada al titular: se traduce a que paso
+      // y que hacer. A este catch un pasajero solo llega tras 4 intentos.
+      const msg = (s === 429 || s >= 500)
+        ? "Mercado Libre no esta respondiendo (se reintento varias veces). Suele durar unos minutos: proba de nuevo en un rato."
+        : (error.message || "No se pudieron cargar las publicaciones.");
+      setMensaje(msg, "error");
     } finally {
       p.cargando = false;
       if (elements.pubLoad) elements.pubLoad.disabled = false;
