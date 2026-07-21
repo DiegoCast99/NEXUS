@@ -8,14 +8,14 @@
      va directo a la red — auth y Firestore siguen funcionando.
    Para forzar refresco tras un deploy grande: subir CACHE_VERSION.
    ============================================================ */
-const CACHE_VERSION = "nexus-cache-v6";
+const CACHE_VERSION = "nexus-cache-v7";
 const APP_SHELL = [
   "/index.html",
   "/dashboard.html",
   "/manifest.json",
-  "/img/icon-192.png?v=3",
-  "/img/icon-512.png?v=3",
-  "/img/notif-venta.png?v=1"
+  "/img/icon-192.png?v=4",
+  "/img/icon-512.png?v=4",
+  "/img/notif-venta.png?v=2"
 ];
 
 self.addEventListener("install", (event) => {
@@ -46,8 +46,8 @@ self.addEventListener("push", (event) => {
   const title = data.title || "¡Vendiste!";
   const options = {
     body: data.body || "Mercado Libre",
-    icon: "/img/notif-venta.png?v=1",
-    badge: "/img/notif-venta.png?v=1",
+    icon: "/img/notif-venta.png?v=2",
+    badge: "/img/notif-venta.png?v=2",
     tag: data.tag || "nexus-venta",
     renotify: true,
     // El webhook manda el deep-link a la venta; sin el, portada de E-Commerce.

@@ -13,9 +13,12 @@
    ============================================================ */
 const { adminGetDoc, adminPatchDoc, adminQueryUsersByField } = require("./_fbadmin");
 const { sendPush } = require("./_webpush");
-const { ML_ACCOUNTS, mlAccountName, mlSellerField } = require("./_shared");
+const { ML_ACCOUNTS, mlAccountName, mlSellerField, decrypt, encrypt } = require("./_shared");
 
 const MAX_NOTIFIED = 60;
+const ML_API = "https://api.mercadolibre.com";
+const ML_TOKEN_URL = "https://api.mercadolibre.com/oauth/token";
+const REFRESH_BUFFER_SECS = 300;
 
 function ok() {
   return { statusCode: 200, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ok: true }) };
@@ -96,6 +99,27 @@ async function handleNotification(body) {
   }
   if (subs.length === 0) return; // nada a donde notificar
 
+  // VERIFICAR LA ORDEN ANTES DE AVISAR. ML manda orders_v2 por CUALQUIER
+  // evento de orden, incluidas compras que nunca se pagaron (el comprador
+  // toco "Comprar" y abandono, pago rechazado, antifraude). Esas ordenes no
+  // aparecen en el panel de ventas: avisarlas es una venta fantasma (paso en
+  // produccion el 2026-07-20, dos avisos falsos de la cuenta 2). Solo es
+  // venta real una orden PAGA. Si no se puede verificar (ML caido, token
+  // irrecuperable), se avisa igual: peor que un falso aviso es callarse una
+  // venta real.
+  const chequeo = await verificarOrden(accountId, fields, uid, orderId);
+  if (chequeo.verificada && !chequeo.esVenta) {
+    console.warn("ml-notifications: orden " + orderId + " con status '" + chequeo.status +
+      "' — no es una venta paga, no se notifica");
+    // No se marca como notificada a proposito: si el pago se concreta mas
+    // tarde, ML manda otro evento y AHI se avisa.
+    return;
+  }
+  if (!chequeo.verificada) {
+    console.warn("ml-notifications: no se pudo verificar la orden " + orderId +
+      " (" + (chequeo.motivo || "sin detalle") + ") — se notifica igual");
+  }
+
   // Enviar el push a cada dispositivo. Quitar las suscripciones caducadas.
   // El cuerpo dice de que cuenta fue la venta ("Mercado Libre 1" / "...2"),
   // que es lo unico que distingue una notificacion de la otra en el celular.
@@ -139,4 +163,76 @@ async function handleNotification(body) {
   if (maskPaths.length > 0) {
     await adminPatchDoc("users/" + uid, updateFields, maskPaths);
   }
+}
+
+/* ---------- verificacion de la orden contra ML ---------- */
+
+// Devuelve { verificada, esVenta, status } — o { verificada: false, motivo }
+// si no se pudo consultar. Una orden es venta REAL solo con status "paid":
+// confirmed / payment_required / payment_in_process son compras sin pagar,
+// cancelled / invalid son compras caidas. Ninguna de esas se avisa.
+async function verificarOrden(accountId, fields, uid, orderId) {
+  try {
+    const campo = "secret_" + accountId;
+    const enc = fields[campo] && fields[campo].stringValue;
+    if (!enc) return { verificada: false, motivo: "sin tokens de " + accountId };
+
+    let tokens = JSON.parse(decrypt(enc));
+    const ahora = Math.floor(Date.now() / 1000);
+    const vence = (tokens.obtained_at || 0) + (tokens.expires_in || 0) - REFRESH_BUFFER_SECS;
+    if (ahora >= vence && tokens.refresh_token) {
+      tokens = await refrescarToken(tokens, uid, campo);
+    }
+
+    const res = await fetch(ML_API + "/orders/" + orderId, {
+      headers: { Authorization: "Bearer " + tokens.access_token, Accept: "application/json" },
+      cache: "no-store"
+    });
+    if (!res.ok) return { verificada: false, motivo: "ML respondio " + res.status };
+
+    const orden = await res.json().catch(() => null);
+    if (!orden || !orden.status) return { verificada: false, motivo: "orden sin status" };
+
+    const status = String(orden.status);
+    return { verificada: true, status: status, esVenta: status === "paid" };
+  } catch (error) {
+    return { verificada: false, motivo: (error && error.message) || "error" };
+  }
+}
+
+// El webhook llega a cualquier hora y el access_token de ML dura 3 h: casi
+// siempre va a estar vencido. Se refresca con la cuenta de servicio y se
+// re-persiste cifrado, igual que hace el proxy.
+async function refrescarToken(tokens, uid, campo) {
+  const appId = process.env.ML_APP_ID;
+  const clientSecret = process.env.ML_CLIENT_SECRET;
+  if (!appId || !clientSecret) throw new Error("faltan ML_APP_ID / ML_CLIENT_SECRET");
+
+  const res = await fetch(ML_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+    body: new URLSearchParams({
+      grant_type: "refresh_token",
+      client_id: appId,
+      client_secret: clientSecret,
+      refresh_token: tokens.refresh_token
+    }).toString()
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.access_token) {
+    throw new Error("refresh de token fallo: " + (data.message || data.error || res.status));
+  }
+
+  const frescos = {
+    access_token: data.access_token,
+    refresh_token: data.refresh_token,
+    expires_in: data.expires_in || 10800,
+    user_id: data.user_id || tokens.user_id,
+    obtained_at: Math.floor(Date.now() / 1000)
+  };
+  await adminPatchDoc("users/" + uid, {
+    [campo]: { stringValue: encrypt(JSON.stringify(frescos)) }
+  }, [campo]);
+  return frescos;
 }
