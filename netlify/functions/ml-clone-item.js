@@ -193,6 +193,15 @@ function construirCuerpo(src, descripcion, avisos) {
 
   if (String(src.title || "").length > 60) avisos.push("titulo_recortado");
 
+  // family_name: en el modelo nuevo de ML ("User Products" / precio por
+  // variacion) es OBLIGATORIO al crear. Si la cuenta destino ya esta migrada
+  // y no lo mandamos, ML rechaza el cuerpo entero con
+  // "does not contains ... [family_name]". Se copia el del original si lo
+  // tiene; si no (cuenta origen sin migrar), se usa el titulo como nombre de
+  // familia. En cuentas no migradas ML lo acepta igual (es un campo estandar).
+  const nombreFamilia = String(src.family_name || src.title || "").trim();
+  if (nombreFamilia) cuerpo.family_name = nombreFamilia;
+
   // Stock 0 = nace pausado. Con variantes hay que ponerlo en cada una.
   if (!tieneVariantes) cuerpo.available_quantity = 0;
 
@@ -303,6 +312,15 @@ function repararCuerpo(cuerpo, mlPayload, avisos) {
   if (copia.sale_terms && causas.indexOf("SALE_TERMS") !== -1) {
     delete copia.sale_terms;
     avisos.push("garantia_descartada");
+    toco = true;
+  }
+
+  // Cuenta destino NO migrada que rechaza un family_name explicito: se saca y
+  // se reintenta (lo contrario del caso migrado, donde family_name es
+  // obligatorio y se manda proactivamente en construirCuerpo).
+  if (copia.family_name && causas.indexOf("FAMILY_NAME") !== -1) {
+    delete copia.family_name;
+    avisos.push("family_name_descartado");
     toco = true;
   }
 
