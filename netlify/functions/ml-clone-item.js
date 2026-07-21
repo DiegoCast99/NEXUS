@@ -284,17 +284,53 @@ function leerStockOriginal(src) {
 
 // ML devuelve el detalle en `cause[]`. Buscamos los campos y atributos
 // que nombra y los sacamos del cuerpo para reintentar una sola vez.
+// Campos que se pueden sacar del cuerpo sin invalidar el clon (se pierde un
+// extra y queda avisado). Los esenciales NUNCA se sacan: titulo, categoria,
+// precio, moneda, fotos y variantes porque sin ellos el clon no tiene
+// sentido; available_quantity/condition/buying_mode porque son obligatorios
+// y el stock 0 es justamente la garantia de que el clon nace pausado.
+const CAMPOS_DESCARTABLES = [
+  "video_id", "seller_custom_field", "sale_terms", "catalog_product_id",
+  "catalog_listing", "family_name", "description", "shipping"
+];
+
 function repararCuerpo(cuerpo, mlPayload, avisos) {
   if (!mlPayload) return null;
-  const causas = []
-    .concat(mlPayload.cause || [])
-    .map((c) => String((c && (c.message || c.code)) || ""))
-    .join(" | ")
+  const listaCausas = [].concat(mlPayload.cause || []);
+  const causas = (String(mlPayload.message || "") + " | " + listaCausas
+    .map((c) => {
+      if (!c) return "";
+      const refs = Array.isArray(c.references) ? c.references.join(" ") : "";
+      return String(c.message || "") + " " + String(c.code || "") + " " + refs;
+    })
+    .join(" | "))
     .toUpperCase();
-  if (!causas) return null;
+  if (!causas.trim()) return null;
 
   const copia = JSON.parse(JSON.stringify(cuerpo));
   let toco = false;
+
+  // Reparacion generica: ML nombra los campos invalidos en `references` (y a
+  // veces dentro del message, como "The fields [x, y] are invalid"). Todo
+  // campo nombrado que sea descartable se saca; asi un "body.invalid_fields"
+  // se arregla solo aunque el campo no este previsto aca arriba.
+  const nombrados = [];
+  listaCausas.forEach((c) => {
+    if (c && Array.isArray(c.references)) nombrados.push.apply(nombrados, c.references);
+  });
+  const corchetes = causas.match(/\[([^\]]+)\]/g) || [];
+  corchetes.forEach((grupo) => {
+    grupo.replace(/[\[\]]/g, "").split(",").forEach((n) => nombrados.push(n.trim()));
+  });
+  nombrados.forEach((crudo) => {
+    const campo = String(crudo || "").toLowerCase().trim();
+    if (CAMPOS_DESCARTABLES.indexOf(campo) !== -1 && copia[campo] !== undefined) {
+      delete copia[campo];
+      if (campo === "catalog_product_id") delete copia.catalog_listing;
+      avisos.push("campo_descartado:" + campo);
+      toco = true;
+    }
+  });
 
   if (copia.video_id && causas.indexOf("VIDEO") !== -1) {
     delete copia.video_id;
@@ -448,12 +484,25 @@ async function mlFetch(tokens, endpoint, metodo, cuerpo) {
   const payload = await res.json().catch(() => ({}));
 
   if (!res.ok) {
+    // El detalle util de ML suele venir repartido: `message` de cada causa,
+    // su `code`, y los NOMBRES DE CAMPO en `references`. Sin references, un
+    // "body.invalid_fields" no dice nada; con ellas dice que campo arreglar.
     const detalle = []
       .concat(payload.cause || [])
-      .map((c) => (c && (c.message || c.code)) || "")
+      .map((c) => {
+        if (!c) return "";
+        const texto = c.message || c.code || "";
+        const refs = Array.isArray(c.references) && c.references.length
+          ? " [" + c.references.join(", ") + "]"
+          : "";
+        return texto + refs;
+      })
       .filter(Boolean)
       .join(" · ");
-    const e = new Error(detalle || payload.message || "Mercado Libre respondio " + res.status + ".");
+    const base = payload.message || "Mercado Libre respondio " + res.status + ".";
+    // Sin duplicar: si el detalle ya arranca con el mismo texto que el
+    // mensaje general, alcanza con el detalle.
+    const e = new Error(!detalle ? base : (detalle.indexOf(base) === 0 ? detalle : base + ": " + detalle));
     e.mlStatus = res.status;
     e.mlPayload = payload;
     throw e;

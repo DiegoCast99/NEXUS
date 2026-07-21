@@ -616,6 +616,11 @@
         }
         item.e = "err";
         item.c = (error.message || "error").slice(0, 220);
+        // El payload completo del rechazo va a la consola: si el mensaje
+        // corto no alcanza para diagnosticar, aca esta todo lo que dijo ML.
+        if (error.payload) {
+          try { console.warn("[publicador] rechazo de ML para " + item.src + ":", error.payload); } catch (e2) {}
+        }
         return false;
       }
     }
@@ -716,6 +721,9 @@
       if (MOTIVOS[c]) return MOTIVOS[c];
       if (c.indexOf("atributo_descartado:") === 0) {
         return "se publico sin el atributo " + c.split(":")[1];
+      }
+      if (c.indexOf("campo_descartado:") === 0) {
+        return "se publico sin el campo " + c.split(":")[1] + " (la cuenta destino no lo acepta)";
       }
       return c; // mensaje textual de ML: mejor crudo que inventado
     }).join(" · ");
