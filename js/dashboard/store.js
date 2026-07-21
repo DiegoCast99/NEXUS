@@ -520,6 +520,7 @@
     commerceTrendChart: document.getElementById("commerceTrendChart"),
     chartTooltip: document.getElementById("chartTooltip"),
     toolsCards: document.getElementById("toolsCards"),
+    toolsLayout: document.getElementById("toolsLayout"),
     pubPanel: document.getElementById("pubPanel"),
     pubSteps: document.getElementById("pubSteps"),
     pubSetup: document.getElementById("pubSetup"),

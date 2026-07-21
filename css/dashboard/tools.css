@@ -16,6 +16,12 @@
   margin-top: 14px;
 }
 
+/* Este archivo carga despues de finance.css (donde vive .is-hidden), asi que
+   el display:grid de arriba le ganaria: hay que re-declararla aca. */
+.tools-layout.is-hidden {
+  display: none;
+}
+
 /* ---- Pasos ---- */
 
 .nx-stepper {

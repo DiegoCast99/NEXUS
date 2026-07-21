@@ -99,7 +99,11 @@
 
   function renderToolsDashboard() {
     const abierta = pub().abierta;
+    // O tarjetas O herramienta, nunca las dos: sin esto, la pantalla de
+    // Herramientas mostraba la tarjeta de entrada Y el contenido del
+    // Publicador abajo, duplicando la informacion.
     elements.toolsCards?.classList.toggle("is-hidden", !!abierta);
+    elements.toolsLayout?.classList.toggle("is-hidden", !abierta);
     if (abierta) renderPublicador();
   }
 
