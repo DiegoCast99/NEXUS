@@ -297,9 +297,10 @@ const CAMPOS_DESCARTABLES = [
 function repararCuerpo(cuerpo, mlPayload, avisos) {
   if (!mlPayload) return null;
   const listaCausas = [].concat(mlPayload.cause || []);
-  const causas = (String(mlPayload.message || "") + " | " + listaCausas
+  const causas = (String(mlPayload.message || "") + " | " + String(mlPayload.error || "") + " | " + listaCausas
     .map((c) => {
       if (!c) return "";
+      if (typeof c === "string") return c; // causas como texto suelto
       const refs = Array.isArray(c.references) ? c.references.join(" ") : "";
       return String(c.message || "") + " " + String(c.code || "") + " " + refs;
     })
@@ -491,6 +492,9 @@ async function mlFetch(tokens, endpoint, metodo, cuerpo) {
       .concat(payload.cause || [])
       .map((c) => {
         if (!c) return "";
+        // ML a veces manda las causas como strings sueltos, no objetos.
+        // Descartarlas dejaba el error pelado ("body.invalid_fields" a secas).
+        if (typeof c === "string") return c;
         const texto = c.message || c.code || "";
         const refs = Array.isArray(c.references) && c.references.length
           ? " [" + c.references.join(", ") + "]"

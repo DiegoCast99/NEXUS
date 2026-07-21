@@ -285,6 +285,17 @@
 }
 .pub-quiet { color: var(--muted); font-size: 12px; }
 
+/* Respuesta cruda de ML en una fila de error: fea a proposito (es un JSON),
+   pero es la unica forma de diagnosticar un rechazo sin abrir la consola. */
+.pub-issue-raw {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
 /* ---- Resultado ---- */
 
 .pub-result-stats {

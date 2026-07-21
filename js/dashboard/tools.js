@@ -616,10 +616,14 @@
         }
         item.e = "err";
         item.c = (error.message || "error").slice(0, 220);
-        // El payload completo del rechazo va a la consola: si el mensaje
-        // corto no alcanza para diagnosticar, aca esta todo lo que dijo ML.
+        // El rechazo completo de ML queda visible en la fila de error (y en
+        // consola): sin el detalle crudo, un "body.invalid_fields" no dice
+        // que campo tocar y el diagnostico es a ciegas.
         if (error.payload) {
-          try { console.warn("[publicador] rechazo de ML para " + item.src + ":", error.payload); } catch (e2) {}
+          try {
+            item.detalle = JSON.stringify(error.payload).slice(0, 600);
+            console.warn("[publicador] rechazo de ML para " + item.src + ":", error.payload);
+          } catch (e2) {}
         }
         return false;
       }
@@ -737,9 +741,12 @@
     const enlace = critico && item.permalink
       ? ' <a href="' + escapeHtml(item.permalink) + '" target="_blank" rel="noopener">Abrir en ML</a>'
       : "";
+    const crudo = item.detalle
+      ? '<small class="pub-issue-raw">' + escapeHtml(item.detalle) + "</small>"
+      : "";
     return '<span class="pub-issue-row ' + clase + (critico ? " pub-issue-critico" : "") + '"><b>' +
       etiqueta + "</b> " + escapeHtml(item.titulo) +
-      (motivo ? " — " + escapeHtml(motivo) : "") + enlace + "</span>";
+      (motivo ? " — " + escapeHtml(motivo) : "") + enlace + crudo + "</span>";
   }
 
   /* ---------------- resultado ---------------- */
