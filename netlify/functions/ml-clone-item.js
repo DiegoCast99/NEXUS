@@ -41,6 +41,12 @@ const REFRESH_BUFFER_SECS = 300;
 // un campo propio del cuerpo (condition), y mandarlos da error.
 const ATRIBUTOS_PROHIBIDOS = ["ITEM_CONDITION"];
 
+// Memoria mientras la function esta caliente: cuentas que ya demostraron
+// rechazar `title` (modelo User Products). En un lote grande evita quemar un
+// POST rechazado por item; si la function arranca fria, el primer item paga
+// el rechazo, aprende, y el resto del lote sale directo.
+const CUENTAS_SIN_TITLE = {};
+
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") return json(405, { error: "Solo POST." });
 
@@ -98,16 +104,37 @@ exports.handler = async (event) => {
     }
 
     // ---- 4. Crear en destino (nace pausado, stock 0) -------------
-    let creado;
-    try {
-      creado = await mlFetch(tokenDestino, "/items", "POST", nuevo);
-    } catch (error) {
-      // Reparacion automatica: si ML se queja de campos puntuales, los
-      // sacamos y probamos una sola vez mas. Cada supresion queda como
-      // aviso para que el titular sepa que perdio.
-      const reparado = repararCuerpo(nuevo, error.mlPayload, avisos);
-      if (!reparado) throw error;
-      creado = await mlFetch(tokenDestino, "/items", "POST", reparado);
+    // Reparacion automatica en cadena: ML revela los problemas por capas
+    // (primero un campo, arreglado ese aparece el siguiente). Cada rechazo
+    // reparable ajusta el cuerpo y se reintenta; cada supresion queda como
+    // aviso. Si un rechazo no es reparable, se corta y se informa tal cual.
+    let creado = null;
+    let cuerpoActual = nuevo;
+
+    // Si esta cuenta ya rechazo `title` en esta sesion, ni lo intentamos.
+    if (CUENTAS_SIN_TITLE[destino] && cuerpoActual.family_name && cuerpoActual.title) {
+      delete cuerpoActual.title;
+      const idxRecorte = avisos.indexOf("titulo_recortado");
+      if (idxRecorte !== -1) avisos.splice(idxRecorte, 1);
+      avisos.push("titulo_en_family_name");
+    }
+
+    for (let intentoCrear = 0; ; intentoCrear++) {
+      try {
+        creado = await mlFetch(tokenDestino, "/items", "POST", cuerpoActual);
+        break;
+      } catch (error) {
+        const reparado = intentoCrear < 2
+          ? repararCuerpo(cuerpoActual, error.mlPayload, avisos)
+          : null;
+        if (!reparado) throw error;
+        // Si la reparacion consistio en sacar el title, la cuenta esta en el
+        // modelo nuevo: se recuerda para el resto del lote.
+        if (cuerpoActual.title && reparado.title === undefined) {
+          CUENTAS_SIN_TITLE[destino] = true;
+        }
+        cuerpoActual = reparado;
+      }
     }
 
     const nuevoId = creado.id;
@@ -256,17 +283,22 @@ function construirCuerpo(src, descripcion, avisos) {
   return cuerpo;
 }
 
-// Deja los atributos en la forma que acepta la creacion: id + value_id,
-// o id + value_name cuando el valor es libre. Los vacios y los que ML
-// calcula sola se descartan.
+// Deja los atributos en la forma que acepta la creacion. REGLA CLAVE para
+// clonar ENTRE CUENTAS: mandar value_name, no value_id. Los value_id de
+// valores creados por el vendedor (LINE, sabores, etc.) son de SU cuenta;
+// en la cuenta destino no resuelven y ML rechaza con "Value name of
+// attribute X was not provided and couldn't be resolved" (visto en
+// produccion el 2026-07-21). Por nombre, ML resuelve el valor existente o
+// crea el custom en la cuenta destino. value_id queda solo como ultimo
+// recurso cuando el origen no trae nombre.
 function limpiarAtributos(lista) {
   if (!Array.isArray(lista)) return [];
   return lista
     .filter((a) => a && a.id && ATRIBUTOS_PROHIBIDOS.indexOf(a.id) === -1)
     .filter((a) => a.value_id || a.value_name)
-    .map((a) => (a.value_id
-      ? { id: a.id, value_id: String(a.value_id) }
-      : { id: a.id, value_name: String(a.value_name) }));
+    .map((a) => (a.value_name
+      ? { id: a.id, value_name: String(a.value_name) }
+      : { id: a.id, value_id: String(a.value_id) }));
 }
 
 function leerStockOriginal(src) {
@@ -375,16 +407,35 @@ function repararCuerpo(cuerpo, mlPayload, avisos) {
     toco = true;
   }
 
-  // Atributos nombrados explicitamente en las causas.
-  if (Array.isArray(copia.attributes)) {
-    const quedan = copia.attributes.filter((a) => causas.indexOf(a.id) === -1);
-    if (quedan.length !== copia.attributes.length) {
-      copia.attributes
-        .filter((a) => causas.indexOf(a.id) !== -1)
-        .forEach((a) => avisos.push("atributo_descartado:" + a.id));
-      copia.attributes = quedan;
+  // Atributos rechazados: ML los nombra como "attribute LINE" en el mensaje.
+  // Hay que sacarlos del nivel superior Y de cada variante — solo del array
+  // `attributes`, nunca de `attribute_combinations`, que son la identidad de
+  // la variante (sacar el sabor de un combo lo convertiria en otro producto).
+  const attrsRechazados = [];
+  const patronAttr = /ATTRIBUTE\s+([A-Z0-9_]+)/g;
+  let m;
+  while ((m = patronAttr.exec(causas)) !== null) attrsRechazados.push(m[1]);
+
+  function sacarAtributos(lista, donde) {
+    if (!Array.isArray(lista)) return lista;
+    const quedan = lista.filter((a) =>
+      attrsRechazados.indexOf(a.id) === -1 && causas.indexOf(a.id) === -1);
+    if (quedan.length !== lista.length) {
+      lista
+        .filter((a) => quedan.indexOf(a) === -1)
+        .forEach((a) => avisos.push("atributo_descartado:" + a.id + (donde ? " (" + donde + ")" : "")));
       toco = true;
     }
+    return quedan;
+  }
+
+  if (Array.isArray(copia.attributes)) {
+    copia.attributes = sacarAtributos(copia.attributes, "");
+  }
+  if (Array.isArray(copia.variations)) {
+    copia.variations.forEach((v) => {
+      if (Array.isArray(v.attributes)) v.attributes = sacarAtributos(v.attributes, "variante");
+    });
   }
 
   return toco ? copia : null;
@@ -502,8 +553,12 @@ async function mlFetch(tokens, endpoint, metodo, cuerpo) {
     // El detalle util de ML suele venir repartido: `message` de cada causa,
     // su `code`, y los NOMBRES DE CAMPO en `references`. Sin references, un
     // "body.invalid_fields" no dice nada; con ellas dice que campo arreglar.
-    const detalle = []
-      .concat(payload.cause || [])
+    // Las causas mezclan errores reales con advertencias informativas
+    // (type:"warning", ej. "Mandatory free shipping added"). Para el mensaje
+    // se priorizan los errores: son los que explican por que fallo.
+    const todasLasCausas = [].concat(payload.cause || []);
+    const soloErrores = todasLasCausas.filter((c) => c && (typeof c === "string" || c.type !== "warning"));
+    const detalle = (soloErrores.length ? soloErrores : todasLasCausas)
       .map((c) => {
         if (!c) return "";
         // ML a veces manda las causas como strings sueltos, no objetos.
