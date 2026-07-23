@@ -124,7 +124,12 @@ exports.handler = async (event) => {
         creado = await mlFetch(tokenDestino, "/items", "POST", cuerpoActual);
         break;
       } catch (error) {
-        const reparado = intentoCrear < 2
+        // Hasta 4 reparaciones: ML revela los problemas por capas y un solo
+        // producto puede necesitar arreglar titulo, atributos y GTIN en
+        // cadena. repararCuerpo devuelve null cuando no hay mas que tocar, asi
+        // que el corte real lo pone eso, no el tope (que es una red de
+        // seguridad contra un bucle).
+        const reparado = intentoCrear < 4
           ? repararCuerpo(cuerpoActual, error.mlPayload, avisos)
           : null;
         if (!reparado) throw error;
@@ -431,6 +436,38 @@ function repararCuerpo(cuerpo, mlPayload, avisos) {
     delete copia.family_name;
     avisos.push("family_name_descartado");
     toco = true;
+  }
+
+  // GTIN / codigo universal: dos rechazos, misma cura. O falta (la categoria
+  // lo exige) o esta duplicado (el GTIN del original ya esta usado en su
+  // publicacion). En ambos se saca el GTIN de TODOS lados y se declara
+  // EMPTY_GTIN_REASON, el mecanismo oficial de ML para publicar sin codigo.
+  // Los combos ("Whey + Creatina", "... de regalo") son "Kit" literal; el
+  // resto, "No registrado". Un producto clonado no puede reusar el GTIN del
+  // original, asi que esta es la unica via.
+  if (/GTIN|UNIVERSAL|INVALID_PRODUCT_IDENTIFIER/.test(causas)) {
+    const sinGtin = (lista) => Array.isArray(lista) ? lista.filter((a) => a && a.id !== "GTIN") : lista;
+    copia.attributes = sinGtin(copia.attributes) || [];
+    if (Array.isArray(copia.variations)) {
+      copia.variations.forEach((v) => {
+        if (Array.isArray(v.attributes)) v.attributes = sinGtin(v.attributes);
+        if (Array.isArray(v.attribute_combinations)) v.attribute_combinations = sinGtin(v.attribute_combinations);
+      });
+    }
+    const razon = copia.attributes.filter((a) => a.id === "EMPTY_GTIN_REASON")[0];
+    const nombre = String(cuerpo.title || cuerpo.family_name || "");
+    const esKit = /\+|\bkit\b|\bcombo\b|\bpack\b|regalo/i.test(nombre);
+    if (!razon) {
+      copia.attributes.push({ id: "EMPTY_GTIN_REASON", value_name: esKit ? "Kit" : "No registrado" });
+      avisos.push("sin_gtin:" + (esKit ? "kit" : "no_registrado"));
+      toco = true;
+    } else if (razon.value_name !== "Otro") {
+      // La razon anterior no la acepto la categoria: caer al catch-all.
+      razon.value_name = "Otro";
+      delete razon.value_id;
+      avisos.push("sin_gtin:otro");
+      toco = true;
+    }
   }
 
   // Atributos rechazados: ML los nombra como "attribute LINE" en el mensaje.
