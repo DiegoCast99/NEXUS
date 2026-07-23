@@ -50,6 +50,10 @@ const CUENTAS_SIN_TITLE = {};
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") return json(405, { error: "Solo POST." });
 
+  // Diagnostico: se llena mientras se procesa y se adjunta al error si algo
+  // falla, para ver con datos reales que tenia el origen y que se envio.
+  var diag = { srcGtin: null, srcEmptyReason: null, srcBrand: null, srcVarGtin: null, enviado: null };
+
   try {
     const idToken = getIdToken(event);
     const uid = uidFromIdToken(idToken);
@@ -89,6 +93,18 @@ exports.handler = async (event) => {
       avisos.push("sin_descripcion");
     }
 
+    // Diagnostico: que trae el ORIGEN respecto de GTIN.
+    var buscarAttr = function (lista, id) {
+      var a = (lista || []).filter(function (x) { return x && x.id === id; })[0];
+      return a ? (a.value_name || a.value_id || "(vacio)") : null;
+    };
+    diag.srcGtin = buscarAttr(src.attributes, "GTIN");
+    diag.srcEmptyReason = buscarAttr(src.attributes, "EMPTY_GTIN_REASON");
+    diag.srcBrand = buscarAttr(src.attributes, "BRAND");
+    if (Array.isArray(src.variations) && src.variations[0]) {
+      diag.srcVarGtin = buscarAttr(src.variations[0].attributes, "GTIN");
+    }
+
     // ---- 3. Armar el cuerpo de creacion --------------------------
     const nuevo = construirCuerpo(src, descripcion, avisos);
 
@@ -120,10 +136,29 @@ exports.handler = async (event) => {
     }
 
     for (let intentoCrear = 0; ; intentoCrear++) {
+      // Diagnostico: resumen de lo que se manda en este intento.
+      diag.enviado = {
+        itemAttrs: (cuerpoActual.attributes || []).map(function (a) { return a.id + "=" + (a.value_id || a.value_name || ""); }),
+        var0Attrs: (cuerpoActual.variations && cuerpoActual.variations[0] && cuerpoActual.variations[0].attributes || [])
+          .map(function (a) { return a.id + "=" + (a.value_id || a.value_name || ""); })
+      };
+      var llevabaGtin = (cuerpoActual.attributes || []).some(function (a) { return a.id === "GTIN"; }) ||
+        ((cuerpoActual.variations || []).some(function (v) { return (v.attributes || []).some(function (a) { return a.id === "GTIN"; }); }));
       try {
         creado = await mlFetch(tokenDestino, "/items", "POST", cuerpoActual);
         break;
       } catch (error) {
+        // Diagnostico: guardar el PRIMER rechazo (cuando todavia se mandaba el
+        // GTIN real del original), que es el que explica por que no se acepta.
+        if (!diag.primerRechazo) {
+          var causas0 = [].concat((error.mlPayload && error.mlPayload.cause) || []);
+          diag.primerRechazo = {
+            llevabaGtin: llevabaGtin,
+            causas: causas0.map(function (c) {
+              return typeof c === "string" ? c : (String(c.code || "") + ": " + String(c.message || ""));
+            })
+          };
+        }
         // Hasta 4 reparaciones: ML revela los problemas por capas y un solo
         // producto puede necesitar arreglar titulo, atributos y GTIN en
         // cadena. repararCuerpo devuelve null cuando no hay mas que tocar, asi
@@ -228,11 +263,14 @@ exports.handler = async (event) => {
     const estado = error.mlStatus || 0;
     // 429 y 5xx son pasajeros (vale reintentar); 400/422 son de validacion.
     const transitorio = estado === 429 || estado >= 500 || estado === 0;
+    // Adjunta el diagnostico al payload que ve el cliente (se muestra crudo
+    // en la fila de error). Temporal: para entender las fallas de GTIN.
+    var mlPayload = Object.assign({ _diag: diag }, error.mlPayload || {});
     return json(transitorio ? 503 : 422, {
       error: error.message || "No se pudo clonar la publicacion.",
       code: error.code || (transitorio ? "transitorio" : "validacion"),
       mlStatus: estado,
-      mlPayload: error.mlPayload || null
+      mlPayload: mlPayload
     });
   }
 };

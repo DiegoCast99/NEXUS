@@ -625,7 +625,7 @@
         // que campo tocar y el diagnostico es a ciegas.
         if (error.payload) {
           try {
-            item.detalle = JSON.stringify(error.payload).slice(0, 600);
+            item.detalle = JSON.stringify(error.payload).slice(0, 1400);
             console.warn("[publicador] rechazo de ML para " + item.src + ":", error.payload);
           } catch (e2) {}
         }
