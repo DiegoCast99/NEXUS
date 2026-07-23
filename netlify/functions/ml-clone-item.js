@@ -52,7 +52,8 @@ exports.handler = async (event) => {
 
   // Diagnostico: se llena mientras se procesa y se adjunta al error si algo
   // falla, para ver con datos reales que tenia el origen y que se envio.
-  var diag = { srcGtin: null, srcEmptyReason: null, srcBrand: null, srcVarGtin: null, enviado: null };
+  var diag = { srcGtin: null, srcEmptyReason: null, srcBrand: null, srcVarGtin: null,
+    srcCatalogId: null, srcCatalogListing: null, srcDomain: null, enviado: null, rechazos: [] };
 
   try {
     const idToken = getIdToken(event);
@@ -101,6 +102,9 @@ exports.handler = async (event) => {
     diag.srcGtin = buscarAttr(src.attributes, "GTIN");
     diag.srcEmptyReason = buscarAttr(src.attributes, "EMPTY_GTIN_REASON");
     diag.srcBrand = buscarAttr(src.attributes, "BRAND");
+    diag.srcCatalogId = src.catalog_product_id || null;
+    diag.srcCatalogListing = src.catalog_listing;
+    diag.srcDomain = src.domain_id || null;
     if (Array.isArray(src.variations) && src.variations[0]) {
       diag.srcVarGtin = buscarAttr(src.variations[0].attributes, "GTIN");
     }
@@ -148,16 +152,19 @@ exports.handler = async (event) => {
         creado = await mlFetch(tokenDestino, "/items", "POST", cuerpoActual);
         break;
       } catch (error) {
-        // Diagnostico: guardar el PRIMER rechazo (cuando todavia se mandaba el
-        // GTIN real del original), que es el que explica por que no se acepta.
-        if (!diag.primerRechazo) {
-          var causas0 = [].concat((error.mlPayload && error.mlPayload.cause) || []);
-          diag.primerRechazo = {
-            llevabaGtin: llevabaGtin,
-            causas: causas0.map(function (c) {
-              return typeof c === "string" ? c : (String(c.code || "") + ": " + String(c.message || ""));
-            })
-          };
+        // Diagnostico: registrar CADA rechazo de la cadena con su mensaje
+        // completo (no solo cause[]), para ver que dice ML cuando se manda el
+        // GTIN real y por que no lo acepta.
+        if (diag.rechazos.length < 6) {
+          var mp = error.mlPayload || {};
+          var causasN = [].concat(mp.cause || []).map(function (c) {
+            return typeof c === "string" ? c : (String(c.code || "") + ": " + String(c.message || ""));
+          });
+          diag.rechazos.push({
+            gtin: llevabaGtin,
+            msg: String(mp.message || "") + (mp.error ? " / " + mp.error : ""),
+            causas: causasN
+          });
         }
         // Hasta 4 reparaciones: ML revela los problemas por capas y un solo
         // producto puede necesitar arreglar titulo, atributos y GTIN en
