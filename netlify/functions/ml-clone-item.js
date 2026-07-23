@@ -492,14 +492,32 @@ async function repararCuerpo(cuerpo, mlPayload, avisos, ctx) {
         if (Array.isArray(v.attribute_combinations)) v.attribute_combinations = sinGtin(v.attribute_combinations);
       });
     }
-    const previa = copia.attributes.filter((a) => a.id === "EMPTY_GTIN_REASON")[0];
-    const yaProbado = previa ? previa.value_id : null;
+    // De donde leer el motivo ya probado (para progresar si ML lo rechaza):
+    // item-level o, en productos con variantes, la primera variante.
+    const tieneVariantes = Array.isArray(copia.variations) && copia.variations.length > 0;
+    const previaItem = copia.attributes.filter((a) => a.id === "EMPTY_GTIN_REASON")[0];
+    const previaVar = tieneVariantes
+      ? ((copia.variations[0].attributes || []).filter((a) => a.id === "EMPTY_GTIN_REASON")[0])
+      : null;
+    const yaProbado = (previaItem && previaItem.value_id) || (previaVar && previaVar.value_id) || null;
     const nombre = String(cuerpo.title || cuerpo.family_name || "");
     const esKit = /\+|\bkit\b|\bcombo\b|\bpack\b|regalo/i.test(nombre);
     const valor = await resolverEmptyGtinReason(ctx, esKit, yaProbado);
     if (valor) {
+      const nuevoAttr = { id: "EMPTY_GTIN_REASON", value_id: valor.id };
+      // GTIN es variation_attribute: en productos CON variantes, ML valida el
+      // codigo POR VARIANTE y el EMPTY_GTIN_REASON a nivel item NO alcanza
+      // (visto en produccion 2026-07-21). Entonces va en cada variante. Sin
+      // variantes, a nivel item. Nunca en los dos lados a la vez.
       copia.attributes = copia.attributes.filter((a) => a.id !== "EMPTY_GTIN_REASON");
-      copia.attributes.push({ id: "EMPTY_GTIN_REASON", value_id: valor.id });
+      if (tieneVariantes) {
+        copia.variations.forEach((v) => {
+          v.attributes = (v.attributes || []).filter((a) => a.id !== "EMPTY_GTIN_REASON");
+          v.attributes.push({ id: "EMPTY_GTIN_REASON", value_id: valor.id });
+        });
+      } else {
+        copia.attributes.push(nuevoAttr);
+      }
       // Un solo aviso de GTIN por item: el ultimo motivo es el que quedo.
       for (let i = avisos.length - 1; i >= 0; i--) {
         if (avisos[i].indexOf("sin_gtin:") === 0) avisos.splice(i, 1);
