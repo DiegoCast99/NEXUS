@@ -552,16 +552,35 @@ function clasificarMotivo(nombre) {
   return "otro";
 }
 
+// Respaldo: value_id conocidos y GLOBALES de EMPTY_GTIN_REASON (verificados
+// contra la categoria real de Uruguay, coinciden con la doc). Se usan si la
+// consulta a /categories falla o no trae el atributo, para que el motivo se
+// declare igual en vez de quedar sin GTIN.
+var EGR_FALLBACK = [
+  { id: "17055159", slug: "kit" },
+  { id: "17055160", slug: "no_registrado" },
+  { id: "17055161", slug: "otro" },
+  { id: "17055158", slug: "artesanal" }
+];
+
 async function resolverEmptyGtinReason(ctx, esKit, valorRechazado) {
-  if (!ctx || !ctx.tokens || !ctx.categoryId) return null;
+  if (!ctx) return null;
   try {
     if (!ctx._egr) {
-      const attrs = await mlFetch(ctx.tokens, "/categories/" + ctx.categoryId + "/attributes");
-      const egr = (Array.isArray(attrs) ? attrs : []).filter((a) => a && a.id === "EMPTY_GTIN_REASON")[0];
-      // Cada motivo con su slug canonico ya calculado (los nombres son frases).
-      ctx._egr = (egr && Array.isArray(egr.values)) ? egr.values.map(function (v) {
-        return { id: String(v.id), name: v.name, slug: clasificarMotivo(v.name) };
-      }) : [];
+      let lista = [];
+      try {
+        if (ctx.tokens && ctx.categoryId) {
+          const attrs = await mlFetch(ctx.tokens, "/categories/" + ctx.categoryId + "/attributes");
+          const egr = (Array.isArray(attrs) ? attrs : []).filter((a) => a && a.id === "EMPTY_GTIN_REASON")[0];
+          if (egr && Array.isArray(egr.values)) {
+            lista = egr.values.map(function (v) {
+              return { id: String(v.id), name: v.name, slug: clasificarMotivo(v.name) };
+            });
+          }
+        }
+      } catch (e) { /* categoria no respondio: se usa el respaldo */ }
+      // Si la categoria no dio nada usable, caer a los ids globales conocidos.
+      ctx._egr = lista.length ? lista : EGR_FALLBACK.map(function (v) { return { id: v.id, name: v.slug, slug: v.slug }; });
     }
     const disponibles = ctx._egr.filter((v) => v && v.id !== String(valorRechazado));
     if (!disponibles.length) return null;
