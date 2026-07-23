@@ -504,7 +504,7 @@ async function repararCuerpo(cuerpo, mlPayload, avisos, ctx) {
       for (let i = avisos.length - 1; i >= 0; i--) {
         if (avisos[i].indexOf("sin_gtin:") === 0) avisos.splice(i, 1);
       }
-      avisos.push("sin_gtin:" + String(valor.name || "").toLowerCase().replace(/\s+/g, "_"));
+      avisos.push("sin_gtin:" + valor.slug);
       toco = true;
     }
   }
@@ -516,22 +516,46 @@ async function repararCuerpo(cuerpo, mlPayload, avisos, ctx) {
 // elige el value_id adecuado. Los ids varian por categoria y por pais, asi que
 // no se pueden hardcodear. Cachea la respuesta en ctx (un item = una categoria).
 // `valorRechazado` excluye un id que ML ya rechazo, para progresar al siguiente.
+// Motivos canonicos y las palabras clave que los identifican DENTRO del nombre
+// localizado de ML. En MLU no se llaman "Kit" sino "El producto es un kit o un
+// pack", asi que hay que matchear por substring, no por igualdad exacta.
+var MOTIVOS_GTIN = [
+  { slug: "kit", claves: ["kit", "pack"] },
+  { slug: "no_registrado", claves: ["no tiene", "no registr", "sin registr", "no esta registr"] },
+  { slug: "otro", claves: ["otra razon", "otra razón", "otro"] },
+  { slug: "artesanal", claves: ["artesan"] }
+];
+
+function clasificarMotivo(nombre) {
+  var n = String(nombre || "").toLowerCase();
+  for (var i = 0; i < MOTIVOS_GTIN.length; i++) {
+    if (MOTIVOS_GTIN[i].claves.some(function (k) { return n.indexOf(k) !== -1; })) return MOTIVOS_GTIN[i].slug;
+  }
+  return "otro";
+}
+
 async function resolverEmptyGtinReason(ctx, esKit, valorRechazado) {
   if (!ctx || !ctx.tokens || !ctx.categoryId) return null;
   try {
     if (!ctx._egr) {
       const attrs = await mlFetch(ctx.tokens, "/categories/" + ctx.categoryId + "/attributes");
       const egr = (Array.isArray(attrs) ? attrs : []).filter((a) => a && a.id === "EMPTY_GTIN_REASON")[0];
-      ctx._egr = (egr && Array.isArray(egr.values)) ? egr.values : [];
+      // Cada motivo con su slug canonico ya calculado (los nombres son frases).
+      ctx._egr = (egr && Array.isArray(egr.values)) ? egr.values.map(function (v) {
+        return { id: String(v.id), name: v.name, slug: clasificarMotivo(v.name) };
+      }) : [];
     }
-    const disponibles = ctx._egr.filter((v) => v && String(v.id) !== String(valorRechazado));
+    const disponibles = ctx._egr.filter((v) => v && v.id !== String(valorRechazado));
     if (!disponibles.length) return null;
-    const orden = esKit ? ["kit", "no registrado", "otro"] : ["no registrado", "otro", "kit"];
-    for (const nombre of orden) {
-      const hit = disponibles.filter((v) => String(v.name || "").toLowerCase() === nombre)[0];
-      if (hit) return { id: String(hit.id), name: hit.name };
+    // Orden de preferencia por slug: los combos arrancan por "kit".
+    const orden = esKit
+      ? ["kit", "no_registrado", "otro", "artesanal"]
+      : ["no_registrado", "otro", "kit", "artesanal"];
+    for (const slug of orden) {
+      const hit = disponibles.filter((v) => v.slug === slug)[0];
+      if (hit) return hit;
     }
-    return { id: String(disponibles[0].id), name: disponibles[0].name };
+    return disponibles[0];
   } catch (e) {
     return null;
   }
