@@ -720,6 +720,7 @@
     titulo_recortado: "el titulo se recorto a 60 caracteres",
     titulo_en_family_name: "el titulo viajo como nombre de familia (modelo nuevo de ML)",
     "sin_gtin:kit": "se publico sin codigo universal, declarado como Kit",
+    "sin_gtin:artesanal": "se publico sin codigo universal (artesanal)",
     "sin_gtin:no_registrado": "se publico sin codigo universal (producto no registrado)",
     "sin_gtin:otro": "se publico sin codigo universal (otro motivo)",
     catalogo_descartado: "se publico fuera del catalogo",

@@ -130,7 +130,10 @@ exports.handler = async (event) => {
         // que el corte real lo pone eso, no el tope (que es una red de
         // seguridad contra un bucle).
         const reparado = intentoCrear < 4
-          ? repararCuerpo(cuerpoActual, error.mlPayload, avisos)
+          ? await repararCuerpo(cuerpoActual, error.mlPayload, avisos, {
+              tokens: tokenDestino,
+              categoryId: cuerpoActual.category_id
+            })
           : null;
         if (!reparado) throw error;
         // Si la reparacion consistio en sacar el title, la cuenta esta en el
@@ -357,7 +360,7 @@ const CAMPOS_DESCARTABLES = [
   "catalog_listing", "family_name", "description", "shipping"
 ];
 
-function repararCuerpo(cuerpo, mlPayload, avisos) {
+async function repararCuerpo(cuerpo, mlPayload, avisos, ctx) {
   if (!mlPayload) return null;
   const listaCausas = [].concat(mlPayload.cause || []);
   const causas = (String(mlPayload.message || "") + " | " + String(mlPayload.error || "") + " | " + listaCausas
@@ -438,38 +441,6 @@ function repararCuerpo(cuerpo, mlPayload, avisos) {
     toco = true;
   }
 
-  // GTIN / codigo universal: dos rechazos, misma cura. O falta (la categoria
-  // lo exige) o esta duplicado (el GTIN del original ya esta usado en su
-  // publicacion). En ambos se saca el GTIN de TODOS lados y se declara
-  // EMPTY_GTIN_REASON, el mecanismo oficial de ML para publicar sin codigo.
-  // Los combos ("Whey + Creatina", "... de regalo") son "Kit" literal; el
-  // resto, "No registrado". Un producto clonado no puede reusar el GTIN del
-  // original, asi que esta es la unica via.
-  if (/GTIN|UNIVERSAL|INVALID_PRODUCT_IDENTIFIER/.test(causas)) {
-    const sinGtin = (lista) => Array.isArray(lista) ? lista.filter((a) => a && a.id !== "GTIN") : lista;
-    copia.attributes = sinGtin(copia.attributes) || [];
-    if (Array.isArray(copia.variations)) {
-      copia.variations.forEach((v) => {
-        if (Array.isArray(v.attributes)) v.attributes = sinGtin(v.attributes);
-        if (Array.isArray(v.attribute_combinations)) v.attribute_combinations = sinGtin(v.attribute_combinations);
-      });
-    }
-    const razon = copia.attributes.filter((a) => a.id === "EMPTY_GTIN_REASON")[0];
-    const nombre = String(cuerpo.title || cuerpo.family_name || "");
-    const esKit = /\+|\bkit\b|\bcombo\b|\bpack\b|regalo/i.test(nombre);
-    if (!razon) {
-      copia.attributes.push({ id: "EMPTY_GTIN_REASON", value_name: esKit ? "Kit" : "No registrado" });
-      avisos.push("sin_gtin:" + (esKit ? "kit" : "no_registrado"));
-      toco = true;
-    } else if (razon.value_name !== "Otro") {
-      // La razon anterior no la acepto la categoria: caer al catch-all.
-      razon.value_name = "Otro";
-      delete razon.value_id;
-      avisos.push("sin_gtin:otro");
-      toco = true;
-    }
-  }
-
   // Atributos rechazados: ML los nombra como "attribute LINE" en el mensaje.
   // Hay que sacarlos del nivel superior Y de cada variante — solo del array
   // `attributes`, nunca de `attribute_combinations`, que son la identidad de
@@ -479,10 +450,14 @@ function repararCuerpo(cuerpo, mlPayload, avisos) {
   let m;
   while ((m = patronAttr.exec(causas)) !== null) attrsRechazados.push(m[1]);
 
+  // GTIN y EMPTY_GTIN_REASON los maneja el bloque de GTIN de abajo, no el
+  // barrido generico: son parte del mismo problema y se resuelven juntos.
+  const NO_BARRER = ["GTIN", "EMPTY_GTIN_REASON"];
   function sacarAtributos(lista, donde) {
     if (!Array.isArray(lista)) return lista;
     const quedan = lista.filter((a) =>
-      attrsRechazados.indexOf(a.id) === -1 && causas.indexOf(a.id) === -1);
+      NO_BARRER.indexOf(a.id) !== -1 ||
+      (attrsRechazados.indexOf(a.id) === -1 && causas.indexOf(a.id) === -1));
     if (quedan.length !== lista.length) {
       lista
         .filter((a) => quedan.indexOf(a) === -1)
@@ -501,7 +476,65 @@ function repararCuerpo(cuerpo, mlPayload, avisos) {
     });
   }
 
+  // GTIN / codigo universal: dos rechazos, misma cura. O falta (la categoria
+  // lo exige) o esta duplicado (el GTIN del original ya esta usado en su
+  // publicacion). En ambos: se saca el GTIN de TODOS lados y se declara
+  // EMPTY_GTIN_REASON. CLAVE: hay que mandar el value_id (no el value_name),
+  // y ese id es propio de cada categoria/pais — por eso se consulta a
+  // /categories/{id}/attributes en vez de hardcodear. Va al final para que el
+  // barrido generico no lo pise. Un clon no puede reusar el GTIN del original.
+  if (/GTIN|UNIVERSAL|INVALID_PRODUCT_IDENTIFIER|EMPTY_GTIN_REASON/.test(causas)) {
+    const sinGtin = (lista) => Array.isArray(lista) ? lista.filter((a) => a && a.id !== "GTIN") : lista;
+    copia.attributes = sinGtin(copia.attributes) || [];
+    if (Array.isArray(copia.variations)) {
+      copia.variations.forEach((v) => {
+        if (Array.isArray(v.attributes)) v.attributes = sinGtin(v.attributes);
+        if (Array.isArray(v.attribute_combinations)) v.attribute_combinations = sinGtin(v.attribute_combinations);
+      });
+    }
+    const previa = copia.attributes.filter((a) => a.id === "EMPTY_GTIN_REASON")[0];
+    const yaProbado = previa ? previa.value_id : null;
+    const nombre = String(cuerpo.title || cuerpo.family_name || "");
+    const esKit = /\+|\bkit\b|\bcombo\b|\bpack\b|regalo/i.test(nombre);
+    const valor = await resolverEmptyGtinReason(ctx, esKit, yaProbado);
+    if (valor) {
+      copia.attributes = copia.attributes.filter((a) => a.id !== "EMPTY_GTIN_REASON");
+      copia.attributes.push({ id: "EMPTY_GTIN_REASON", value_id: valor.id });
+      // Un solo aviso de GTIN por item: el ultimo motivo es el que quedo.
+      for (let i = avisos.length - 1; i >= 0; i--) {
+        if (avisos[i].indexOf("sin_gtin:") === 0) avisos.splice(i, 1);
+      }
+      avisos.push("sin_gtin:" + String(valor.name || "").toLowerCase().replace(/\s+/g, "_"));
+      toco = true;
+    }
+  }
+
   return toco ? copia : null;
+}
+
+// Consulta a ML los motivos validos de EMPTY_GTIN_REASON para ESA categoria y
+// elige el value_id adecuado. Los ids varian por categoria y por pais, asi que
+// no se pueden hardcodear. Cachea la respuesta en ctx (un item = una categoria).
+// `valorRechazado` excluye un id que ML ya rechazo, para progresar al siguiente.
+async function resolverEmptyGtinReason(ctx, esKit, valorRechazado) {
+  if (!ctx || !ctx.tokens || !ctx.categoryId) return null;
+  try {
+    if (!ctx._egr) {
+      const attrs = await mlFetch(ctx.tokens, "/categories/" + ctx.categoryId + "/attributes");
+      const egr = (Array.isArray(attrs) ? attrs : []).filter((a) => a && a.id === "EMPTY_GTIN_REASON")[0];
+      ctx._egr = (egr && Array.isArray(egr.values)) ? egr.values : [];
+    }
+    const disponibles = ctx._egr.filter((v) => v && String(v.id) !== String(valorRechazado));
+    if (!disponibles.length) return null;
+    const orden = esKit ? ["kit", "no registrado", "otro"] : ["no registrado", "otro", "kit"];
+    for (const nombre of orden) {
+      const hit = disponibles.filter((v) => String(v.name || "").toLowerCase() === nombre)[0];
+      if (hit) return { id: String(hit.id), name: hit.name };
+    }
+    return { id: String(disponibles[0].id), name: disponibles[0].name };
+  } catch (e) {
+    return null;
+  }
 }
 
 /* ---------- fotos de variantes ---------- */
