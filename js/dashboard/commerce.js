@@ -88,6 +88,9 @@
       stock: (order.stock === 0 || order.stock) ? Number(order.stock) : null,
       cancelled: Boolean(order.cancelled),
       refunded: Boolean(order.refunded),
+      // Datos de Mercado Pago: idem, explicitos o se perderian al re-normalizar.
+      releaseDate: String(order.releaseDate || ""),
+      credited: Boolean(order.credited),
       date: String(order.date || order.createdAt || toDateInput()).slice(0, 10)
     };
   }
@@ -322,6 +325,18 @@
       return p.status === "refunded" || p.status === "charged_back";
     });
 
+    // Liberacion del dinero (Mercado Pago). Cada pago informa cuando el
+    // importe queda disponible para retirar. Es la base de "disponible" vs
+    // "a liberar": sin esto habria que pedirle a MP sus propias credenciales.
+    var aprobados = payments.filter(function (p) { return p.status === "approved"; });
+    var liberacion = "";
+    aprobados.forEach(function (p) {
+      var d = p.money_release_date || p.date_released || "";
+      // Se toma la mas TARDIA: la plata esta toda disponible recien ahi.
+      if (d && (!liberacion || String(d) > liberacion)) liberacion = String(d);
+    });
+    var acreditado = aprobados.length > 0;
+
     return {
       id: String(mlOrder.id || "ML-" + index),
       customer: customer.trim(),
@@ -340,6 +355,9 @@
       itemId: itemId,
       thumbnail: "",
       stock: null,
+      // Mercado Pago: cuando se libera la plata de esta venta y si ya se acredito.
+      releaseDate: liberacion,
+      credited: acreditado,
       date: String(mlOrder.date_created || "").slice(0, 10) || toDateInput()
     };
   }
@@ -1182,6 +1200,11 @@
       return;
     }
 
+    if (d.section === "mercadopago") {
+      if (isMLApp(state.commerce.selectedApp)) renderMercadoPago();
+      return;
+    }
+
     if (d.section === "resumen") {
       dibujarCuandoSeVea(elements.commerceTrendChart, drawCommerceTrendChart);
       if (isMLApp(state.commerce.selectedApp)) {
@@ -1189,6 +1212,190 @@
       }
     }
   });
+
+  /* ============================================================
+     Mercado Pago — cobros y liberaciones de la cuenta abierta
+     ------------------------------------------------------------
+     Se arma con los pagos que ya vienen en /orders/search: cada pago
+     informa su comision (marketplace_fee), el envio y CUANDO se libera
+     la plata. Con eso alcanza para el panel de finanzas sin pedirle a
+     Mercado Pago credenciales propias.
+
+     El saldo global de la billetera (plata que no viene de ventas de
+     ML, retiros, etc.) SI necesita credenciales de MP: se intenta leer
+     y, si la cuenta no lo permite, se avisa en vez de fallar.
+     ============================================================ */
+
+  function hoyISO() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  // Reparte las ventas del periodo entre lo ya liberado y lo que falta.
+  function resumenMercadoPago(orders) {
+    var hoy = hoyISO();
+    var res = {
+      bruto: 0, comision: 0, envio: 0, neto: 0,
+      disponible: 0, aLiberar: 0, sinFecha: 0,
+      cobros: [], proximas: {}
+    };
+
+    (orders || []).forEach(function (o) {
+      if (o.cancelled) return;                    // una venta caida no es plata
+      var neto = (o.total || 0) - (o.commission || 0) - (o.shipping || 0);
+      res.bruto += o.total || 0;
+      res.comision += o.commission || 0;
+      res.envio += o.shipping || 0;
+      res.neto += neto;
+
+      var fecha = String(o.releaseDate || "").slice(0, 10);
+      if (o.refunded) {
+        // Devuelta: no suma a disponible ni a liberar.
+      } else if (!fecha) {
+        res.sinFecha += neto;
+      } else if (fecha <= hoy) {
+        res.disponible += neto;
+      } else {
+        res.aLiberar += neto;
+        res.proximas[fecha] = (res.proximas[fecha] || 0) + neto;
+      }
+
+      res.cobros.push({
+        id: o.id, fecha: o.date, producto: o.product,
+        bruto: o.total || 0, comision: o.commission || 0, envio: o.shipping || 0,
+        neto: neto, libera: fecha, refunded: o.refunded, credited: o.credited
+      });
+    });
+
+    res.cobros.sort(function (a, b) { return a.fecha < b.fecha ? 1 : -1; });
+    return res;
+  }
+
+  function renderMercadoPago() {
+    if (!elements.mpPanel) return;
+    // S.mlAccountById en vez de destructurar: este archivo se ejecuta antes
+    // de que el header pueda garantizar el simbolo, y por S.* es lazy.
+    var cuenta = S.mlAccountById(activeMLId());
+    if (elements.mpAccountName) {
+      elements.mpAccountName.textContent = cuenta ? cuenta.name : "Mercado Libre";
+    }
+
+    var snapshot = getCommerceSnapshot(state.commerce.selectedApp);
+    var orders = (snapshot && snapshot.orders) || [];
+
+    if (!orders.length) {
+      elements.mpEmpty?.classList.add("is-visible");
+      if (elements.mpStats) elements.mpStats.innerHTML = "";
+      if (elements.mpNextBody) elements.mpNextBody.innerHTML = "";
+      if (elements.mpTableBody) elements.mpTableBody.innerHTML = "";
+      return;
+    }
+    elements.mpEmpty?.classList.remove("is-visible");
+
+    var r = resumenMercadoPago(orders);
+
+    // Tarjetas: primero la plata, despues los cargos.
+    if (elements.mpStats) {
+      elements.mpStats.innerHTML = [
+        tarjetaMP("Disponible", moneyWithCents.format(r.disponible), "ya liberado", "is-good"),
+        tarjetaMP("A liberar", moneyWithCents.format(r.aLiberar), r.aLiberar > 0 ? "en camino" : "nada pendiente", ""),
+        tarjetaMP("Facturacion bruta", moneyWithCents.format(r.bruto), "ventas del periodo", ""),
+        tarjetaMP("Comisiones ML", "- " + moneyWithCents.format(r.comision), pct(r.comision, r.bruto), "is-bad"),
+        tarjetaMP("Envios", "- " + moneyWithCents.format(r.envio), pct(r.envio, r.bruto), "is-bad"),
+        tarjetaMP("Neto acreditado", moneyWithCents.format(r.neto), pct(r.neto, r.bruto), "is-good")
+      ].join("");
+    }
+
+    // Proximas liberaciones, de la mas cercana a la mas lejana.
+    if (elements.mpNextBody) {
+      var fechas = Object.keys(r.proximas).sort();
+      elements.mpNextBody.innerHTML = fechas.length
+        ? fechas.map(function (f) {
+            return "<tr><td>" + escapeHtml(S.formatDate(f)) + "</td>" +
+              '<td class="num">' + moneyWithCents.format(r.proximas[f]) + "</td>" +
+              "<td>" + escapeHtml(faltanDias(f)) + "</td></tr>";
+          }).join("")
+        : '<tr><td colspan="3" class="pub-quiet">No hay dinero pendiente de liberacion.</td></tr>';
+    }
+
+    // Detalle cobro por cobro.
+    if (elements.mpTableBody) {
+      elements.mpTableBody.innerHTML = r.cobros.map(function (c) {
+        var estado = c.refunded
+          ? '<span class="type-pill expense">Devuelto</span>'
+          : (!c.libera
+              ? '<span class="type-pill">Pendiente</span>'
+              : (c.libera <= hoyISO()
+                  ? '<span class="type-pill income">Disponible</span>'
+                  : '<span class="type-pill pub-warn">A liberar</span>'));
+        return "<tr>" +
+          "<td>" + escapeHtml(S.formatDate(c.fecha)) + "</td>" +
+          '<td><span class="mp-producto">' + escapeHtml(c.producto) + "</span></td>" +
+          '<td class="num">' + moneyWithCents.format(c.bruto) + "</td>" +
+          '<td class="num">' + moneyWithCents.format(c.comision + c.envio) + "</td>" +
+          '<td class="num">' + moneyWithCents.format(c.neto) + "</td>" +
+          "<td>" + (c.libera ? escapeHtml(S.formatDate(c.libera)) : "—") + "</td>" +
+          "<td>" + estado + "</td>" +
+        "</tr>";
+      }).join("");
+    }
+
+    if (elements.mpNote) {
+      elements.mpNote.textContent = r.sinFecha > 0
+        ? "Hay " + moneyWithCents.format(r.sinFecha) + " sin fecha de liberacion informada por Mercado Libre (suele ser de ventas muy recientes)."
+        : "";
+    }
+
+    consultarSaldoMP();
+  }
+
+  function tarjetaMP(titulo, valor, pie, clase) {
+    return '<div class="metric-card mp-card ' + clase + '"><span>' + titulo + "</span>" +
+      "<strong>" + valor + "</strong><small>" + escapeHtml(pie) + "</small></div>";
+  }
+
+  function pct(parte, total) {
+    if (!total) return "";
+    return (parte / total * 100).toFixed(1) + "% de las ventas";
+  }
+
+  function faltanDias(fechaISO) {
+    var dias = Math.ceil((new Date(fechaISO + "T00:00:00") - new Date(hoyISO() + "T00:00:00")) / 86400000);
+    if (dias <= 0) return "hoy";
+    if (dias === 1) return "manana";
+    return "en " + dias + " dias";
+  }
+
+  // Saldo global de la billetera de MP. Puede no estar disponible: la cuenta
+  // de ML no siempre habilita la API de Mercado Pago. Si no se puede, se dice
+  // claramente en vez de dejar un cero enganoso.
+  async function consultarSaldoMP() {
+    if (!elements.mpBalance) return;
+    elements.mpBalance.textContent = "Consultando saldo de Mercado Pago...";
+    elements.mpBalance.className = "meta-message";
+    try {
+      var api = S.requireSecureApi();
+      var cuenta = activeMLId();
+      var me = await api.mlApi("/users/me", "GET", null, cuenta);
+      var userId = (me.payload || {}).id;
+      if (!userId) throw new Error("sin usuario");
+      var res = await api.mlApi("/users/" + userId + "/mercadopago_account/balance", "GET", null, cuenta);
+      var p = res.payload || {};
+      var disponible = p.available_balance != null ? p.available_balance
+        : (p.balance != null ? p.balance : null);
+      if (disponible == null) throw new Error("sin saldo");
+      elements.mpBalance.innerHTML = "Saldo en la billetera de Mercado Pago: <b>" +
+        moneyWithCents.format(Number(disponible) || 0) + "</b>" +
+        (p.unavailable_balance != null
+          ? " · retenido: <b>" + moneyWithCents.format(Number(p.unavailable_balance) || 0) + "</b>"
+          : "");
+      elements.mpBalance.className = "meta-message is-success";
+    } catch (e) {
+      elements.mpBalance.textContent =
+        "El saldo total de la billetera no esta disponible con la conexion actual de Mercado Libre. " +
+        "Los numeros de arriba salen de tus ventas, que si son exactos.";
+      elements.mpBalance.className = "meta-message";
+    }
+  }
 
   // ---- Sync genérico -----------------------------------------
 
@@ -1406,5 +1613,6 @@
     applyPeriodChange, getPeriodRange, loadMLListings, markPendingStock, openSaleDeepLink, renderPeriodBar, saveMLListingChanges, selectMLAccount, toggleListingExpand, toggleListingStatus,
     scheduleCommerceRefresh, scheduleMLRefresh, selectCommerceApp, setCommerceMessage, setMlMessage,
     startMLOAuth, syncCommerce, syncMercadoLibre,
+    renderMercadoPago, resumenMercadoPago,
   });
 })();

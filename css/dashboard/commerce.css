@@ -621,3 +621,80 @@
   border-color: rgba(255, 26, 157, 0.8);
   box-shadow: 0 0 0 2px rgba(255, 26, 157, 0.18);
 }
+
+/* ============================================================
+   Mercado Pago — cobros y liberaciones
+   ============================================================ */
+
+.mp-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 14px;
+}
+
+/* La plata que ya esta y la que falta se leen de un vistazo: el color
+   distingue disponible (verde) de cargos (rosa), sin depender del texto. */
+.mp-card.is-good strong { color: var(--green); }
+.mp-card.is-bad strong { color: var(--danger); }
+
+.mp-note {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.mp-subtitle {
+  margin: 18px 0 10px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.mp-next-wrap { min-height: 0; }
+
+.mp-next-table { table-layout: fixed; width: 100%; min-width: 420px; }
+.mp-next-table th:nth-child(1), .mp-next-table td:nth-child(1) { width: 40%; }
+.mp-next-table th:nth-child(2), .mp-next-table td:nth-child(2) { width: 32%; text-align: right; }
+.mp-next-table th:nth-child(3), .mp-next-table td:nth-child(3) { width: 28%; text-align: right; }
+
+/* Layout fijo y porcentajes que suman 100: misma leccion que Publicaciones
+   (con px la primera columna colapsa). Debajo del min-width scrollea. */
+.mp-table { table-layout: fixed; width: 100%; min-width: 900px; }
+.mp-table th:nth-child(1), .mp-table td:nth-child(1) { width: 11%; }
+.mp-table th:nth-child(2), .mp-table td:nth-child(2) { width: 31%; }
+.mp-table th:nth-child(3), .mp-table td:nth-child(3) { width: 12%; }
+.mp-table th:nth-child(4), .mp-table td:nth-child(4) { width: 12%; }
+.mp-table th:nth-child(5), .mp-table td:nth-child(5) { width: 12%; }
+.mp-table th:nth-child(6), .mp-table td:nth-child(6) { width: 12%; }
+.mp-table th:nth-child(7), .mp-table td:nth-child(7) { width: 10%; }
+
+/* Los importes alineados a la derecha para poder compararlos de un vistazo. */
+.mp-table th:nth-child(n + 3):nth-child(-n + 5),
+.mp-table td:nth-child(n + 3):nth-child(-n + 5) { text-align: right; }
+.mp-table th:nth-child(n + 6), .mp-table td:nth-child(n + 6) { text-align: center; }
+
+/* El nombre de la venta no puede romper la fila: dos lineas y elipsis.
+   OJO: el line-clamp va en un SPAN interno, nunca en el <td>. Un td con
+   display:-webkit-box se sale del layout de tabla y se encoge al contenido
+   (la cabecera quedaba en 279px y la celda en 210px). Misma leccion que
+   .order-product-cell en la tabla de Publicaciones. */
+.mp-table td:nth-child(2) { white-space: normal; }
+
+.mp-table .mp-producto {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.4;
+}
+
+.mp-table .num, .mp-next-table .num { font-variant-numeric: tabular-nums; }
+
+@media (max-width: 1180px) {
+  .mp-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .mp-stats { grid-template-columns: 1fr; }
+}

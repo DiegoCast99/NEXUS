@@ -29,6 +29,7 @@
       { id: "resumen", label: "Metricas", hint: "Ventas, costos y tendencia" },
       { id: "pedidos", label: "Pedidos", hint: "Operaciones recientes" },
       { id: "publicaciones", label: "Publicaciones", hint: "Stock y estado", flag: "ml" },
+      { id: "mercadopago", label: "Mercado Pago", hint: "Cobros y liberaciones", flag: "ml" },
       { id: "productos", label: "Productos", hint: "Top rendimiento" },
       { id: "config", label: "Configuracion", hint: "Conexion y avisos" }
     ],

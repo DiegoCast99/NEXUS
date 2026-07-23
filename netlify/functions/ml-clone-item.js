@@ -270,14 +270,11 @@ exports.handler = async (event) => {
     const estado = error.mlStatus || 0;
     // 429 y 5xx son pasajeros (vale reintentar); 400/422 son de validacion.
     const transitorio = estado === 429 || estado >= 500 || estado === 0;
-    // Adjunta el diagnostico al payload que ve el cliente (se muestra crudo
-    // en la fila de error). Temporal: para entender las fallas de GTIN.
-    var mlPayload = Object.assign({ _diag: diag }, error.mlPayload || {});
     return json(transitorio ? 503 : 422, {
       error: error.message || "No se pudo clonar la publicacion.",
       code: error.code || (transitorio ? "transitorio" : "validacion"),
       mlStatus: estado,
-      mlPayload: mlPayload
+      mlPayload: error.mlPayload || null
     });
   }
 };
