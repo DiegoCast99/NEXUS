@@ -27,12 +27,21 @@ const ML_API = "https://api.mercadolibre.com";
 const ML_TOKEN_URL = "https://api.mercadolibre.com/oauth/token";
 const REFRESH_BUFFER_SECS = 300;
 
+// Hosts alcanzables. Mercado Pago vive en OTRO dominio que Mercado Libre: el
+// saldo y el detalle de los pagos (con su fecha de liberacion) solo salen de
+// api.mercadopago.com. Es una lista blanca cerrada a proposito: el `endpoint`
+// que manda el cliente no puede elegir un host arbitrario (evita SSRF).
+const HOSTS = {
+  ml: ML_API,
+  mp: "https://api.mercadopago.com"
+};
+
 exports.handler = async (event) => {
   if (event.httpMethod !== "POST") return json(405, { error: "Solo POST." });
   try {
     const idToken = getIdToken(event);
     const uid = uidFromIdToken(idToken);
-    const { endpoint, method, body: reqBody, account } = parseBody(event);
+    const { endpoint, method, body: reqBody, account, host } = parseBody(event);
     const mlId = mlAccount(account);
     const field = "secret_" + mlId;
 
@@ -52,7 +61,8 @@ exports.handler = async (event) => {
       tokens = await refreshToken(tokens, uid, idToken, field);
     }
 
-    const url = ML_API + (endpoint.startsWith("/") ? endpoint : "/" + endpoint);
+    const base = HOSTS[host] || ML_API;
+    const url = base + (endpoint.startsWith("/") ? endpoint : "/" + endpoint);
     const fetchOpts = {
       method: (method || "GET").toUpperCase(),
       headers: {

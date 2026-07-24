@@ -91,6 +91,7 @@
       // Datos de Mercado Pago: idem, explicitos o se perderian al re-normalizar.
       releaseDate: String(order.releaseDate || ""),
       credited: Boolean(order.credited),
+      paymentIds: Array.isArray(order.paymentIds) ? order.paymentIds : [],
       date: String(order.date || order.createdAt || toDateInput()).slice(0, 10)
     };
   }
@@ -325,9 +326,10 @@
       return p.status === "refunded" || p.status === "charged_back";
     });
 
-    // Liberacion del dinero (Mercado Pago). Cada pago informa cuando el
-    // importe queda disponible para retirar. Es la base de "disponible" vs
-    // "a liberar": sin esto habria que pedirle a MP sus propias credenciales.
+    // Liberacion del dinero. /orders/search NO informa money_release_date: ese
+    // dato vive en el detalle del pago, en api.mercadopago.com. Aca se guardan
+    // los ids de los pagos aprobados para poder consultarlo despues; si por
+    // casualidad ML ya lo mandara, se aprovecha.
     var aprobados = payments.filter(function (p) { return p.status === "approved"; });
     var liberacion = "";
     aprobados.forEach(function (p) {
@@ -336,6 +338,7 @@
       if (d && (!liberacion || String(d) > liberacion)) liberacion = String(d);
     });
     var acreditado = aprobados.length > 0;
+    var idsPago = aprobados.map(function (p) { return String(p.id || ""); }).filter(Boolean);
 
     return {
       id: String(mlOrder.id || "ML-" + index),
@@ -358,6 +361,7 @@
       // Mercado Pago: cuando se libera la plata de esta venta y si ya se acredito.
       releaseDate: liberacion,
       credited: acreditado,
+      paymentIds: idsPago,
       date: String(mlOrder.date_created || "").slice(0, 10) || toDateInput()
     };
   }
@@ -1279,8 +1283,11 @@
       elements.mpAccountName.textContent = cuenta ? cuenta.name : "Mercado Libre";
     }
 
+    var cuentaId = activeMLId();
+    var cache = mpDatos(cuentaId);
     var snapshot = getCommerceSnapshot(state.commerce.selectedApp);
-    var orders = (snapshot && snapshot.orders) || [];
+    // Se aplican las fechas de liberacion ya conseguidas del detalle de pagos.
+    var orders = conLiberaciones((snapshot && snapshot.orders) || [], cache);
 
     if (!orders.length) {
       elements.mpEmpty?.classList.add("is-visible");
@@ -1294,10 +1301,21 @@
     var r = resumenMercadoPago(orders);
 
     // Tarjetas: primero la plata, despues los cargos.
+    // Disponible y "a liberar" salen del saldo REAL de Mercado Pago si se
+    // pudo leer (incluye plata que no viene de ventas de ML). Si no, se cae a
+    // la suma de las ventas del periodo, que es una aproximacion — y se dice.
+    var usaSaldoReal = !!cache.saldo;
+    var disponible = usaSaldoReal ? cache.saldo.disponible : r.disponible;
+    var aLiberar = usaSaldoReal ? cache.saldo.aLiberar : r.aLiberar;
+    var pieDisp = usaSaldoReal ? "saldo real en tu billetera" : "estimado por tus ventas";
+    var pieLib = usaSaldoReal
+      ? (aLiberar > 0 ? "saldo real pendiente" : "nada pendiente")
+      : (aLiberar > 0 ? "estimado por tus ventas" : "nada pendiente");
+
     if (elements.mpStats) {
       elements.mpStats.innerHTML = [
-        tarjetaMP("Disponible", moneyWithCents.format(r.disponible), "ya liberado", "is-good"),
-        tarjetaMP("A liberar", moneyWithCents.format(r.aLiberar), r.aLiberar > 0 ? "en camino" : "nada pendiente", ""),
+        tarjetaMP("Disponible", moneyWithCents.format(disponible), pieDisp, "is-good"),
+        tarjetaMP("A liberar", moneyWithCents.format(aLiberar), pieLib, ""),
         tarjetaMP("Facturacion bruta", moneyWithCents.format(r.bruto), "ventas del periodo", ""),
         tarjetaMP("Comisiones ML", "- " + moneyWithCents.format(r.comision), pct(r.comision, r.bruto), "is-bad"),
         tarjetaMP("Envios", "- " + moneyWithCents.format(r.envio), pct(r.envio, r.bruto), "is-bad"),
@@ -1341,11 +1359,11 @@
 
     if (elements.mpNote) {
       elements.mpNote.textContent = r.sinFecha > 0
-        ? "Hay " + moneyWithCents.format(r.sinFecha) + " sin fecha de liberacion informada por Mercado Libre (suele ser de ventas muy recientes)."
+        ? "Hay " + moneyWithCents.format(r.sinFecha) + " de ventas cuya fecha de liberacion todavia no se consulto o Mercado Pago no informa."
         : "";
     }
 
-    consultarSaldoMP();
+    enriquecerMercadoPago(cuentaId, orders);
   }
 
   function tarjetaMP(titulo, valor, pie, clase) {
@@ -1365,36 +1383,142 @@
     return "en " + dias + " dias";
   }
 
-  // Saldo global de la billetera de MP. Puede no estar disponible: la cuenta
-  // de ML no siempre habilita la API de Mercado Pago. Si no se puede, se dice
-  // claramente en vez de dejar un cero enganoso.
-  async function consultarSaldoMP() {
-    if (!elements.mpBalance) return;
-    elements.mpBalance.textContent = "Consultando saldo de Mercado Pago...";
-    elements.mpBalance.className = "meta-message";
-    try {
-      var api = S.requireSecureApi();
-      var cuenta = activeMLId();
-      var me = await api.mlApi("/users/me", "GET", null, cuenta);
-      var userId = (me.payload || {}).id;
-      if (!userId) throw new Error("sin usuario");
-      var res = await api.mlApi("/users/" + userId + "/mercadopago_account/balance", "GET", null, cuenta);
-      var p = res.payload || {};
-      var disponible = p.available_balance != null ? p.available_balance
-        : (p.balance != null ? p.balance : null);
-      if (disponible == null) throw new Error("sin saldo");
-      elements.mpBalance.innerHTML = "Saldo en la billetera de Mercado Pago: <b>" +
-        moneyWithCents.format(Number(disponible) || 0) + "</b>" +
-        (p.unavailable_balance != null
-          ? " · retenido: <b>" + moneyWithCents.format(Number(p.unavailable_balance) || 0) + "</b>"
-          : "");
-      elements.mpBalance.className = "meta-message is-success";
-    } catch (e) {
-      elements.mpBalance.textContent =
-        "El saldo total de la billetera no esta disponible con la conexion actual de Mercado Libre. " +
-        "Los numeros de arriba salen de tus ventas, que si son exactos.";
-      elements.mpBalance.className = "meta-message";
+  // Cache por cuenta: saldo real de MP y fechas de liberacion por pago.
+  // Vive en memoria (traerlo son varias llamadas y cambia seguido).
+  var mpCache = {};
+  function mpDatos(cuenta) {
+    if (!mpCache[cuenta]) mpCache[cuenta] = { saldo: null, liberaciones: {}, cargando: false };
+    return mpCache[cuenta];
+  }
+
+  // Saldo REAL de la billetera. Es el numero autoritativo: reemplaza a la
+  // suma de ventas para "disponible" y "a liberar". Vive en OTRO dominio
+  // (api.mercadopago.com), por eso va con mpApi y no con mlApi.
+  async function cargarSaldoMP(cuenta) {
+    var api = S.requireSecureApi();
+    var me = await api.mlApi("/users/me", "GET", null, cuenta);
+    var userId = (me.payload || {}).id;
+    if (!userId) throw new Error("No se pudo identificar la cuenta.");
+
+    // Se prueban los endpoints conocidos en orden: no todas las cuentas
+    // exponen el mismo. El primero que devuelva un numero, gana.
+    var intentos = [
+      { host: "mp", url: "/users/" + userId + "/mercadopago_account/balance" },
+      { host: "mp", url: "/v1/account/balance" },
+      { host: "ml", url: "/users/" + userId + "/mercadopago_account/balance" }
+    ];
+    var ultimoError = null;
+    for (var i = 0; i < intentos.length; i++) {
+      try {
+        var t = intentos[i];
+        var res = t.host === "mp"
+          ? await api.mpApi(t.url, "GET", null, cuenta)
+          : await api.mlApi(t.url, "GET", null, cuenta);
+        var p = res.payload || {};
+        var disponible = primerNumero([p.available_balance, p.available, p.balance]);
+        if (disponible == null) continue;
+        return {
+          disponible: disponible,
+          aLiberar: primerNumero([p.unavailable_balance, p.pending_balance, p.unavailable]) || 0,
+          total: primerNumero([p.total_amount, p.total]) || null
+        };
+      } catch (e) { ultimoError = e; }
     }
+    throw ultimoError || new Error("Mercado Pago no devolvio el saldo.");
+  }
+
+  function primerNumero(lista) {
+    for (var i = 0; i < lista.length; i++) {
+      if (lista[i] != null && !isNaN(Number(lista[i]))) return Number(lista[i]);
+    }
+    return null;
+  }
+
+  // Fecha de liberacion de cada pago. NO viene en /orders/search: hay que
+  // pedir el detalle del pago a Mercado Pago. Se hace de a uno y con tope,
+  // para no castigar la cuota de la API en periodos largos.
+  async function cargarLiberaciones(cuenta, orders, cache) {
+    var api = S.requireSecureApi();
+    var ids = [];
+    (orders || []).forEach(function (o) {
+      (o.paymentIds || []).forEach(function (id) {
+        if (id && !(id in cache.liberaciones) && ids.indexOf(id) === -1) ids.push(id);
+      });
+    });
+    if (!ids.length) return false;
+
+    var TOPE = 40;                      // no mas de 40 consultas por render
+    var recortado = ids.length > TOPE;
+    var lote = ids.slice(0, TOPE);
+    for (var i = 0; i < lote.length; i++) {
+      try {
+        var res = await api.mpApi("/v1/payments/" + lote[i], "GET", null, cuenta);
+        var p = res.payload || {};
+        cache.liberaciones[lote[i]] = String(p.money_release_date || p.date_released || "");
+      } catch (e) {
+        cache.liberaciones[lote[i]] = "";   // se marca como consultado igual
+      }
+      await dormirMP(120);
+    }
+    return { recortado: recortado, faltan: Math.max(0, ids.length - TOPE) };
+  }
+
+  function dormirMP(ms) {
+    return new Promise(function (r) { setTimeout(r, ms); });
+  }
+
+  // Aplica al pedido la fecha de liberacion que se haya conseguido del pago.
+  function conLiberaciones(orders, cache) {
+    return (orders || []).map(function (o) {
+      if (o.releaseDate) return o;
+      var fecha = "";
+      (o.paymentIds || []).forEach(function (id) {
+        var d = cache.liberaciones[id];
+        if (d && (!fecha || d > fecha)) fecha = d;
+      });
+      return fecha ? Object.assign({}, o, { releaseDate: fecha }) : o;
+    });
+  }
+
+  // Trae saldo y liberaciones, y vuelve a pintar cuando llegan.
+  async function enriquecerMercadoPago(cuenta, orders) {
+    var cache = mpDatos(cuenta);
+    if (cache.cargando) return;
+    cache.cargando = true;
+    try {
+      try {
+        cache.saldo = await cargarSaldoMP(cuenta);
+        pintarSaldoMP(cache.saldo);
+        // Repintar YA: las tarjetas tienen que mostrar el saldo real apenas
+        // llega, no recien en el proximo render. El re-entry esta cubierto por
+        // `cargando`, asi que esto no dispara otra consulta.
+        renderMercadoPago();
+      } catch (e) {
+        pintarSaldoMP(null, e);
+      }
+      var r = await cargarLiberaciones(cuenta, orders, cache);
+      if (r) {
+        cache.recorte = r.recortado ? r.faltan : 0;
+        renderMercadoPago();          // repintar con las fechas ya cargadas
+      }
+    } finally {
+      cache.cargando = false;
+    }
+  }
+
+  function pintarSaldoMP(saldo, error) {
+    if (!elements.mpBalance) return;
+    if (saldo) {
+      elements.mpBalance.innerHTML = "Saldo real en tu billetera de Mercado Pago: <b>" +
+        moneyWithCents.format(saldo.disponible) + "</b> disponible" +
+        (saldo.aLiberar ? " · <b>" + moneyWithCents.format(saldo.aLiberar) + "</b> a liberar" : "");
+      elements.mpBalance.className = "meta-message is-success";
+      return;
+    }
+    elements.mpBalance.textContent =
+      "No se pudo leer el saldo de la billetera (" + ((error && error.message) || "sin detalle") +
+      "). Los importes de ventas de abajo si son exactos.";
+    elements.mpBalance.className = "meta-message";
   }
 
   // ---- Sync genérico -----------------------------------------

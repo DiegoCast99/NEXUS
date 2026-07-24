@@ -76,6 +76,13 @@
     mlApi: function (endpoint, method, body, account) {
       return call("ml-api-proxy", { endpoint: endpoint, method: method || "GET", body: body, account: account });
     },
+    // Igual que mlApi pero contra api.mercadopago.com (otro dominio): saldo de
+    // la billetera y detalle de pagos con su fecha de liberacion.
+    mpApi: function (endpoint, method, body, account) {
+      return call("ml-api-proxy", {
+        endpoint: endpoint, method: method || "GET", body: body, account: account, host: "mp"
+      });
+    },
     // Clona una publicación de una cuenta de ML a otra. El clon se crea
     // pausado y sin stock: activarlo es una acción aparte y manual.
     // Con dryRun no toca nada, solo devuelve lo que habría enviado.
