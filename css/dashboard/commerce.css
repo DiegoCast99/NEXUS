@@ -698,3 +698,55 @@
 @media (max-width: 760px) {
   .mp-stats { grid-template-columns: 1fr; }
 }
+
+/* Bloque de conexion de Mercado Pago (solo visible si falta el token). */
+.mp-connect {
+  margin: 4px 0 18px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Explicita: commerce.css carga despues de finance.css (donde vive .is-hidden). */
+.mp-connect.is-hidden { display: none; }
+
+.mp-connect-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.mp-connect-head b { font-size: 14px; }
+
+.mp-connect-head small {
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.mp-connect-head small.mp-ok { color: var(--green); }
+
+.mp-connect-desc {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.mp-connect-desc a { color: var(--cyan); }
+
+.mp-connect-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mp-token-field { flex: 1; min-width: 260px; }
+
+@media (max-width: 760px) {
+  .mp-connect-row > * { width: 100%; }
+}

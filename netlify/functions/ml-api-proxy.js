@@ -49,16 +49,33 @@ exports.handler = async (event) => {
       return json(400, { error: "Falta el endpoint de ML." });
     }
 
-    const enc = await readUserField(uid, idToken, field);
-    if (!enc) {
-      return json(400, { error: "No hay tokens de ML. Conecta tu cuenta primero." });
-    }
-    let tokens = JSON.parse(decrypt(enc));
+    let accessToken;
 
-    const now = Math.floor(Date.now() / 1000);
-    const expiresAt = (tokens.obtained_at || 0) + (tokens.expires_in || 0) - REFRESH_BUFFER_SECS;
-    if (now >= expiresAt && tokens.refresh_token) {
-      tokens = await refreshToken(tokens, uid, idToken, field);
+    if (host === "mp") {
+      // Mercado Pago usa credenciales PROPIAS: el token de Mercado Libre da
+      // 403 forbidden contra su API. Se guarda un access token de MP por
+      // cuenta (secret_mp_<cuenta>) desde la seccion Mercado Pago.
+      const encMp = await readUserField(uid, idToken, "secret_mp_" + mlId);
+      if (!encMp) {
+        return json(400, {
+          error: "Falta el token de Mercado Pago de esta cuenta.",
+          code: "sin_token_mp"
+        });
+      }
+      accessToken = decrypt(encMp).trim();
+    } else {
+      const enc = await readUserField(uid, idToken, field);
+      if (!enc) {
+        return json(400, { error: "No hay tokens de ML. Conecta tu cuenta primero." });
+      }
+      let tokens = JSON.parse(decrypt(enc));
+
+      const now = Math.floor(Date.now() / 1000);
+      const expiresAt = (tokens.obtained_at || 0) + (tokens.expires_in || 0) - REFRESH_BUFFER_SECS;
+      if (now >= expiresAt && tokens.refresh_token) {
+        tokens = await refreshToken(tokens, uid, idToken, field);
+      }
+      accessToken = tokens.access_token;
     }
 
     const base = HOSTS[host] || ML_API;
@@ -66,7 +83,7 @@ exports.handler = async (event) => {
     const fetchOpts = {
       method: (method || "GET").toUpperCase(),
       headers: {
-        Authorization: "Bearer " + tokens.access_token,
+        Authorization: "Bearer " + accessToken,
         Accept: "application/json"
       },
       cache: "no-store"
@@ -81,7 +98,12 @@ exports.handler = async (event) => {
 
     if (!res.ok) {
       const status = res.status === 401 ? 401 : 502;
-      return json(status, { error: payload.message || "ML API error " + res.status, payload });
+      const quien = host === "mp" ? "Mercado Pago" : "ML";
+      return json(status, {
+        error: payload.message || quien + " API error " + res.status,
+        mlStatus: res.status,
+        payload
+      });
     }
 
     return json(200, { payload });

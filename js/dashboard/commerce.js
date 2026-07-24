@@ -1408,6 +1408,7 @@
       { host: "ml", url: "/users/" + userId + "/mercadopago_account/balance" }
     ];
     var ultimoError = null;
+    var faltaToken = null;
     for (var i = 0; i < intentos.length; i++) {
       try {
         var t = intentos[i];
@@ -1422,9 +1423,14 @@
           aLiberar: primerNumero([p.unavailable_balance, p.pending_balance, p.unavailable]) || 0,
           total: primerNumero([p.total_amount, p.total]) || null
         };
-      } catch (e) { ultimoError = e; }
+      } catch (e) {
+        // "Falta conectar MP" gana sobre cualquier otro error: es la causa
+        // real y la unica accionable por el titular.
+        if (e && e.code === "sin_token_mp") faltaToken = e;
+        ultimoError = e;
+      }
     }
-    throw ultimoError || new Error("Mercado Pago no devolvio el saldo.");
+    throw faltaToken || ultimoError || new Error("Mercado Pago no devolvio el saldo.");
   }
 
   function primerNumero(lista) {
@@ -1513,12 +1519,64 @@
         moneyWithCents.format(saldo.disponible) + "</b> disponible" +
         (saldo.aLiberar ? " · <b>" + moneyWithCents.format(saldo.aLiberar) + "</b> a liberar" : "");
       elements.mpBalance.className = "meta-message is-success";
+      mostrarConexionMP(false);
       return;
     }
-    elements.mpBalance.textContent =
-      "No se pudo leer el saldo de la billetera (" + ((error && error.message) || "sin detalle") +
-      "). Los importes de ventas de abajo si son exactos.";
+    // Distinguir "falta conectar" de un error real: son cosas muy distintas
+    // para el titular y la accion a tomar tambien.
+    var falta = error && (error.code === "sin_token_mp" || /403|forbidden/i.test(error.message || ""));
+    elements.mpBalance.textContent = falta
+      ? "Para ver el saldo real y las fechas de liberacion hay que conectar Mercado Pago (abajo). Los importes de ventas si son exactos."
+      : "No se pudo leer el saldo de la billetera (" + ((error && error.message) || "sin detalle") +
+        "). Los importes de ventas de abajo si son exactos.";
     elements.mpBalance.className = "meta-message";
+    mostrarConexionMP(true);
+  }
+
+  function mostrarConexionMP(mostrar) {
+    if (!elements.mpConnect) return;
+    elements.mpConnect.classList.toggle("is-hidden", !mostrar);
+    if (elements.mpConnectState) {
+      elements.mpConnectState.textContent = mostrar ? "Sin conectar" : "Conectado";
+      elements.mpConnectState.className = mostrar ? "" : "mp-ok";
+    }
+  }
+
+  // Guarda el access token de Mercado Pago (cifrado, server-side) y prueba
+  // enseguida que sirva, para no dejar al titular con la duda.
+  async function guardarTokenMP() {
+    var input = elements.mpToken;
+    var msg = elements.mpConnectMsg;
+    if (!input || !msg) return;
+    var token = String(input.value || "").trim();
+    if (token.length < 20) {
+      msg.textContent = "Pega el access token completo (empieza con APP_USR-).";
+      msg.className = "meta-message is-error";
+      return;
+    }
+
+    var cuenta = activeMLId();
+    elements.mpSaveToken.disabled = true;
+    msg.textContent = "Guardando y probando...";
+    msg.className = "meta-message";
+    try {
+      var api = S.requireSecureApi();
+      await api.saveProviderToken("mp_" + cuenta, token);
+      input.value = "";
+      // Probar de inmediato: si el token no sirve, mejor saberlo ahora.
+      mpCache[cuenta] = null;
+      var saldo = await cargarSaldoMP(cuenta);
+      mpDatos(cuenta).saldo = saldo;
+      msg.textContent = "Listo: Mercado Pago conectado.";
+      msg.className = "meta-message is-success";
+      renderMercadoPago();
+    } catch (error) {
+      msg.textContent = "El token se guardo pero Mercado Pago lo rechazo: " +
+        ((error && error.message) || "error") + ". Revisa que sea el de produccion de esta misma cuenta.";
+      msg.className = "meta-message is-error";
+    } finally {
+      elements.mpSaveToken.disabled = false;
+    }
   }
 
   // ---- Sync genérico -----------------------------------------
@@ -1737,6 +1795,6 @@
     applyPeriodChange, getPeriodRange, loadMLListings, markPendingStock, openSaleDeepLink, renderPeriodBar, saveMLListingChanges, selectMLAccount, toggleListingExpand, toggleListingStatus,
     scheduleCommerceRefresh, scheduleMLRefresh, selectCommerceApp, setCommerceMessage, setMlMessage,
     startMLOAuth, syncCommerce, syncMercadoLibre,
-    renderMercadoPago, resumenMercadoPago,
+    renderMercadoPago, resumenMercadoPago, guardarTokenMP,
   });
 })();

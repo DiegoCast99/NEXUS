@@ -199,6 +199,7 @@
     // (aplicar stock / pausar / activar), delegadas en la tabla.
     elements.mlListingsReload?.addEventListener("click", () => S.loadMLListings(true));
     elements.mlListingsSave?.addEventListener("click", () => S.saveMLListingChanges());
+    elements.mpSaveToken?.addEventListener("click", () => S.guardarTokenMP());
     // Lo tipeado queda pendiente en memoria: recien se manda a ML al Guardar.
     elements.mlListingsTable?.addEventListener("input", (event) => {
       const inp = event.target.closest("input[data-listing-stock], input[data-variant-stock]");

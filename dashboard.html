@@ -32,7 +32,7 @@
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260712-dedup1" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260721-mp1" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260721-mp3" />
     <link rel="stylesheet" href="./css/dashboard/tools.css?v=20260721-pub7" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260716-nav1" />
@@ -843,6 +843,29 @@
               <p class="meta-message" id="mpBalance"></p>
               <p class="mp-note" id="mpNote"></p>
 
+              <!-- Conexion propia de Mercado Pago: el token de ML no sirve
+                   para su API (da 403), hace falta el access token de MP. -->
+              <div class="mp-connect" id="mpConnect">
+                <div class="mp-connect-head">
+                  <b>Conectar Mercado Pago</b>
+                  <small id="mpConnectState">Sin conectar</small>
+                </div>
+                <p class="mp-connect-desc">
+                  El saldo de la billetera y las fechas de liberacion viven en la API de Mercado Pago,
+                  que usa credenciales propias. Pega el <b>Access Token de produccion</b> de tu cuenta:
+                  <a href="https://www.mercadopago.com.uy/developers/panel" target="_blank" rel="noopener">Panel de desarrolladores</a>
+                  → tu aplicacion → Credenciales de produccion.
+                </p>
+                <div class="mp-connect-row">
+                  <label class="field compact-field mp-token-field">
+                    <span>Access token de Mercado Pago</span>
+                    <input type="password" id="mpToken" placeholder="APP_USR-..." autocomplete="off" />
+                  </label>
+                  <button class="primary-button" type="button" id="mpSaveToken">Guardar y probar</button>
+                </div>
+                <p class="meta-message" id="mpConnectMsg"></p>
+              </div>
+
               <div class="mp-split">
                 <div class="mp-block">
                   <h3 class="mp-subtitle">Proximas liberaciones</h3>
@@ -1075,17 +1098,17 @@
     <script src="./js/firebase/secure-api.js?v=20260721-mp2"></script>
     <!-- Dashboard modules -->
     <script src="./js/core/auth.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/store.js?v=20260721-mp1"></script>
+    <script src="./js/dashboard/store.js?v=20260721-mp3"></script>
     <script src="./js/dashboard/integration-core.js?v=20260716-live1"></script>
     <script src="./js/dashboard/charts.js?v=20260718-fixchart"></script>
     <script src="./js/dashboard/finance.js?v=20260709-ola0mod"></script>
     <script src="./js/dashboard/meta.js?v=20260716-nav1"></script>
-    <script src="./js/dashboard/commerce.js?v=20260721-mp2"></script>
+    <script src="./js/dashboard/commerce.js?v=20260721-mp3"></script>
     <script src="./js/dashboard/notifications.js?v=20260717-acct4"></script>
     <script src="./js/dashboard/tools.js?v=20260721-pub11"></script>
     <script src="./js/dashboard/platform-nav.js?v=20260721-mp1"></script>
     <script src="./js/dashboard/router.js?v=20260720-pub1"></script>
-    <script src="./js/dashboard/app.js?v=20260720-pub1"></script>
+    <script src="./js/dashboard/app.js?v=20260721-mp3"></script>
     <script src="./js/pwa.js?v=20260711-push1" defer></script>
   </body>
 </html>
