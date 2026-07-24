@@ -1456,17 +1456,26 @@
     var TOPE = 40;                      // no mas de 40 consultas por render
     var recortado = ids.length > TOPE;
     var lote = ids.slice(0, TOPE);
+    var ok = 0, fallos = 0, primerError = null;
     for (var i = 0; i < lote.length; i++) {
       try {
         var res = await api.mpApi("/v1/payments/" + lote[i], "GET", null, cuenta);
         var p = res.payload || {};
         cache.liberaciones[lote[i]] = String(p.money_release_date || p.date_released || "");
+        ok++;
+        // Si el primer pago responde bien, no hace falta ir de a poco: se
+        // sigue. Pero si el PRIMERO falla, se corta: es un problema de
+        // permisos, no de ese pago puntual, y no tiene sentido quemar 40
+        // llamadas para confirmar lo mismo.
       } catch (e) {
         cache.liberaciones[lote[i]] = "";   // se marca como consultado igual
+        fallos++;
+        if (!primerError) primerError = (e && e.message) || "error";
+        if (i === 0) break;
       }
       await dormirMP(120);
     }
-    return { recortado: recortado, faltan: Math.max(0, ids.length - TOPE) };
+    return { recortado: recortado, faltan: Math.max(0, ids.length - TOPE), ok: ok, fallos: fallos, primerError: primerError };
   }
 
   function dormirMP(ms) {
@@ -1491,6 +1500,7 @@
     var cache = mpDatos(cuenta);
     if (cache.cargando) return;
     cache.cargando = true;
+    var errorSaldo = null;
     try {
       try {
         cache.saldo = await cargarSaldoMP(cuenta);
@@ -1500,20 +1510,35 @@
         // `cargando`, asi que esto no dispara otra consulta.
         renderMercadoPago();
       } catch (e) {
+        errorSaldo = e;
         pintarSaldoMP(null, e);
       }
       var r = await cargarLiberaciones(cuenta, orders, cache);
       if (r) {
         cache.recorte = r.recortado ? r.faltan : 0;
+        cache.liberacionesOK = r.ok;
+        cache.liberacionesError = r.ok === 0 && r.fallos > 0 ? r.primerError : null;
         renderMercadoPago();          // repintar con las fechas ya cargadas
+        // Recien AHORA se sabe si las fechas funcionan: se rehace el mensaje
+        // del saldo con esa informacion (antes no se podia saber).
+        if (!cache.saldo) pintarSaldoMP(null, errorSaldo);
       }
     } finally {
       cache.cargando = false;
     }
   }
 
+  // Tres estados posibles, y hay que distinguirlos porque la accion del
+  // titular es distinta en cada uno:
+  //   1. falta el token        -> conectar Mercado Pago
+  //   2. token puesto pero MP no da el saldo de billetera (permisos del
+  //      token de aplicacion) -> no hay nada que hacer, pero las fechas de
+  //      liberacion SI pueden funcionar
+  //   3. todo anda             -> saldo real
   function pintarSaldoMP(saldo, error) {
     if (!elements.mpBalance) return;
+    var cache = mpDatos(activeMLId());
+
     if (saldo) {
       elements.mpBalance.innerHTML = "Saldo real en tu billetera de Mercado Pago: <b>" +
         moneyWithCents.format(saldo.disponible) + "</b> disponible" +
@@ -1522,15 +1547,30 @@
       mostrarConexionMP(false);
       return;
     }
-    // Distinguir "falta conectar" de un error real: son cosas muy distintas
-    // para el titular y la accion a tomar tambien.
-    var falta = error && (error.code === "sin_token_mp" || /403|forbidden/i.test(error.message || ""));
-    elements.mpBalance.textContent = falta
-      ? "Para ver el saldo real y las fechas de liberacion hay que conectar Mercado Pago (abajo). Los importes de ventas si son exactos."
-      : "No se pudo leer el saldo de la billetera (" + ((error && error.message) || "sin detalle") +
-        "). Los importes de ventas de abajo si son exactos.";
-    elements.mpBalance.className = "meta-message";
-    mostrarConexionMP(true);
+
+    var sinToken = error && error.code === "sin_token_mp";
+    if (sinToken) {
+      elements.mpBalance.textContent =
+        "Para ver el saldo real y las fechas de liberacion hay que conectar Mercado Pago (abajo). " +
+        "Los importes de ventas si son exactos.";
+      elements.mpBalance.className = "meta-message";
+      mostrarConexionMP(true);
+      return;
+    }
+
+    // Token puesto pero el saldo no salio. Si las liberaciones SI funcionan,
+    // el titular igual tiene lo importante: se lo decimos con precision en
+    // vez de dejar un "forbidden" que no explica nada.
+    var fechasOK = cache.liberacionesOK > 0;
+    elements.mpBalance.innerHTML = fechasOK
+      ? "Mercado Pago <b>conectado</b>. El total de la billetera no lo expone su API para tokens de aplicacion, " +
+        "pero las fechas de liberacion y los importes de tus ventas si son exactos."
+      : "Mercado Pago conectado, pero rechaza las consultas (" +
+        escapeHtml((error && error.message) || "sin detalle") + "). " +
+        "Los importes de ventas de abajo si son exactos.";
+    elements.mpBalance.className = fechasOK ? "meta-message is-success" : "meta-message";
+    // Si las fechas andan, el token sirve: no tiene sentido pedir reconectar.
+    mostrarConexionMP(!fechasOK);
   }
 
   function mostrarConexionMP(mostrar) {
