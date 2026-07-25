@@ -61,6 +61,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  /* En tablet/movil (<=1180px) la barra es una franja horizontal arriba: NO
+     come ancho lateral, asi que el vw vuelve a ser un buen proxy del espacio
+     disponible y mantiene el numero grande como estaba. El container-query
+     (welcome.css) queda para desktop, que es donde la barra si angosta. */
   .metric-card strong {
     font-size: clamp(22px, 5.2vw, 32px);
   }
@@ -173,6 +177,7 @@
     min-height: 100px;
   }
 
+  /* Mismo criterio: a <=760px la barra no come ancho, el vw sube el numero. */
   .metric-card strong {
     font-size: clamp(24px, 8vw, 34px);
   }

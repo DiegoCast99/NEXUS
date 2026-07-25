@@ -279,6 +279,10 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.03);
+  /* Mismo criterio que las metric-card: el numero se mide contra el ancho
+     real de este item, asi al abrir la barra se achica y no se corta. */
+  container-type: inline-size;
+  min-width: 0;
 }
 
 .costs-summary-item span {
@@ -289,8 +293,11 @@
 }
 
 .costs-summary-item strong {
-  font-size: 22px;
+  font-size: clamp(15px, 16cqi, 22px);
   line-height: 1.1;
+  white-space: nowrap;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
 }
 
 .costs-summary-item small {

@@ -262,14 +262,41 @@
       if (button.dataset.action === "delete") deleteMovement(button.dataset.id);
     });
 
-    window.addEventListener("resize", () => {
+    // Redibuja los canvas de la vista activa. Los charts miden su ancho real
+    // con getBoundingClientRect, asi que basta con volver a llamarlos cuando
+    // el area de contenido cambia de tamano.
+    function redrawActiveCharts() {
       if (state.activeView === "meta") renderMetaDashboard();
       else if (state.activeView === "ecommerce") renderCommerceDashboard();
       else if (state.activeView === "finance") {
         drawCashflowChart();
         drawCategoryChart();
       }
-    });
+    }
+
+    window.addEventListener("resize", redrawActiveCharts);
+
+    // La barra lateral se pliega/despliega cambiando SOLO una clase: la ventana
+    // no cambia de tamano, asi que el 'resize' de arriba no dispara y los charts
+    // quedarian estirados. Un ResizeObserver sobre el area de contenido si ve
+    // ese cambio de ancho (y tambien el de la transicion CSS) y redibuja. Se
+    // agenda con rAF para colapsar la rafaga de la animacion en un solo redibujo.
+    var mainArea = document.querySelector(".dashboard-main");
+    if (mainArea && typeof ResizeObserver !== "undefined") {
+      var lastMainWidth = Math.round(mainArea.getBoundingClientRect().width);
+      var redrawTimer = 0;
+      var mainObserver = new ResizeObserver(function (entries) {
+        var width = Math.round(entries[0].contentRect.width);
+        if (width === lastMainWidth) return;
+        lastMainWidth = width;
+        // Debounce de cola: durante la transicion CSS de la barra (0.22s) el
+        // observer dispara muchas veces; reprogramamos y redibujamos UNA sola
+        // vez cuando el ancho se asienta, para no re-renderizar en cada frame.
+        clearTimeout(redrawTimer);
+        redrawTimer = setTimeout(redrawActiveCharts, 240);
+      });
+      mainObserver.observe(mainArea);
+    }
 
     window.addEventListener("hashchange", () => {
       setView(location.hash.replace("#", ""), false);
