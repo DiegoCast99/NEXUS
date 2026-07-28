@@ -1,0 +1,132 @@
+/* ============================================================
+   NEXUS · Dashboard · Capa MOBILE-NATIVE
+   ------------------------------------------------------------
+   Carga DESPUES de todos los demas CSS (ultimo <link>), asi que
+   sus reglas ganan la cascada sin subir especificidad y sin
+   tocar el CSS de escritorio. Todo lo mobile-only vive aca para
+   que la reestructura sea contenida y reversible.
+
+   FASE 1 — Endurecimiento tactil e iOS (sin cambiar la navegacion):
+   objetivos tactiles de 44px, fin del auto-zoom de Safari,
+   utilidades faltantes y feedback tactil real.
+   ============================================================ */
+
+/* --- Utilidad que se usaba en el HTML pero nunca se definio ---
+   Sin esto, <span class="sr-only">Elegir</span> (cabecera de la
+   tabla del Publicador) se renderizaba como texto VISIBLE. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ============================================================
+   iOS: un <input> con font-size < 16px hace que Safari haga
+   zoom automatico al enfocarlo y, sin maximum-scale, el zoom
+   queda pegado. El unico input por debajo de 16px de la app es
+   el de stock (y su gemelo en variantes), ambos dentro de la
+   tabla de publicaciones. Subirlos a 16px mata el auto-zoom.
+   ============================================================ */
+.listings-table input,
+.listing-stock-input,
+.listing-variant-input {
+  font-size: 16px;
+}
+
+/* ============================================================
+   Objetivos tactiles: Apple pide MINIMO 44x44pt. En vez de
+   agrandar el control (rompe la densidad de las tablas), se
+   agranda el AREA TOCABLE con un pseudo-elemento invisible.
+   Solo se aplica en dispositivos de puntero grueso (dedo).
+   ============================================================ */
+@media (pointer: coarse) {
+  /* Casilla de seleccion del Publicador (18x18 -> area 44x44).
+     Usa ::before porque el ::after ya dibuja el tilde. */
+  .bulk-check {
+    position: relative;
+  }
+  .bulk-check::before {
+    content: "";
+    position: absolute;
+    inset: -13px;
+  }
+
+  /* Interruptor pausar/activar publicacion (42x23 -> alto 44). */
+  .listing-switch {
+    position: relative;
+  }
+  .listing-switch::before {
+    content: "";
+    position: absolute;
+    inset: -11px -6px;
+  }
+
+  /* Flecha para desplegar variantes de un combo (18x13 -> 44). */
+  .listing-expand {
+    position: relative;
+  }
+  .listing-expand::before {
+    content: "";
+    position: absolute;
+    inset: -15px;
+  }
+
+  /* Boton "Volver" de la barra de secciones (~14px de alto). */
+  .platform-nav-back {
+    min-height: 44px;
+  }
+
+  /* Botones Editar/Eliminar de movimientos y acciones de tabla. */
+  .table-action {
+    min-height: 44px;
+  }
+
+  /* Botones principales (estaban en 42px, 2px por debajo). */
+  .primary-button,
+  .ghost-button,
+  .data-tool-button,
+  .logout-button {
+    min-height: 48px;
+  }
+
+  /* Enlace "Abrir en ML" — unico rescate cuando una clonada
+     quedo activa sin querer. Era texto inline de ~18px de alto. */
+  .pub-issue-critico a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 4px;
+  }
+}
+
+/* ============================================================
+   Hover pegajoso: en iOS no hay hover, pero al tocar una tarjeta
+   el navegador deja el estado :hover "pegado" (queda levantada e
+   inclinada hasta tocar otra cosa). En puntero sin hover anulamos
+   esos transform y damos un feedback :active corto, que es lo que
+   un usuario de iPhone espera al tocar.
+   ============================================================ */
+@media (hover: none) {
+  .welcome-card:hover,
+  .meta-platform-card:hover,
+  .commerce-app-button:hover,
+  .module-link:hover,
+  .metric-card:hover,
+  .tool-card:hover {
+    transform: none;
+  }
+
+  .welcome-card:active,
+  .meta-platform-card:active,
+  .commerce-app-button:active,
+  .tool-card:active {
+    transform: scale(0.985);
+    transition: transform 90ms ease;
+  }
+}

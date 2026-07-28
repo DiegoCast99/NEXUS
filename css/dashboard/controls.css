@@ -20,6 +20,17 @@
   backdrop-filter: blur(16px);
 }
 
+/* Los hijos de un flex container arrancan con min-width:auto, o sea que NO pueden
+   encogerse por debajo del ancho de su contenido. Con el h1 en white-space:nowrap
+   ("E-Commerce / ALPHA FITNESS / MERCADO LIBRE" = 872px) eso estiraba el documento
+   entero a 888px en una pantalla de 375px: el iPhone lo mostraba en miniatura y al
+   hacer pinch se veia todo desencajado. Con min-width:0 el bloque si se encoge y
+   recien ahi el text-overflow:ellipsis del h1 entra en accion. */
+.topbar > div,
+.topbar-actions {
+  min-width: 0;
+}
+
 .eyebrow {
   display: inline-flex;
   align-items: center;
