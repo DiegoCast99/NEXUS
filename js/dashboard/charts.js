@@ -122,8 +122,11 @@
     const rect = canvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
+    // Tolerancia para el dedo: una barra fina es imposible de acertar al toque,
+    // asi que se agranda el area de acierto unos pixeles alrededor.
+    const TOL = 8;
     const hit = targets.find((target) => (
-      x >= target.x && x <= target.x + target.width && y >= target.y && y <= target.y + target.height
+      x >= target.x - TOL && x <= target.x + target.width + TOL && y >= target.y - TOL && y <= target.y + target.height + TOL
     ));
     if (!hit) {
       tooltip.classList.remove("is-visible");

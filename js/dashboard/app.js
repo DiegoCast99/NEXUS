@@ -56,9 +56,23 @@
       }
     });
 
-    [elements.cashflowChart, elements.categoryChart, elements.metaTrendChart, elements.commerceTrendChart].forEach((canvas) => {
+    const chartCanvases = [elements.cashflowChart, elements.categoryChart, elements.metaTrendChart, elements.commerceTrendChart];
+    chartCanvases.forEach((canvas) => {
       canvas?.addEventListener("mousemove", (event) => showChartTooltip(canvas, event));
       canvas?.addEventListener("mouseleave", hideChartTooltip);
+      // Tactil: en el iPhone no hay mousemove, asi que el tooltip era inalcanzable
+      // (los graficos eran mudos). Un tap sobre una barra muestra su valor.
+      // pointerdown trae clientX/clientY igual que mousemove; el mouse se ignora
+      // aca porque ya lo cubre mousemove.
+      canvas?.addEventListener("pointerdown", (event) => {
+        if (event.pointerType === "mouse") return;
+        showChartTooltip(canvas, event);
+      });
+    });
+    // Tocar fuera de un grafico cierra el tooltip abierto por tap.
+    document.addEventListener("pointerdown", (event) => {
+      if (event.pointerType === "mouse") return;
+      if (!chartCanvases.includes(event.target)) hideChartTooltip();
     });
 
     elements.monthFilter.addEventListener("change", () => {

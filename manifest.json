@@ -3,7 +3,7 @@
   "short_name": "Nexus",
   "description": "Centraliza e-commerce, publicidad y finanzas de tus negocios digitales en una sola interfaz.",
   "lang": "es",
-  "start_url": "/index.html",
+  "start_url": "/dashboard.html",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",

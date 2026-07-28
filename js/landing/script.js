@@ -392,6 +392,11 @@
     if (window.NexusFirebaseAuth) {
       const result = await window.NexusFirebaseAuth.loginWithEmail(email, password);
       if (result.success) {
+        // Escribir el flag de sesion local (la rama Firebase no lo hacia, solo el
+        // fallback). Con esto, offline (cuando el SDK de Firebase no carga) el guard
+        // de dashboard.html/index.html reconoce la sesion y muestra los datos
+        // cacheados en vez de expulsar al login. El logout ya limpia este flag.
+        createSession();
         markDashboardReveal();
         enterDashboard();
         return;

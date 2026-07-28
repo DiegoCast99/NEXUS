@@ -248,7 +248,14 @@
     sessionStorage.removeItem("nexus_ml_enc");
     sessionStorage.removeItem("nexus_ml_state");
 
-    if (!encBundle) return;
+    if (!encBundle) {
+      // Volvimos del OAuth pero el token no llego. Caso tipico en la PWA
+      // instalada de iOS: el login abre un navegador in-app con sessionStorage
+      // separado que se pierde al volver. Antes esto quedaba en silencio total.
+      selectCommerceApp(mlConnectingAccount());
+      setMlMessage("No se pudo completar la conexion con Mercado Libre. Proba de nuevo desde el navegador (Safari), no desde la app instalada en la pantalla de inicio.", "error");
+      return;
+    }
 
     var expectedState = sessionStorage.getItem("nexus_ml_state_expected");
     sessionStorage.removeItem("nexus_ml_state_expected");
