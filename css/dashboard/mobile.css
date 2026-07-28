@@ -453,3 +453,52 @@
     display: none;
   }
 }
+
+/* ============================================================
+   FASE 5 — PULIDO: performance de animaciones
+   ------------------------------------------------------------
+   La animacion de entrada (nexusLayerIn) anima filter:blur(8px)
+   sobre ~18 elementos a la vez: en un iPhone eso tironea. En
+   mobile se usa una version liviana (solo opacity + translateY,
+   sin blur ni scale). Y se respeta prefers-reduced-motion.
+   ============================================================ */
+@keyframes nexusLayerInLite {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 760px) {
+  .view-panel.is-entering .welcome-hero,
+  .view-panel.is-entering .integration-hero,
+  .view-panel.is-entering .metric-card,
+  .view-panel.is-entering .panel,
+  .view-panel.is-entering .welcome-card,
+  .view-panel.is-entering .meta-platform-card,
+  .view-panel.is-entering .platform-back-button {
+    animation: nexusLayerInLite 420ms ease both;
+  }
+  /* El tooltip de los graficos: blur caro y en mobile no aporta. */
+  .chart-tooltip {
+    backdrop-filter: none;
+  }
+}
+
+/* Usuarios que pidieron menos movimiento (Ajustes de iOS): sin animacion
+   de entrada ni transforms de hover en ningun tamano. */
+@media (prefers-reduced-motion: reduce) {
+  .view-panel.is-entering .welcome-hero,
+  .view-panel.is-entering .integration-hero,
+  .view-panel.is-entering .metric-card,
+  .view-panel.is-entering .panel,
+  .view-panel.is-entering .welcome-card,
+  .view-panel.is-entering .meta-platform-card,
+  .view-panel.is-entering .platform-back-button {
+    animation: none !important;
+  }
+  .welcome-card:hover,
+  .meta-platform-card:hover,
+  .commerce-app-button:hover,
+  .metric-card:hover {
+    transform: none !important;
+  }
+}

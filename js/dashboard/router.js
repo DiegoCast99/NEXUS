@@ -12,8 +12,16 @@
     const metaMatch = view.match(/^meta(?:-ads)?-(kairos|billion|kiwifi)$/);
     if (metaMatch) return { view: "meta", metaPlatform: metaMatch[1] };
     if (view === "meta" || view === "meta-ads") return { view: "meta", metaPlatform: null };
+    // Deep-link a una cuenta/negocio de e-commerce: #ecommerce-<id> (ej:
+    // #ecommerce-mercadolibre). Permite que el gesto atras vuelva al selector y
+    // que reabrir la PWA recuerde el negocio abierto. Los ids son slugs lowercase.
+    const ecomMatch = view.match(/^(?:ecommerce|e-commerce)-([a-z0-9]+)$/);
+    if (ecomMatch) return { view: "ecommerce", metaPlatform: null, commerceApp: ecomMatch[1] };
     if (view === "ecommerce" || view === "e-commerce") return { view: "ecommerce", metaPlatform: null };
     if (view === "finance" || view === "finanzas" || view === "finanzas-personales") return { view: "finance", metaPlatform: null };
+    // Deep-link a una herramienta: #herramientas-<tool> (ej: #herramientas-publicador).
+    const toolMatch = view.match(/^(?:tools|herramientas)-([a-z0-9]+)$/);
+    if (toolMatch) return { view: "tools", metaPlatform: null, tool: toolMatch[1] };
     if (view === "tools" || view === "herramientas") return { view: "tools", metaPlatform: null };
     return { view: "welcome", metaPlatform: null };
   }
@@ -85,7 +93,24 @@
     }
 
     if (nextView === "ecommerce") {
-      // Entrar a E-Commerce siempre muestra el selector de negocios (las tarjetas
+      // Validar el id del hash: getCommerceApp nunca devuelve null (cae al primero),
+      // asi que se compara el .id resultante. Si un hash quedo obsoleto (cuenta
+      // renombrada/eliminada), no se abre otra cuenta: cae al selector de abajo.
+      const wantApp = normalized.commerceApp;
+      const app = wantApp ? S.getCommerceApp(wantApp) : null;
+      if (wantApp && app && app.id === wantApp) {
+        // Restaurar el negocio/cuenta abierto desde el hash (atras/adelante/reabrir).
+        if (shouldPushHash) applyViewHash("#ecommerce-" + wantApp);
+        state.commerce.selectedApp = null;
+        state.commerce.selectedGroup = null;
+        window.setTimeout(() => {
+          renderCommerceDashboard();
+          S.selectCommerceApp(wantApp, { fromHash: true });
+        }, 30);
+        animateActivePanel();
+        return;
+      }
+      // Entrar a E-Commerce sin sufijo muestra el selector de negocios (las tarjetas
       // de primer nivel): se cierra tanto el panel como el negocio abierto.
       state.commerce.selectedApp = null;
       state.commerce.selectedGroup = null;
@@ -98,6 +123,16 @@
     }
 
     if (nextView === "tools") {
+      if (normalized.tool === "publicador") {
+        // Restaurar el Publicador abierto desde el hash (atras/adelante/reabrir).
+        if (shouldPushHash) applyViewHash("#herramientas-publicador");
+        window.setTimeout(() => {
+          S.renderToolsDashboard();
+          S.abrirPublicador?.({ fromHash: true });
+        }, 30);
+        animateActivePanel();
+        return;
+      }
       // Igual que E-Commerce: entrar al modulo siempre muestra las tarjetas.
       // Volver a abrir la herramienta retoma donde estaba (el bucle de
       // clonado sigue vivo aunque cambies de vista).

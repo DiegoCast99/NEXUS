@@ -107,8 +107,13 @@
     if (abierta) renderPublicador();
   }
 
-  function abrirPublicador() {
+  function abrirPublicador(opts) {
     pub().abierta = true;
+    // Reflejar en el hash (#herramientas-publicador) para el gesto atras y para
+    // recordar al reabrir. Con fromHash no se apila (se esta restaurando).
+    if (!(opts && opts.fromHash) && location.hash !== "#herramientas-publicador") {
+      try { history.pushState(null, "", "#herramientas-publicador"); } catch (e) { /* sin history */ }
+    }
     const nav = window.NexusPlatformNav;
     if (nav) nav.enterPlatform("tools", "Publicador Masivo");
     S.updateTopbarForView("tools");
@@ -119,6 +124,10 @@
   // El boton "Volver" de la barra contextual entra por aca.
   function clearSelectedTool() {
     pub().abierta = false;
+    // Volver al selector: la URL vuelve a #herramientas (sin apilar entrada).
+    if (location.hash === "#herramientas-publicador") {
+      try { history.replaceState(null, "", "#herramientas"); } catch (e) { /* sin history */ }
+    }
     const nav = window.NexusPlatformNav;
     if (nav) nav.exitPlatform();
     S.updateTopbarForView("tools");
@@ -944,6 +953,7 @@
 
   Object.assign(S, {
     renderToolsDashboard,
+    abrirPublicador,
     clearSelectedTool,
     bindTools,
     renderHistorial

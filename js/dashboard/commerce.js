@@ -1756,9 +1756,16 @@
 
   // ---- Navegación nivel 2 ------------------------------------
 
-  function selectCommerceApp(id) {
+  function selectCommerceApp(id, opts) {
     const app = getCommerceApp(id);
     if (!app) return;
+
+    // Reflejar el negocio abierto en el hash (#ecommerce-<id>) para que el gesto
+    // atras del iPhone vuelva al selector y reabrir la PWA recuerde donde estabas.
+    // Con opts.fromHash no se apila (estamos justamente restaurando desde el hash).
+    if (!(opts && opts.fromHash) && location.hash !== "#ecommerce-" + id) {
+      try { history.pushState(null, "", "#ecommerce-" + id); } catch (e) { /* sin history */ }
+    }
 
     // Contenedor (ej: Alpha Fitness): no abre panel, muestra sus plataformas.
     if (S.isCommerceGroup(id)) {
@@ -1798,6 +1805,13 @@
   // las plataformas de ese negocio (no al primer nivel).
   function clearSelectedCommerceApp() {
     state.commerce.selectedApp = null;
+    // Sincronizar la URL: si la cuenta pertenecia a un negocio, la vista vuelve a
+    // ese negocio (#ecommerce-<grupo>); si no, al selector de primer nivel
+    // (#ecommerce). Se reemplaza, no se apila.
+    var destino = state.commerce.selectedGroup ? "#ecommerce-" + state.commerce.selectedGroup : "#ecommerce";
+    if (location.hash !== destino) {
+      try { history.replaceState(null, "", destino); } catch (e) { /* sin history */ }
+    }
     window.NexusPlatformNav?.exitPlatform();
     window.clearInterval(state.commerce.refreshTimer);
     state.commerce.refreshTimer = 0;
