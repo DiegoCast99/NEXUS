@@ -361,4 +361,95 @@
   .mobile-sheet-backdrop[hidden] {
     display: none;
   }
+
+  /* ==========================================================
+     FASE 3 — TABLAS -> TARJETAS APILADAS
+     ----------------------------------------------------------
+     Las tablas de escritorio (min-width 820-940px) no entran en
+     375px y obligaban a scroll horizontal a ciegas. En mobile
+     cada fila pasa a ser una tarjeta con "ETIQUETA: valor" (la
+     etiqueta la pone mobile-tables.js copiando el <th>). Aplica
+     a TODAS las tablas dentro de .table-wrap.
+     ========================================================== */
+  .table-wrap {
+    overflow-x: visible; /* ya no hace falta scroll horizontal */
+  }
+  /* Cabecera fuera de pantalla: cada celda lleva su propia etiqueta. */
+  .table-wrap thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+  .table-wrap table,
+  .table-wrap tbody,
+  .table-wrap tr,
+  .table-wrap td {
+    display: block;
+    /* !important porque las tablas fijan ancho por columna con reglas mas
+       especificas (.mp-table td:nth-child(n){width:11%}) que si no ganan y
+       encogen el valor a ~1 caracter. Tambien mata los min-width 940/900/820. */
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+  .table-wrap tr {
+    margin: 0 0 10px;
+    padding: 2px 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .table-wrap td {
+    /* La etiqueta va absoluta a la izquierda y el valor como bloque a la
+       derecha: asi el valor envuelve por palabra normalmente y nunca se
+       parte letra por letra (lo que pasaba con flex + word-break). */
+    display: block;
+    position: relative;
+    min-height: 42px;
+    padding: 11px 0 11px 40%;
+    border: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    white-space: normal;
+    overflow-wrap: break-word;
+    text-align: right;
+  }
+  .table-wrap tr td:last-child {
+    border-bottom: 0;
+  }
+  .table-wrap td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 0;
+    top: 11px;
+    width: 36%;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+    text-transform: uppercase;
+    text-align: left;
+    white-space: normal;
+  }
+  /* Celdas sin etiqueta (ej: la del checkbox del Publicador): valor a la
+     izquierda, ancho completo, sin reservar hueco de etiqueta. */
+  .table-wrap td:not([data-label]) {
+    padding-left: 0;
+    text-align: left;
+  }
+  .table-wrap td:not([data-label])::before {
+    content: "";
+  }
+  /* Fila vacia / mensaje de "sin datos" que ocupa toda la tabla: sin tarjeta. */
+  .table-wrap td[colspan] {
+    padding-left: 0;
+    text-align: center;
+  }
+  .table-wrap td[colspan]::before {
+    display: none;
+  }
 }
