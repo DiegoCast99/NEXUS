@@ -130,3 +130,235 @@
     transition: transform 90ms ease;
   }
 }
+
+/* ============================================================
+   FASE 2 — NAVEGACION MOBILE-NATIVE (solo telefonos, <=760px)
+   ------------------------------------------------------------
+   Reemplaza el sidebar apilado (que consumia ~726px arriba de
+   cada pantalla) por:
+     - una TAB BAR inferior fija con los 5 modulos + "Mas"
+     - un STRIP de secciones (chips) justo encima, en zona del pulgar
+     - un HEADER contextual compacto y sticky
+     - una HOJA "Mas" deslizable con respaldo/cierre de sesion
+   El contenido pasa a verse de una, sin scrollear menu.
+   ============================================================ */
+
+/* El boton "Mas" (6ta pestana) solo existe en mobile. */
+.module-more {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .dashboard-shell {
+    --nx-tabbar: 60px;   /* alto de la tab bar (sin safe-area) */
+    --nx-substrip: 56px; /* alto del strip de secciones */
+  }
+
+  /* El hamburguesa viejo ya no hace falta: la tab bar es la navegacion. */
+  .sidebar-toggle {
+    display: none !important;
+  }
+
+  /* ---- HEADER contextual, compacto y sticky ---- */
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: calc(10px + env(safe-area-inset-top)) 0 12px;
+    background: var(--panel-strong, #0d0d10);
+    backdrop-filter: none; /* mas barato en iOS que blur(16px) */
+  }
+  .topbar > div {
+    min-width: 0;
+  }
+  .topbar .eyebrow {
+    display: none; /* ahorra alto; la marca vive en la tab bar y la hoja */
+  }
+  .topbar h1 {
+    font-size: 19px;
+    line-height: 1.2;
+  }
+  .topbar p {
+    display: none; /* la descripcion larga no aporta en pantalla chica */
+  }
+  .topbar-actions {
+    width: 100%;
+  }
+
+  /* ---- TAB BAR inferior (siempre visible, aun dentro de plataforma) ---- */
+  .module-nav,
+  .module-nav.is-hidden {
+    display: flex;
+    visibility: visible;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 200;
+    flex-direction: row;
+    gap: 0;
+    margin: 0;
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+    background: var(--panel-strong, #131317);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.32);
+  }
+  .module-link {
+    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 4px 2px;
+    min-height: 48px;
+    border-radius: 12px;
+    color: var(--muted);
+    transform: none !important;
+    transition: color 0.15s ease, background 0.15s ease;
+  }
+  .module-link svg {
+    width: 22px;
+    height: 22px;
+    margin: 0;
+    flex: none;
+  }
+  .module-link span {
+    display: none; /* el texto largo original se oculta */
+  }
+  .module-link::after {
+    content: attr(data-tab-label); /* etiqueta corta bajo el icono */
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .module-link.is-active {
+    color: var(--accent);
+    background: rgba(255, 26, 157, 0.1);
+  }
+  .module-more {
+    display: flex;
+  }
+
+  /* ---- STRIP de secciones (chips) sobre la tab bar ---- */
+  .platform-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--nx-tabbar) + env(safe-area-inset-bottom));
+    z-index: 190;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 8px 10px;
+    background: var(--panel);
+    border-top: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .platform-nav.is-hidden {
+    display: none;
+  }
+  .platform-nav-head {
+    display: none; /* redundante con el titulo del header */
+  }
+  /* El "Volver" del strip sobra: el boton dentro del contenido ya sale de la
+     plataforma (y maneja la jerarquia de grupos), y re-tocar la pestana activa
+     tambien vuelve al selector. El strip queda limpio, solo con las secciones. */
+  .platform-nav-back {
+    display: none;
+  }
+  .platform-nav-links {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .platform-nav-links::-webkit-scrollbar {
+    display: none;
+  }
+  .platform-nav-link {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+    min-height: 40px;
+    padding: 0 14px;
+    white-space: nowrap;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--muted);
+    transform: none !important;
+  }
+  .platform-nav-link small {
+    display: none; /* en chip solo va la etiqueta corta */
+  }
+  .platform-nav-link.is-active {
+    color: var(--text);
+    background: rgba(255, 26, 157, 0.16);
+    border-color: rgba(255, 26, 157, 0.44);
+  }
+
+  /* ---- Contenido: aire para no quedar bajo la tab bar (+ strip) ---- */
+  .dashboard-main {
+    padding: 0 16px calc(var(--nx-tabbar) + 20px + env(safe-area-inset-bottom));
+  }
+  .platform-open .dashboard-main {
+    padding-bottom: calc(var(--nx-tabbar) + var(--nx-substrip) + 20px + env(safe-area-inset-bottom));
+  }
+
+  /* ---- HOJA "Mas": el resto del sidebar deslizando desde abajo ----
+     Clave: NO se usa transform (rompe el position:fixed de la tab bar
+     que es hija del sidebar); se anima la propiedad bottom. */
+  .sidebar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: auto; /* sin esto, el top:0 heredado de layout.css lo ancla arriba */
+    bottom: -110vh;
+    z-index: 210;
+    width: auto;
+    height: auto;
+    max-height: 82vh;
+    gap: 14px;
+    padding: 20px 18px calc(20px + env(safe-area-inset-bottom));
+    border: 1px solid var(--border);
+    border-bottom: 0;
+    border-radius: 18px 18px 0 0;
+    background: var(--panel-strong, #131317);
+    box-shadow: 0 -14px 40px rgba(0, 0, 0, 0.5);
+    overflow-y: auto;
+    transition: bottom 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    /* La tab bar (.module-nav) es hija del sidebar y queda fija abajo pintando
+       sobre la hoja; este padding deja el contenido de la hoja por encima de
+       ella para que no lo tape. */
+    padding-bottom: calc(var(--nx-tabbar) + 24px + env(safe-area-inset-bottom));
+  }
+  .sidebar-sheet-open .sidebar {
+    bottom: 0;
+  }
+  /* Con la hoja abierta, el strip de secciones sobraria por debajo; se oculta. */
+  .sidebar-sheet-open .platform-nav {
+    display: none;
+  }
+
+  .mobile-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 205;
+    background: rgba(0, 0, 0, 0.55);
+  }
+  .mobile-sheet-backdrop[hidden] {
+    display: none;
+  }
+}

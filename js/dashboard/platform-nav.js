@@ -138,6 +138,9 @@
     if (back) back.textContent = BACK_LABEL[module] || "Volver";
     el("platformNav")?.classList.remove("is-hidden");
     el("moduleNav")?.classList.add("is-hidden");
+    // Mobile: el shell sabe que hay una plataforma abierta para reservar el
+    // alto del strip de secciones sobre la tab bar (ver mobile.css).
+    el("dashboardShell")?.classList.add("platform-open");
     applySection(module, defaultSection(module));
   }
 
@@ -149,6 +152,7 @@
     currentFlags = [];
     el("platformNav")?.classList.add("is-hidden");
     el("moduleNav")?.classList.remove("is-hidden");
+    el("dashboardShell")?.classList.remove("platform-open");
     if (!module) return;
     var panel = document.querySelector('.view-panel[data-panel="' + module + '"]');
     if (!panel) return;
@@ -192,6 +196,40 @@
       if (current === "ecommerce") root.NexusDash?.clearSelectedCommerceApp?.();
       else if (current === "meta") root.NexusDash?.clearSelectedMetaPlatform?.();
       else if (current === "tools") root.NexusDash?.clearSelectedTool?.();
+    });
+
+    // ---- Hoja "Mas" (solo mobile) ----------------------------
+    // La tab bar inferior muestra los 5 modulos + un boton "Mas" que abre una
+    // hoja deslizable con el resto del sidebar (respaldo, cerrar sesion, etc.).
+    // En desktop el boton "Mas" no existe (display:none) y esto queda inerte.
+    initMoreSheet();
+  }
+
+  function setSheet(open) {
+    var shell = el("dashboardShell");
+    if (shell) shell.classList.toggle("sidebar-sheet-open", open);
+    var bd = document.querySelector(".mobile-sheet-backdrop");
+    if (bd) bd.hidden = !open;
+    var more = document.querySelector("[data-more]");
+    if (more) more.setAttribute("aria-expanded", String(open));
+  }
+
+  function initMoreSheet() {
+    document.querySelector("[data-more]")?.addEventListener("click", function () {
+      var shell = el("dashboardShell");
+      setSheet(!(shell && shell.classList.contains("sidebar-sheet-open")));
+    });
+    // Tocar el fondo oscuro cierra la hoja.
+    document.querySelectorAll("[data-sheet-close]").forEach(function (node) {
+      node.addEventListener("click", function () { setSheet(false); });
+    });
+    // Tocar una accion dentro de la hoja (cerrar sesion, exportar...) o cambiar
+    // de modulo desde la tab bar tambien la cierra.
+    el("sidebar")?.addEventListener("click", function (event) {
+      if (event.target.closest("[data-logout], .landing-link, [data-export], [data-import]")) setSheet(false);
+    });
+    el("moduleNav")?.addEventListener("click", function (event) {
+      if (event.target.closest("[data-view]")) setSheet(false);
     });
   }
 

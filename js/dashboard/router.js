@@ -18,6 +18,16 @@
     return { view: "welcome", metaPlatform: null };
   }
 
+  // pushState (no replaceState) para que el gesto "atras" del iPhone tenga a
+  // donde volver: cada navegacion del titular deja una entrada en el historial.
+  // Antes todo usaba replaceState, el historial nunca crecia y volver atras
+  // saltaba directo al login. Solo se apila si el hash cambia (no repetir).
+  function applyViewHash(hash) {
+    if (location.hash === hash) return;
+    try { history.pushState(null, "", hash); }
+    catch (e) { location.hash = hash; }
+  }
+
   function setView(rawView, shouldPushHash = true) {
     const normalized = normalizeView(rawView);
     const nextView = normalized.view;
@@ -69,7 +79,7 @@
         renderMetaDashboard();
         if (state.meta.selectedPlatform) scheduleMetaRefresh();
       }, 30);
-      if (shouldPushHash) history.replaceState(null, "", normalized.metaPlatform ? `#meta-ads-${normalized.metaPlatform}` : "#meta-ads");
+      if (shouldPushHash) applyViewHash(normalized.metaPlatform ? `#meta-ads-${normalized.metaPlatform}` : "#meta-ads");
       animateActivePanel();
       return;
     }
@@ -82,7 +92,7 @@
       window.clearInterval(state.commerce.refreshTimer);
       state.commerce.refreshTimer = 0;
       window.setTimeout(renderCommerceDashboard, 30);
-      if (shouldPushHash) history.replaceState(null, "", "#ecommerce");
+      if (shouldPushHash) applyViewHash("#ecommerce");
       animateActivePanel();
       return;
     }
@@ -93,13 +103,13 @@
       // clonado sigue vivo aunque cambies de vista).
       state.tools.pub.abierta = false;
       window.setTimeout(S.renderToolsDashboard, 30);
-      if (shouldPushHash) history.replaceState(null, "", "#herramientas");
+      if (shouldPushHash) applyViewHash("#herramientas");
       animateActivePanel();
       return;
     }
 
     if (nextView === "finance") {
-      if (shouldPushHash) history.replaceState(null, "", "#finanzas-personales");
+      if (shouldPushHash) applyViewHash("#finanzas-personales");
       window.setTimeout(() => {
         drawCashflowChart();
         drawCategoryChart();
@@ -108,7 +118,7 @@
       return;
     }
 
-    if (shouldPushHash) history.replaceState(null, "", "#welcome");
+    if (shouldPushHash) applyViewHash("#welcome");
     animateActivePanel();
   }
 

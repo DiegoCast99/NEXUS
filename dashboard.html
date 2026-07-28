@@ -2,7 +2,7 @@
 <html lang="es">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <!-- PWA (instalable + offline) -->
     <meta name="theme-color" content="#0b0b0d" />
     <link rel="manifest" href="/manifest.json" />
@@ -36,7 +36,7 @@
     <link rel="stylesheet" href="./css/dashboard/tools.css?v=20260721-pub7" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260724-adapt1" />
-    <link rel="stylesheet" href="./css/dashboard/mobile.css?v=20260727-mob1" />
+    <link rel="stylesheet" href="./css/dashboard/mobile.css?v=20260727-mob2" />
   </head>
   <body>
     <div class="dashboard-shell" id="dashboardShell">
@@ -68,7 +68,7 @@
         </nav>
 
         <nav class="module-nav" id="moduleNav" aria-label="Modulos principales">
-          <button class="module-link is-active" type="button" data-view="welcome">
+          <button class="module-link is-active" type="button" data-view="welcome" data-tab-label="Inicio">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 12h16" />
               <path d="M12 4v16" />
@@ -79,7 +79,7 @@
               <small>Inicio operativo</small>
             </span>
           </button>
-          <button class="module-link" type="button" data-view="finance">
+          <button class="module-link" type="button" data-view="finance" data-tab-label="Finanzas">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 19V5" />
               <path d="M4 19h16" />
@@ -92,7 +92,7 @@
               <small>Balance, gastos y ahorro</small>
             </span>
           </button>
-          <button class="module-link" type="button" data-view="meta">
+          <button class="module-link" type="button" data-view="meta" data-tab-label="Ads">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M4 14c3.5-7 6.5-7 10 0" />
               <path d="M10 14c3.5 7 6.5 7 10 0" />
@@ -103,7 +103,7 @@
               <small>API, pixel y ROAS</small>
             </span>
           </button>
-          <button class="module-link" type="button" data-view="ecommerce">
+          <button class="module-link" type="button" data-view="ecommerce" data-tab-label="Tienda">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M6 8h12l-1 11H7L6 8Z" />
               <path d="M9 8a3 3 0 0 1 6 0" />
@@ -114,13 +114,26 @@
               <small>Negocios y ventas</small>
             </span>
           </button>
-          <button class="module-link" type="button" data-view="tools">
+          <button class="module-link" type="button" data-view="tools" data-tab-label="Tools">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M14.7 6.3a4 4 0 0 1-5 5L5 16v3h3l4.7-4.7a4 4 0 0 0 5-5l-2.3 2.3-2-2 2.3-2.3Z" />
             </svg>
             <span>
               <b>Herramientas</b>
               <small>Utilidades de operacion</small>
+            </span>
+          </button>
+          <!-- Solo visible en mobile (ver mobile.css): 6ta pestana de la tab bar
+               inferior que abre la hoja "Mas" con respaldo y cierre de sesion. -->
+          <button class="module-link module-more" type="button" data-more aria-haspopup="dialog" aria-expanded="false" data-tab-label="Mas">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="5" cy="12" r="1.6" />
+              <circle cx="12" cy="12" r="1.6" />
+              <circle cx="19" cy="12" r="1.6" />
+            </svg>
+            <span>
+              <b>Mas</b>
+              <small>Respaldo y sesion</small>
             </span>
           </button>
         </nav>
@@ -157,6 +170,9 @@
           Cerrar sesion
         </button>
       </aside>
+
+      <!-- Fondo oscuro de la hoja "Mas" en mobile (ver mobile.css). Tocarlo cierra. -->
+      <div class="mobile-sheet-backdrop" data-sheet-close hidden></div>
 
       <main class="dashboard-main">
         <header class="topbar">
@@ -1107,8 +1123,8 @@
     <script src="./js/dashboard/commerce.js?v=20260721-mp4"></script>
     <script src="./js/dashboard/notifications.js?v=20260717-acct4"></script>
     <script src="./js/dashboard/tools.js?v=20260721-pub11"></script>
-    <script src="./js/dashboard/platform-nav.js?v=20260721-mp1"></script>
-    <script src="./js/dashboard/router.js?v=20260720-pub1"></script>
+    <script src="./js/dashboard/platform-nav.js?v=20260727-mob2"></script>
+    <script src="./js/dashboard/router.js?v=20260727-mob2"></script>
     <script src="./js/dashboard/app.js?v=20260724-adapt1"></script>
     <script src="./js/pwa.js?v=20260711-push1" defer></script>
   </body>
