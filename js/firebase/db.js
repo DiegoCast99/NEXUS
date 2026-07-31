@@ -51,23 +51,59 @@
       }
     },
 
+    // Escucha EN VIVO el doc del usuario: cualquier cambio hecho en otro
+    // dispositivo (o pestaña) dispara onRemote con los blobs frescos. Devuelve
+    // la funcion para desuscribirse. Ignora el "eco" de las escrituras propias
+    // aun no confirmadas por el servidor (hasPendingWrites) para no re-renderizar
+    // de gusto ni entrar en bucle.
+    watchUserData: function (uid, onRemote) {
+      if (!uid || typeof onRemote !== "function") return function () {};
+      try {
+        return db.collection("users").doc(uid).onSnapshot(
+          function (snap) {
+            if (!snap.exists) return;
+            if (snap.metadata && snap.metadata.hasPendingWrites) return;
+            var data = snap.data() || {};
+            onRemote(data.nexusData || {});
+          },
+          function (error) {
+            console.warn("Nexus: listener de Firestore cortado:", error);
+          }
+        );
+      } catch (error) {
+        console.warn("Nexus: no se pudo suscribir a Firestore:", error);
+        return function () {};
+      }
+    },
+
     // Sube el objeto de blobs { clave: valor } al doc del usuario.
+    // Usa update() (no set merge) para REEMPLAZAR el campo nexusData entero: con
+    // merge:true, Firestore hace merge PROFUNDO del mapa y las claves borradas
+    // localmente nunca se iban de la nube (y el listener en vivo las resucitaba).
+    // update solo toca nexusData/updatedAt; cualquier otro campo del doc queda
+    // intacto. Si el doc aun no existe, se crea con set.
     saveUserData: async function (blobs) {
       const uid = currentUid();
       if (!uid || !blobs) return false;
+      const ref = db.collection("users").doc(uid);
+      const payload = {
+        nexusData: blobs,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
       try {
-        await db
-          .collection("users")
-          .doc(uid)
-          .set(
-            {
-              nexusData: blobs,
-              updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            },
-            { merge: true }
-          );
+        await ref.update(payload);
         return true;
       } catch (error) {
+        // Doc inexistente todavia: crearlo (primer guardado del usuario).
+        if (error && error.code === "not-found") {
+          try {
+            await ref.set(payload, { merge: true });
+            return true;
+          } catch (e2) {
+            console.warn("Nexus: no se pudo crear el doc en Firestore:", e2);
+            return false;
+          }
+        }
         console.warn("Nexus: no se pudo guardar en Firestore:", error);
         return false;
       }

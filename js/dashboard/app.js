@@ -330,6 +330,15 @@
       lastMlVisibilitySync = now;
       syncMercadoLibre({ silent: true });
     });
+
+    // Sincronizacion a la nube: subir YA lo pendiente cuando la app pasa a
+    // segundo plano o se cierra. En el celular, cerrar/cambiar de app mata el
+    // debounce y el ultimo cambio se perdia. pagehide cubre el cierre real;
+    // visibilitychange->hidden cubre el "mandar la app atras" del iPhone.
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") S.flushCloudSync();
+    });
+    window.addEventListener("pagehide", () => S.flushCloudSync());
   }
 
   function init() {
@@ -388,6 +397,40 @@
   // - Con Firebase: onAuthStateChanged espera a que se restaure la sesión (async)
   //   y arranca el dashboard; si no hay usuario, vuelve al login.
   // - Sin Firebase (preview local sin CDN): chequeo síncrono de localStorage.
+  // Aplica datos que llegan del listener EN VIVO de Firestore (cambios hechos en
+  // otro dispositivo). Escribe localStorage DIRECTO (no safeSetItem) para no
+  // re-disparar la subida a la nube, y solo re-renderiza si algo cambio de verdad
+  // (evita el eco de nuestras propias escrituras). La clave de sesion se protege
+  // por las dudas: nunca debe pisarla un dispositivo remoto.
+  function applyRemoteData(blobs) {
+    if (!blobs || typeof blobs !== "object") return;
+    // Si TENEMOS cambios locales sin subir, no aplicamos el remoto ahora: seria la
+    // carrera donde el eco de una subida anterior pisa una edicion mas nueva. El
+    // flush sube lo local y el proximo snapshot ya viene consistente.
+    if (S.hasPendingCloudSync && S.hasPendingCloudSync()) return;
+    let changed = false;
+    Object.keys(blobs).forEach(function (key) {
+      // Solo claves de DATOS: isCloudSyncKey excluye la sesion y las preferencias
+      // de vista por dispositivo (mes mirado, modo de grafico).
+      if (!S.isCloudSyncKey(key)) return;
+      const incoming = blobs[key];
+      if (typeof incoming !== "string") return;
+      if (localStorage.getItem(key) !== incoming) {
+        try { localStorage.setItem(key, incoming); changed = true; } catch (e) { /* cuota */ }
+      }
+    });
+    if (!changed) return;
+    S.rehydrateState();
+    // Repintar desde el state ya re-hidratado. Si el titular esta tipeando en un
+    // input, NO repintamos el panel de e-commerce: su render repuebla el form de
+    // config y le borraria lo escrito. El de finanzas no toca inputs (seguro).
+    const active = document.activeElement;
+    const typing = !!active && /^(INPUT|SELECT|TEXTAREA)$/.test(active.tagName || "");
+    try { S.renderAll(); } catch (e) {}
+    try { S.renderMetaDashboard(); } catch (e) {}
+    if (!typing) { try { S.renderCommerceDashboard(); } catch (e) {} }
+  }
+
   if (window.NexusFirebaseAuth) {
     let started = false;
     window.NexusFirebaseAuth.onAuthStateChanged(async function (user) {
@@ -403,6 +446,12 @@
             if (loaded) S.rehydrateState();
           }
           init();
+          // Suscribirse EN VIVO: a partir de aca, cualquier cambio hecho en otro
+          // dispositivo (o pestaña) se refleja solo, sin recargar. Es lo que
+          // faltaba para el "si modifico en el celular se ve en la PC y viceversa".
+          if (window.NexusFirestore && window.NexusFirestore.watchUserData) {
+            window.NexusFirestore.watchUserData(user.uid, applyRemoteData);
+          }
         }
       } else {
         window.location.replace("./index.html");

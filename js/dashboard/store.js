@@ -21,8 +21,22 @@
   const ML_AUTH_URL = "https://auth.mercadolibre.com.uy/authorization";
 
   // === Persistencia segura + respaldo (Ola 0) ================================
-  // Claves que NO entran al respaldo: sesión y flags transitorios de UI.
-  const NON_DATA_KEYS = new Set([AUTH_KEY, DASHBOARD_REVEAL_KEY]);
+  // Claves que NO entran al respaldo ni a la sincronizacion: sesion, flags
+  // transitorios y PREFERENCIAS DE VISTA POR DISPOSITIVO (el mes que estas
+  // mirando y el modo 2d/3d del grafico). Si estas se sincronizaran, cambiar el
+  // mes en el celular haria saltar de mes la PC mientras la usas.
+  const NON_DATA_KEYS = new Set([AUTH_KEY, DASHBOARD_REVEAL_KEY, MONTH_FILTER_KEY, CHART_VIEW_MODE_KEY]);
+
+  // ¿Es una clave de DATOS que se sincroniza a la nube? (excluye sesion/UI).
+  function isCloudSyncKey(key) {
+    return typeof key === "string" && key.indexOf("nexus") === 0 && !NON_DATA_KEYS.has(key);
+  }
+
+  // ¿Hay cambios locales encolados sin subir todavia? Lo consulta la sync en vivo
+  // para NO pisar una edicion local reciente con el eco de una subida anterior.
+  function hasPendingCloudSync() {
+    return _cloudSyncTimer !== null;
+  }
 
   // Escribe en localStorage capturando el error de cuota llena (~5MB), para que
   // el usuario nunca pierda datos en silencio creyendo que se guardaron.
@@ -34,8 +48,19 @@
     if (NON_DATA_KEYS.has(key) || String(key).indexOf("nexus") !== 0) return;
     if (_cloudSyncTimer) clearTimeout(_cloudSyncTimer);
     _cloudSyncTimer = setTimeout(function () {
+      _cloudSyncTimer = null;
       window.NexusFirestore.saveUserData(collectNexusData());
     }, 1500);
+  }
+
+  // Sube YA lo que este pendiente, sin esperar el debounce. Se llama cuando la
+  // app pasa a segundo plano o se cierra (visibilitychange/pagehide): en el
+  // celular, cerrar la app mata el setTimeout y el ultimo cambio no se subia
+  // nunca. Esta era la causa de "modifique en el celular y no aparece en la PC".
+  function flushCloudSync() {
+    if (!window.NexusFirestore) return;
+    if (_cloudSyncTimer) { clearTimeout(_cloudSyncTimer); _cloudSyncTimer = null; }
+    window.NexusFirestore.saveUserData(collectNexusData());
   }
 
   function safeSetItem(key, value) {
@@ -1076,6 +1101,6 @@
     movementMonth, normalizeAdAccountId, normalizeApiVersion, persistActiveMetaPlatform, runDashboardReveal, safeSetItem,
     sampleMovements, saveCommerceConfigs, saveCommerceSnapshots, saveMetaConfig, saveMetaPlatforms, saveMetaSnapshot,
     saveMovements, shiftMonth, state, summarize, toDateInput, updateTopbarForView,
-    rehydrateState,
+    rehydrateState, flushCloudSync, hasPendingCloudSync, isCloudSyncKey,
   });
 })();
