@@ -8,6 +8,33 @@
   const { elements, escapeHtml, formatDate, getFilteredMovements, labelMonth, moneyWithCents } = S;
   const { movementMonth, safeSetItem, sampleMovements, saveMovements, shiftMonth, state } = S;
   const { summarize, toDateInput } = S;
+
+  // Interpreta un monto escrito a mano en formato uruguayo (coma = decimal,
+  // punto = miles) o internacional (punto = decimal). El input es type=text
+  // porque type=number DESCARTA el valor si tiene coma y el gasto se perdia en
+  // silencio. Heuristica: el ultimo separador con 1-2 cifras detras es el
+  // decimal; si tiene 3+ cifras detras es separador de miles.
+  //   "500,50" -> 500.5 · "1.250,50" -> 1250.5 · "1.250" -> 1250 · "500.50" -> 500.5
+  function parseMonto(raw) {
+    var s = String(raw == null ? "" : raw).replace(/[^\d.,]/g, "");
+    if (!s) return NaN;
+    var sep = Math.max(s.lastIndexOf(","), s.lastIndexOf("."));
+    if (sep !== -1) {
+      var decimales = s.length - sep - 1;
+      if (decimales >= 1 && decimales <= 2) {
+        // separador decimal real: quitar el OTRO (miles) y normalizar a punto
+        var sepChar = s.charAt(sep);
+        var otro = sepChar === "," ? "." : ",";
+        s = s.split(otro).join("").replace(sepChar, ".");
+      } else {
+        // 3+ cifras detras = separador de miles: quitar todos los separadores
+        s = s.replace(/[.,]/g, "");
+      }
+    }
+    var n = Number(s);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
   function getAvailableMonths() {
     const months = new Set([currentMonth()]);
     for (let i = 1; i <= 11; i += 1) {
@@ -97,7 +124,7 @@
   function handleFormSubmit(event) {
     event.preventDefault();
     const id = elements.movementId.value;
-    const amount = Number(elements.movementAmount.value);
+    const amount = parseMonto(elements.movementAmount.value);
     if (!Number.isFinite(amount) || amount <= 0) return;
 
     const payload = {
