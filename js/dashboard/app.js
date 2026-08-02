@@ -75,11 +75,16 @@
       if (!chartCanvases.includes(event.target)) hideChartTooltip();
     });
 
-    elements.monthFilter.addEventListener("change", () => {
-      state.filters.month = elements.monthFilter.value;
-      safeSetItem(MONTH_FILTER_KEY, state.filters.month);
+    // Rango de meses (Desde–Hasta). setMonthRange ordena solo si quedan al reves
+    // y persiste; despues reflejamos el orden normalizado en los selects.
+    function onMonthRangeChange() {
+      S.setMonthRange(elements.monthFrom.value, elements.monthTo.value);
+      elements.monthFrom.value = state.filters.monthFrom;
+      elements.monthTo.value = state.filters.monthTo;
       renderAll();
-    });
+    }
+    elements.monthFrom?.addEventListener("change", onMonthRangeChange);
+    elements.monthTo?.addEventListener("change", onMonthRangeChange);
 
     elements.typeFilter.addEventListener("change", () => {
       state.filters.type = elements.typeFilter.value;
@@ -94,7 +99,6 @@
     elements.movementType.addEventListener("change", populateMovementCategories);
     elements.form.addEventListener("submit", handleFormSubmit);
     elements.cancelEditButton.addEventListener("click", resetForm);
-    elements.seedDataButton.addEventListener("click", seedData);
     elements.metaConfigForm?.addEventListener("submit", (event) => {
       event.preventDefault();
       if (!state.meta.selectedPlatform) {
@@ -109,11 +113,6 @@
     });
     elements.metaSyncButton?.addEventListener("click", () => {
       syncMetaAds();
-    });
-    elements.metaDemoButton?.addEventListener("click", () => {
-      state.meta.config = readMetaConfigFromForm();
-      saveMetaConfig();
-      syncMetaAds({ demo: true });
     });
     elements.metaClearButton?.addEventListener("click", () => {
       const ok = window.confirm("Eliminar credenciales y datos locales de Meta Ads?");
@@ -153,7 +152,6 @@
     });
     elements.mlConnectButton?.addEventListener("click", startMLOAuth);
     elements.mlSyncButton?.addEventListener("click", () => syncMercadoLibre());
-    elements.mlDemoButton?.addEventListener("click", () => syncCommerce({ demo: true }));
     elements.mlDisconnectButton?.addEventListener("click", () => {
       if (window.confirm("Desconectar Mercado Libre? Se eliminan tokens y datos locales.")) disconnectML();
     });
@@ -167,9 +165,6 @@
     });
     elements.commerceSyncButton?.addEventListener("click", () => {
       syncCommerce();
-    });
-    elements.commerceDemoButton?.addEventListener("click", () => {
-      syncCommerce({ demo: true });
     });
     elements.commerceClearButton?.addEventListener("click", () => {
       const app = getCommerceApp();
@@ -357,6 +352,7 @@
       renderMetaDashboard();
       renderCommerceDashboard();
       S.renderToolsDashboard();
+      if (S.revolutInit) S.revolutInit();   // conexion Revolut (Open Banking)
       scheduleMetaRefresh();
       S.ensureMLLiveDefaults();
       scheduleCommerceRefresh();

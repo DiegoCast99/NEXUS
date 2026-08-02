@@ -30,7 +30,7 @@
     <link rel="stylesheet" href="./css/dashboard/layout.css?v=20260716-nav2" />
     <link rel="stylesheet" href="./css/dashboard/controls.css?v=20260727-mob1" />
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260724-adapt1" />
-    <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260709-ola0css" />
+    <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260727-rev1" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260712-dedup1" />
     <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260724-adapt1" />
     <link rel="stylesheet" href="./css/dashboard/tools.css?v=20260721-pub7" />
@@ -186,10 +186,13 @@
           <div class="topbar-actions is-hidden">
             <div class="finance-tools" id="financeTools">
               <label class="field compact-field">
-                <span>Mes</span>
-                <select id="monthFilter"></select>
+                <span>Desde</span>
+                <select id="monthFrom"></select>
               </label>
-              <button class="ghost-button" type="button" id="seedDataButton">Cargar ejemplo</button>
+              <label class="field compact-field">
+                <span>Hasta</span>
+                <select id="monthTo"></select>
+              </label>
             </div>
           </div>
         </header>
@@ -357,6 +360,21 @@
                 </div>
               </div>
             </section>
+
+            <!-- Conexion Revolut (Open Banking via GoCardless). Los movimientos
+                 importados van al mismo pool: aparecen en el grafico general y
+                 se listan aca filtrando source==="revolut" (ver revolut.js). -->
+            <section class="panel revolut-panel wide-panel" id="revolutPanel" aria-label="Conexion con Revolut">
+              <div class="panel-heading">
+                <div>
+                  <span>Open Banking</span>
+                  <h2>Revolut</h2>
+                </div>
+                <div class="revolut-actions" id="revolutActions"></div>
+              </div>
+              <p class="revolut-message" id="revolutMessage"></p>
+              <div class="revolut-body" id="revolutBody"></div>
+            </section>
           </div>
         </section>
 
@@ -435,7 +453,6 @@
             <div class="meta-sync-actions">
               <button class="primary-button" type="submit" id="metaSaveButton">Guardar conexion</button>
               <button class="ghost-button" type="button" id="metaSyncButton">Sincronizar ahora</button>
-              <button class="ghost-button" type="button" id="metaDemoButton">Cargar demo</button>
               <button class="ghost-button danger-button" type="button" id="metaClearButton">Limpiar</button>
             </div>
             <p class="meta-message" id="metaMessage"></p>
@@ -529,7 +546,7 @@
                 <div class="empty-state" id="metaEmptyState">
                   <span></span>
                   <h3>Meta Ads sin datos</h3>
-                  <p>Conecta credenciales reales o carga demo para activar campanas, metricas y graficos.</p>
+                  <p>Conecta tus credenciales reales para activar campanas, metricas y graficos.</p>
                 </div>
               </div>
             </section>
@@ -577,7 +594,6 @@
             <div class="meta-sync-actions">
               <button class="primary-button" type="button" id="mlConnectButton">Conectar con Mercado Libre</button>
               <button class="ghost-button is-hidden" type="button" id="mlSyncButton">Sincronizar ahora</button>
-              <button class="ghost-button is-hidden" type="button" id="mlDemoButton">Cargar demo</button>
               <button class="ghost-button danger-button is-hidden" type="button" id="mlDisconnectButton">Desconectar</button>
             </div>
             <label class="field ml-refresh-field is-hidden" id="mlRefreshField">
@@ -631,7 +647,6 @@
             <div class="meta-sync-actions">
               <button class="primary-button" type="submit" id="commerceSaveButton">Guardar negocio</button>
               <button class="ghost-button" type="button" id="commerceSyncButton">Sincronizar ahora</button>
-              <button class="ghost-button" type="button" id="commerceDemoButton">Cargar demo</button>
               <button class="ghost-button danger-button" type="button" id="commerceClearButton">Limpiar negocio</button>
             </div>
             <p class="meta-message" id="commerceMessage"></p>
@@ -673,7 +688,7 @@
             <div class="period-bar-end">
               <span class="period-range" id="commercePeriodLabel"></span>
               <span class="source-pill" id="commerceStatusValue">Offline</span>
-              <small class="period-sync" id="commerceStatusHint">Conecta datos o demo</small>
+              <small class="period-sync" id="commerceStatusHint">Conecta tus datos</small>
             </div>
           </div>
 
@@ -808,7 +823,7 @@
                 <div class="empty-state" id="commerceEmptyState">
                   <span></span>
                   <h3>E-Commerce sin datos</h3>
-                  <p>Selecciona un negocio, conecta su fuente de datos o carga demo para activar esta vista.</p>
+                  <p>Selecciona un negocio y conecta su fuente de datos para activar esta vista.</p>
                 </div>
               </div>
             </section>
@@ -1112,20 +1127,21 @@
     <script src="./js/firebase/config.js?v=20260709-ola1c"></script>
     <script src="./js/firebase/auth.js?v=20260709-ola1"></script>
     <script src="./js/firebase/db.js?v=20260727-mob6"></script>
-    <script src="./js/firebase/secure-api.js?v=20260721-mp2"></script>
+    <script src="./js/firebase/secure-api.js?v=20260727-rev1"></script>
     <!-- Dashboard modules -->
     <script src="./js/core/auth.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/store.js?v=20260727-mob6"></script>
+    <script src="./js/dashboard/store.js?v=20260727-rev2"></script>
     <script src="./js/dashboard/integration-core.js?v=20260716-live1"></script>
-    <script src="./js/dashboard/charts.js?v=20260727-mob4"></script>
-    <script src="./js/dashboard/finance.js?v=20260727-mob6"></script>
+    <script src="./js/dashboard/charts.js?v=20260727-rev2"></script>
+    <script src="./js/dashboard/finance.js?v=20260727-rev2"></script>
+    <script src="./js/dashboard/revolut.js?v=20260727-rev1"></script>
     <script src="./js/dashboard/meta.js?v=20260716-nav1"></script>
     <script src="./js/dashboard/commerce.js?v=20260727-mob5"></script>
     <script src="./js/dashboard/notifications.js?v=20260717-acct4"></script>
     <script src="./js/dashboard/tools.js?v=20260727-mob5"></script>
     <script src="./js/dashboard/platform-nav.js?v=20260727-mob2"></script>
     <script src="./js/dashboard/router.js?v=20260727-mob5"></script>
-    <script src="./js/dashboard/app.js?v=20260727-mob6"></script>
+    <script src="./js/dashboard/app.js?v=20260727-rev2"></script>
     <script src="./js/dashboard/mobile-tables.js?v=20260727-mob3"></script>
     <script src="./js/pwa.js?v=20260711-push1" defer></script>
   </body>

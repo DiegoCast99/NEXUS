@@ -106,6 +106,11 @@
     // Revisa la cadena que dispara la notificación de una venta real.
     mlDiagnose: function () {
       return call("ml-diagnose", {});
+    },
+    // Conexion con Revolut via GoCardless (Open Banking). action:
+    // save-keys | status | link | confirm | sync | disconnect.
+    revolut: function (action, extra) {
+      return call("revolut", Object.assign({ action: action }, extra || {}));
     }
   };
 })();

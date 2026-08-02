@@ -266,3 +266,109 @@ td:nth-child(2) {
   font-size: 12px;
   line-height: 1.7;
 }
+
+/* ============================================================
+   Seccion Revolut (Open Banking) dentro de Finanzas
+   ============================================================ */
+.revolut-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.revolut-message {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--muted);
+  min-height: 0;
+}
+.revolut-message:empty {
+  display: none;
+}
+.revolut-message.is-error {
+  color: var(--danger, #ff6b93);
+}
+.revolut-message.is-success {
+  color: var(--green, #31e6ad);
+}
+.revolut-help {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+.revolut-help a {
+  color: var(--accent);
+}
+.revolut-body .field {
+  margin-bottom: 10px;
+}
+.revolut-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.revolut-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--green, #31e6ad);
+  box-shadow: 0 0 12px rgba(49, 230, 173, 0.6);
+  flex: none;
+}
+.revolut-total {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--text);
+}
+.revolut-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.revolut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.revolut-row:last-child {
+  border-bottom: 0;
+}
+.revolut-row-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.revolut-row-main b {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.revolut-row-main small {
+  color: var(--muted);
+  font-size: 11px;
+}
+.revolut-row-amt {
+  flex: none;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.revolut-orig {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 400;
+}
+.ghost-button.danger {
+  color: var(--danger, #ff6b93);
+  border-color: rgba(255, 107, 147, 0.4);
+}

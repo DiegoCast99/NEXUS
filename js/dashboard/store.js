@@ -10,6 +10,7 @@
   const DASHBOARD_REVEAL_KEY = "nexus.dashboard.reveal.v1";
   const STORAGE_KEY = "nexus.personalFinance.movements.v1";
   const MONTH_FILTER_KEY = "nexus.personalFinance.monthFilter.v1";
+  const FINANCE_CCY_KEY = "nexus.personalFinance.displayCcy.v1";
   const META_CONFIG_KEY = "nexus.metaAds.config.v1";
   const META_DATA_KEY = "nexus.metaAds.snapshot.v1";
   const META_PLATFORMS_KEY = "nexus_meta_ads_platforms";
@@ -25,7 +26,7 @@
   // transitorios y PREFERENCIAS DE VISTA POR DISPOSITIVO (el mes que estas
   // mirando y el modo 2d/3d del grafico). Si estas se sincronizaran, cambiar el
   // mes en el celular haria saltar de mes la PC mientras la usas.
-  const NON_DATA_KEYS = new Set([AUTH_KEY, DASHBOARD_REVEAL_KEY, MONTH_FILTER_KEY, CHART_VIEW_MODE_KEY]);
+  const NON_DATA_KEYS = new Set([AUTH_KEY, DASHBOARD_REVEAL_KEY, MONTH_FILTER_KEY, CHART_VIEW_MODE_KEY, FINANCE_CCY_KEY]);
 
   // ¿Es una clave de DATOS que se sincroniza a la nube? (excluye sesion/UI).
   function isCloudSyncKey(key) {
@@ -208,6 +209,59 @@
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   });
+
+  // --- Moneda de FINANZAS: base LIBRA (£), con opcion de VER en pesos ---
+  // Los montos de Finanzas se guardan en GBP (asi vienen de Revolut). El titular
+  // puede togglear la vista a pesos: se multiplica por la cotizacion GBP->UYU
+  // (traida de una API gratis y cacheada). Es SOLO display, los datos no cambian.
+  // EXCLUSIVO de Finanzas: Commerce (ML) y Meta siguen con `currency` (UYU).
+  let _financeCcy = "GBP";
+  let _gbpUyuRate = null;
+  try { _financeCcy = localStorage.getItem(FINANCE_CCY_KEY) === "UYU" ? "UYU" : "GBP"; } catch (e) {}
+  const _fmtGbp0 = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 });
+  const _fmtGbp2 = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const _fmtUyu0 = new Intl.NumberFormat("es-UY", { style: "currency", currency: "UYU", currencyDisplay: "narrowSymbol", maximumFractionDigits: 0 });
+  const _fmtUyu2 = new Intl.NumberFormat("es-UY", { style: "currency", currency: "UYU", currencyDisplay: "narrowSymbol", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  function financeMoney(amountGbp, withCents) {
+    const n = Number(amountGbp) || 0;
+    if (_financeCcy === "UYU" && _gbpUyuRate) {
+      const v = n * _gbpUyuRate;
+      return withCents ? _fmtUyu2.format(v) : _fmtUyu0.format(v);
+    }
+    return withCents ? _fmtGbp2.format(n) : _fmtGbp0.format(n);
+  }
+  function setFinanceCurrency(ccy) {
+    _financeCcy = ccy === "UYU" ? "UYU" : "GBP";
+    try { localStorage.setItem(FINANCE_CCY_KEY, _financeCcy); } catch (e) {}
+  }
+  function financeCurrency() { return _financeCcy; }
+  function setGbpUyuRate(r) { if (Number(r) > 0) _gbpUyuRate = Number(r); }
+  function gbpUyuRate() { return _gbpUyuRate; }
+
+  // --- Rango de meses (Desde–Hasta) del filtro de Finanzas ---
+  // Se guarda como { from, to } en MONTH_FILTER_KEY. "all" = sin tope por ese
+  // lado. Acepta el formato viejo (un solo "YYYY-MM" o "all") para no perder la
+  // preferencia previa al actualizar.
+  function monthRangeFromStorage() {
+    try {
+      var raw = localStorage.getItem(MONTH_FILTER_KEY);
+      if (raw && raw.charAt(0) === "{") {
+        var o = JSON.parse(raw);
+        var f = o.from || currentMonth();
+        return { from: f, to: o.to || f };
+      }
+      if (raw) return { from: raw, to: raw };
+    } catch (e) {}
+    var m = currentMonth();
+    return { from: m, to: m };
+  }
+  function setMonthRange(from, to) {
+    // Si ambos son meses reales y quedaron al reves, se ordenan solos.
+    if (from !== "all" && to !== "all" && from > to) { var t = from; from = to; to = t; }
+    state.filters.monthFrom = from;
+    state.filters.monthTo = to;
+    try { localStorage.setItem(MONTH_FILTER_KEY, JSON.stringify({ from: from, to: to })); } catch (e) {}
+  }
   const compactNumber = new Intl.NumberFormat("es-419", {
     notation: "compact",
     maximumFractionDigits: 1
@@ -389,7 +443,8 @@
   const elements = {
     viewTitle: document.getElementById("viewTitle"),
     viewDescription: document.getElementById("viewDescription"),
-    monthFilter: document.getElementById("monthFilter"),
+    monthFrom: document.getElementById("monthFrom"),
+    monthTo: document.getElementById("monthTo"),
     seedDataButton: document.getElementById("seedDataButton"),
     topbarActions: document.querySelector(".topbar-actions"),
     financeTools: document.getElementById("financeTools"),
@@ -599,7 +654,8 @@
   const state = {
     movements: loadMovements(),
     filters: {
-      month: localStorage.getItem(MONTH_FILTER_KEY) || currentMonth(),
+      monthFrom: monthRangeFromStorage().from,
+      monthTo: monthRangeFromStorage().to,
       type: "all",
       category: "all"
     },
@@ -668,7 +724,9 @@
   // renderizar. Espeja el inicializador de `state` de arriba.
   function rehydrateState() {
     state.movements = loadMovements();
-    state.filters.month = localStorage.getItem(MONTH_FILTER_KEY) || currentMonth();
+    var _mr = monthRangeFromStorage();
+    state.filters.monthFrom = _mr.from;
+    state.filters.monthTo = _mr.to;
     state.chartMode = localStorage.getItem(CHART_VIEW_MODE_KEY) === "3d" ? "3d" : "2d";
     state.meta.platforms = loadMetaPlatforms();
     state.commerce.activeApp = localStorage.getItem("nexus.ecommerce.activeApp.v1") || "kairos";
@@ -983,8 +1041,14 @@
   }
 
   function getFilteredMovements({ includeMonth = true } = {}) {
+    const from = state.filters.monthFrom;
+    const to = state.filters.monthTo;
     return state.movements.filter((movement) => {
-      if (includeMonth && state.filters.month !== "all" && movementMonth(movement) !== state.filters.month) return false;
+      if (includeMonth) {
+        const mm = movementMonth(movement);
+        if (from && from !== "all" && mm < from) return false;   // antes del "Desde"
+        if (to && to !== "all" && mm > to) return false;         // despues del "Hasta"
+      }
       if (state.filters.type !== "all" && movement.type !== state.filters.type) return false;
       if (state.filters.category !== "all" && movement.category !== state.filters.category) return false;
       return true;
@@ -1102,5 +1166,7 @@
     sampleMovements, saveCommerceConfigs, saveCommerceSnapshots, saveMetaConfig, saveMetaPlatforms, saveMetaSnapshot,
     saveMovements, shiftMonth, state, summarize, toDateInput, updateTopbarForView,
     rehydrateState, flushCloudSync, hasPendingCloudSync, isCloudSyncKey,
+    financeMoney, setFinanceCurrency, financeCurrency, setGbpUyuRate, gbpUyuRate, FINANCE_CCY_KEY,
+    setMonthRange,
   });
 })();

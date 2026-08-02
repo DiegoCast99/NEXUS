@@ -4,11 +4,12 @@
    ============================================================ */
 (function () {
   const S = window.NexusDash;
-  const { categoryColors, chartTargets, currency, currentMonth, elements, escapeHtml } = S;
+  const { categoryColors, chartTargets, currency, currentMonth, elements, escapeHtml, financeMoney } = S;
   const { getCommerceSnapshot, getFilteredMovements, integerNumber, labelMonth, moneyWithCents, movementMonth } = S;
   const { shiftMonth, state, summarize } = S;
   function getMonthlySeries() {
-    const endingMonth = state.filters.month === "all" ? currentMonth() : state.filters.month;
+    // El grafico de tendencia muestra 6 meses terminando en el "Hasta" del rango.
+    const endingMonth = (state.filters.monthTo && state.filters.monthTo !== "all") ? state.filters.monthTo : currentMonth();
     const months = Array.from({ length: 6 }, (_, index) => shiftMonth(endingMonth, index - 5));
     const baseData = getFilteredMovements({ includeMonth: false });
     return months.map((month) => {
@@ -209,7 +210,7 @@
         y: padding.top,
         width: groupW,
         height: chartH,
-        html: `<b>${escapeHtml(labelMonth(item.month))}</b><span>Ingresos: ${moneyWithCents.format(item.income)}</span><span>Gastos: ${moneyWithCents.format(item.expense)}</span>`
+        html: `<b>${escapeHtml(labelMonth(item.month))}</b><span>Ingresos: ${financeMoney(item.income, true)}</span><span>Gastos: ${financeMoney(item.expense, true)}</span>`
       });
 
       ctx.fillStyle = "rgba(243,243,248,0.5)";
@@ -286,7 +287,7 @@
     ctx.fillStyle = "rgba(243,243,248,0.94)";
     ctx.font = "700 22px ui-monospace, SFMono-Regular, Menlo, monospace";
     ctx.textAlign = "center";
-    ctx.fillText(currency.format(total), cx, cy - 2);
+    ctx.fillText(financeMoney(total), cx, cy - 2);
     ctx.fillStyle = "rgba(243,243,248,0.52)";
     ctx.font = "11px ui-monospace, SFMono-Regular, Menlo, monospace";
     ctx.fillText("gastos", cx, cy + 18);

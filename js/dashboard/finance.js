@@ -4,8 +4,8 @@
    ============================================================ */
 (function () {
   const S = window.NexusDash;
-  const { MONTH_FILTER_KEY, categories, currency, currentMonth, drawCashflowChart, drawCategoryChart } = S;
-  const { elements, escapeHtml, formatDate, getFilteredMovements, labelMonth, moneyWithCents } = S;
+  const { MONTH_FILTER_KEY, categories, currentMonth, drawCashflowChart, drawCategoryChart, financeMoney } = S;
+  const { elements, escapeHtml, formatDate, getFilteredMovements, labelMonth } = S;
   const { movementMonth, safeSetItem, sampleMovements, saveMovements, shiftMonth, state } = S;
   const { summarize, toDateInput } = S;
 
@@ -46,15 +46,27 @@
 
   function populateMonthFilter() {
     const months = getAvailableMonths();
-    elements.monthFilter.innerHTML = [
-      `<option value="all">Todos los meses</option>`,
+    const opciones = [
+      `<option value="all">Todos</option>`,
       ...months.map((month) => `<option value="${month}">${escapeHtml(labelMonth(month))}</option>`)
     ].join("");
+    if (elements.monthFrom) elements.monthFrom.innerHTML = opciones;
+    if (elements.monthTo) elements.monthTo.innerHTML = opciones;
+    // Si un mes guardado ya no existe entre las opciones, cae al mes actual.
+    if (state.filters.monthFrom !== "all" && !months.includes(state.filters.monthFrom)) state.filters.monthFrom = currentMonth();
+    if (state.filters.monthTo !== "all" && !months.includes(state.filters.monthTo)) state.filters.monthTo = currentMonth();
+    if (elements.monthFrom) elements.monthFrom.value = state.filters.monthFrom;
+    if (elements.monthTo) elements.monthTo.value = state.filters.monthTo;
+  }
 
-    if (state.filters.month !== "all" && !months.includes(state.filters.month)) {
-      state.filters.month = currentMonth();
-    }
-    elements.monthFilter.value = state.filters.month;
+  // Etiqueta del rango para las metricas: "Julio 2026" (un mes) o "Marzo — Agosto".
+  function rangoLabel() {
+    const f = state.filters.monthFrom, t = state.filters.monthTo;
+    if (f === "all" && t === "all") return "Todos los meses";
+    if (f === t) return labelMonth(f);
+    const desde = f === "all" ? "el inicio" : labelMonth(f);
+    const hasta = t === "all" ? "hoy" : labelMonth(t);
+    return desde + " — " + hasta;
   }
 
   function populateMovementCategories() {
@@ -76,11 +88,11 @@
   function renderMetrics() {
     const filtered = getFilteredMovements();
     const totals = summarize(filtered);
-    const monthLabel = labelMonth(state.filters.month);
-    elements.balanceValue.textContent = currency.format(totals.balance);
-    elements.incomeValue.textContent = currency.format(totals.income);
-    elements.expenseValue.textContent = currency.format(totals.expense);
-    elements.savingValue.textContent = currency.format(Math.max(0, totals.balance));
+    const monthLabel = rangoLabel();
+    elements.balanceValue.textContent = financeMoney(totals.balance);
+    elements.incomeValue.textContent = financeMoney(totals.income);
+    elements.expenseValue.textContent = financeMoney(totals.expense);
+    elements.savingValue.textContent = financeMoney(Math.max(0, totals.balance));
     elements.balanceHint.textContent = monthLabel;
     elements.incomeHint.textContent = `${totals.incomeCount} movimiento${totals.incomeCount === 1 ? "" : "s"}`;
     elements.expenseHint.textContent = `${totals.expenseCount} movimiento${totals.expenseCount === 1 ? "" : "s"}`;
@@ -100,7 +112,7 @@
           <td>${escapeHtml(movement.description)}</td>
           <td>${escapeHtml(movement.category)}</td>
           <td><span class="type-pill ${movement.type}">${typeLabel}</span></td>
-          <td class="${amountClass}">${sign}${moneyWithCents.format(Number(movement.amount))}</td>
+          <td class="${amountClass}">${sign}${financeMoney(Number(movement.amount), true)}</td>
           <td>
             <div class="row-actions">
               <button class="table-action" type="button" data-action="edit" data-id="${movement.id}">Editar</button>
@@ -119,6 +131,7 @@
     renderMovements();
     drawCashflowChart();
     drawCategoryChart();
+    if (S.renderRevolut) S.renderRevolut();   // refresca la seccion Revolut
   }
 
   function handleFormSubmit(event) {
@@ -142,8 +155,9 @@
       state.movements = state.movements.map((movement) => movement.id === id ? payload : movement);
     } else {
       state.movements = [payload, ...state.movements];
-      state.filters.month = movementMonth(payload);
-      safeSetItem(MONTH_FILTER_KEY, state.filters.month);
+      // Al agregar, saltar al mes del nuevo movimiento (rango de un solo mes)
+      // para que se vea de una.
+      S.setMonthRange(movementMonth(payload), movementMonth(payload));
     }
 
     saveMovements();
@@ -204,8 +218,7 @@
       };
     });
     state.movements = [...seeded, ...state.movements.filter((movement) => !movement.id.startsWith("demo-"))];
-    state.filters.month = currentMonth();
-    safeSetItem(MONTH_FILTER_KEY, state.filters.month);
+    S.setMonthRange(currentMonth(), currentMonth());
     saveMovements();
     renderAll();
   }
