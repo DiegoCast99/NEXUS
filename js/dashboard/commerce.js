@@ -1656,16 +1656,47 @@
       var api = S.requireSecureApi();
       await api.saveProviderToken("mp_" + cuenta, token);
       input.value = "";
-      // Probar de inmediato: si el token no sirve, mejor saberlo ahora.
       mpCache[cuenta] = null;
-      var saldo = await cargarSaldoMP(cuenta);
-      mpDatos(cuenta).saldo = saldo;
-      msg.textContent = "Listo: Mercado Pago conectado.";
-      msg.className = "meta-message is-success";
+
+      // Validar el token con /users/me: un token de aplicacion SIEMPRE puede con
+      // este endpoint. NO se valida con el saldo de billetera: MP lo bloquea con
+      // 403 para tokens de app, y eso rechazaba tokens perfectamente validos (el
+      // "forbidden" era del saldo, no del token). Lo que Nexus de verdad usa
+      // —las fechas de liberacion via /v1/payments/{id}— si funciona con el token.
+      var meMp = await api.mpApi("/users/me", "GET", null, cuenta);
+      var mpId = (meMp.payload || {}).id;
+
+      // Chequear que el token sea de la MISMA cuenta que Mercado Libre: si es de
+      // otra, las fechas de liberacion de estos pagos tambien darian 403.
+      var mlId = null;
+      try {
+        var meMl = await api.mlApi("/users/me", "GET", null, cuenta);
+        mlId = (meMl.payload || {}).id;
+      } catch (e) { /* si ML no responde, el token de MP ya quedo validado */ }
+
+      if (mpId && mlId && String(mpId) !== String(mlId)) {
+        msg.innerHTML = "El token es valido pero es de <b>otra cuenta</b> (Mercado Pago #" +
+          escapeHtml(String(mpId)) + " ≠ Mercado Libre #" + escapeHtml(String(mlId)) +
+          "). Pega el Access Token de produccion de la <b>misma cuenta</b> de esta aplicacion.";
+        msg.className = "meta-message is-error";
+      } else {
+        msg.textContent = "Token validado y guardado. La seccion se conecta sola: si MP no expone el saldo de billetera (normal en tokens de app), igual traes las fechas de liberacion y el disponible reales.";
+        msg.className = "meta-message is-success";
+      }
+      // renderMercadoPago dispara enriquecerMercadoPago, que intenta el saldo
+      // (best-effort) y las fechas de liberacion, y pinta el estado preciso.
       renderMercadoPago();
     } catch (error) {
-      msg.textContent = "El token se guardo pero Mercado Pago lo rechazo: " +
-        ((error && error.message) || "error") + ". Revisa que sea el de produccion de esta misma cuenta.";
+      var st = (error && (error.mlStatus || error.httpStatus)) || 0;
+      var detalle;
+      if (st === 401) {
+        detalle = "el token no es valido (401). Copia el Access Token de PRODUCCION completo (empieza con APP_USR-), no el de prueba (TEST-).";
+      } else if (st === 403) {
+        detalle = "el token no tiene permiso (403). Verifica que sea de la MISMA cuenta de esta aplicacion.";
+      } else {
+        detalle = ((error && error.message) || "error") + ". Revisa que sea el de produccion de esta misma cuenta.";
+      }
+      msg.textContent = "Mercado Pago rechazo el token: " + detalle;
       msg.className = "meta-message is-error";
     } finally {
       elements.mpSaveToken.disabled = false;

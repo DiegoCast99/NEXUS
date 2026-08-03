@@ -42,6 +42,10 @@
       // validación (no reintentar) de uno pasajero (reintentar).
       error.httpStatus = res.status;
       error.code = data.code || "";
+      // Estado REAL que devolvio la API remota (ML o MP). El proxy colapsa todo
+      // lo que no es 401 a 502, asi que sin esto el cliente no puede distinguir
+      // un 403 (permisos / otra cuenta) de un 404 u otro error.
+      error.mlStatus = data.mlStatus || null;
       error.payload = data.payload || data.mlPayload || null;
       error.partial = data.partial || null;
       throw error;
