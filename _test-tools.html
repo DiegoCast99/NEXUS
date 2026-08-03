@@ -26,17 +26,17 @@
         } catch (error) {}
       })();
     </script>
-    <link rel="stylesheet" href="./css/dashboard/base.css?v=1785760898" />
-    <link rel="stylesheet" href="./css/dashboard/layout.css?v=1785760898" />
-    <link rel="stylesheet" href="./css/dashboard/controls.css?v=1785760898" />
-    <link rel="stylesheet" href="./css/dashboard/welcome.css?v=1785760898" />
-    <link rel="stylesheet" href="./css/dashboard/finance.css?v=1785760898" />
-    <link rel="stylesheet" href="./css/dashboard/meta.css?v=1785760898" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=1785760898" />
-    <link rel="stylesheet" href="./css/dashboard/tools.css?v=1785760898" />
-    <link rel="stylesheet" href="./css/dashboard/integrations.css?v=1785760898" />
-    <link rel="stylesheet" href="./css/dashboard/responsive.css?v=1785760898" />
-    <link rel="stylesheet" href="./css/dashboard/mobile.css?v=1785760898" />
+    <link rel="stylesheet" href="./css/dashboard/base.css?v=1785770026" />
+    <link rel="stylesheet" href="./css/dashboard/layout.css?v=1785770026" />
+    <link rel="stylesheet" href="./css/dashboard/controls.css?v=1785770026" />
+    <link rel="stylesheet" href="./css/dashboard/welcome.css?v=1785770026" />
+    <link rel="stylesheet" href="./css/dashboard/finance.css?v=1785770026" />
+    <link rel="stylesheet" href="./css/dashboard/meta.css?v=1785770026" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=1785770026" />
+    <link rel="stylesheet" href="./css/dashboard/tools.css?v=1785770026" />
+    <link rel="stylesheet" href="./css/dashboard/integrations.css?v=1785770026" />
+    <link rel="stylesheet" href="./css/dashboard/responsive.css?v=1785770026" />
+    <link rel="stylesheet" href="./css/dashboard/mobile.css?v=1785770026" />
   </head>
   <body>
     <div class="dashboard-shell" id="dashboardShell">
@@ -575,9 +575,9 @@
               <button class="ghost-button platform-back-button" type="button" id="commerceBackButton">
                 ← Volver a negocios
               </button>
-              <!-- Cambiar entre las cuentas de Mercado Libre sin salir del panel. -->
-              <label class="field compact-field ml-account-field is-hidden" id="mlAccountField">
-                <span>Cuenta</span>
+              <!-- Cambiar entre las cuentas de Mercado Libre sin salir del panel.
+                   Sin label visible: va del mismo ancho/alto que "Volver a negocios". -->
+              <label class="field ml-account-field is-hidden" id="mlAccountField" aria-label="Cambiar de cuenta de Mercado Libre">
                 <select id="mlAccountSelect"></select>
               </label>
             </div>
@@ -874,7 +874,7 @@
               <!-- ===== Réplica del panel de Mercado Pago (paleta Nexus) ===== -->
               <div class="mp-dash" id="mpDash">
                 <div class="mp-hero">
-                  <span class="mp-hero-label">Disponible en tu cuenta</span>
+                  <span class="mp-hero-label">Disponible de tus ventas</span>
                   <strong class="mp-hero-balance" id="mpHeroBalance">$0,00</strong>
                   <span class="mp-hero-growth" id="mpHeroGrowth"></span>
                   <div class="mp-hero-actions">
@@ -1153,21 +1153,21 @@
 
     <!-- Firebase SDK (CDN, builds compat para la API namespaced) -->
     <!-- Nexus Firebase config + auth + db + proxy seguro -->
-    <script src="./js/firebase/secure-api.js?v=1785760898"></script>
+    <script src="./js/firebase/secure-api.js?v=1785770026"></script>
     <!-- Dashboard modules -->
-    <script src="./js/core/auth.js?v=1785760898"></script>
-    <script src="./js/dashboard/store.js?v=1785760898"></script>
-    <script src="./js/dashboard/integration-core.js?v=1785760898"></script>
-    <script src="./js/dashboard/charts.js?v=1785760898"></script>
-    <script src="./js/dashboard/finance.js?v=1785760898"></script>
-    <script src="./js/dashboard/revolut.js?v=1785760898"></script>
-    <script src="./js/dashboard/meta.js?v=1785760898"></script>
-    <script src="./js/dashboard/commerce.js?v=1785760898"></script>
-    <script src="./js/dashboard/notifications.js?v=1785760898"></script>
-    <script src="./js/dashboard/tools.js?v=1785760898"></script>
-    <script src="./js/dashboard/platform-nav.js?v=1785760898"></script>
-    <script src="./js/dashboard/router.js?v=1785760898"></script>
-    <script src="./js/dashboard/app.js?v=1785760898"></script>
-    <script src="./js/dashboard/mobile-tables.js?v=1785760898"></script>
+    <script src="./js/core/auth.js?v=1785770026"></script>
+    <script src="./js/dashboard/store.js?v=1785770026"></script>
+    <script src="./js/dashboard/integration-core.js?v=1785770026"></script>
+    <script src="./js/dashboard/charts.js?v=1785770026"></script>
+    <script src="./js/dashboard/finance.js?v=1785770026"></script>
+    <script src="./js/dashboard/revolut.js?v=1785770026"></script>
+    <script src="./js/dashboard/meta.js?v=1785770026"></script>
+    <script src="./js/dashboard/commerce.js?v=1785770026"></script>
+    <script src="./js/dashboard/notifications.js?v=1785770026"></script>
+    <script src="./js/dashboard/tools.js?v=1785770026"></script>
+    <script src="./js/dashboard/platform-nav.js?v=1785770026"></script>
+    <script src="./js/dashboard/router.js?v=1785770026"></script>
+    <script src="./js/dashboard/app.js?v=1785770026"></script>
+    <script src="./js/dashboard/mobile-tables.js?v=1785770026"></script>
   </body>
 </html>
