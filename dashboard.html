@@ -32,7 +32,7 @@
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260724-adapt1" />
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260727-rev1" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260712-dedup1" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260803-mp1" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260803-mp2" />
     <link rel="stylesheet" href="./css/dashboard/tools.css?v=20260721-pub7" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260724-adapt1" />
@@ -575,9 +575,9 @@
               <button class="ghost-button platform-back-button" type="button" id="commerceBackButton">
                 ← Volver a negocios
               </button>
-              <!-- Cambiar entre las cuentas de Mercado Libre sin salir del panel. -->
-              <label class="field compact-field ml-account-field is-hidden" id="mlAccountField">
-                <span>Cuenta</span>
+              <!-- Cambiar entre las cuentas de Mercado Libre sin salir del panel.
+                   Sin label visible: va del mismo ancho/alto que "Volver a negocios". -->
+              <label class="field ml-account-field is-hidden" id="mlAccountField" aria-label="Cambiar de cuenta de Mercado Libre">
                 <select id="mlAccountSelect"></select>
               </label>
             </div>
@@ -874,7 +874,7 @@
               <!-- ===== Réplica del panel de Mercado Pago (paleta Nexus) ===== -->
               <div class="mp-dash" id="mpDash">
                 <div class="mp-hero">
-                  <span class="mp-hero-label">Disponible en tu cuenta</span>
+                  <span class="mp-hero-label">Disponible de tus ventas</span>
                   <strong class="mp-hero-balance" id="mpHeroBalance">$0,00</strong>
                   <span class="mp-hero-growth" id="mpHeroGrowth"></span>
                   <div class="mp-hero-actions">

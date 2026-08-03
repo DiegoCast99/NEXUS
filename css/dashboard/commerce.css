@@ -253,8 +253,16 @@
   margin-bottom: 0;
 }
 
+/* El selector de cuenta va del MISMO ancho y alto que "Volver a negocios":
+   los dos reparten la barra en partes iguales y el selector perdio el label
+   "Cuenta" de arriba (ahora es aria-label). */
+.workspace-toolbar .platform-back-button,
 .ml-account-field {
-  min-width: 210px;
+  flex: 1 1 0;
+  min-width: 180px;
+}
+.ml-account-field select {
+  min-height: 42px;
 }
 
 /* Explicita: commerce.css carga despues de finance.css (donde vive .is-hidden). */
