@@ -240,12 +240,20 @@
 /* ============================================================
    Barra del workspace: volver + selector de cuenta
    ============================================================ */
+/* Grid en vez de flex: con flex el texto de "Volver a negocios" (nowrap)
+   empujaba el boton mas ancho que su mitad (356 vs 326). Grid con columnas
+   minmax(0,1fr) las reparte EXACTAMENTE iguales, sin importar el contenido. */
 .workspace-toolbar {
-  display: flex;
-  align-items: flex-end;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);   /* solo el boton: 1 columna full */
   gap: 12px;
-  flex-wrap: wrap;
+  align-items: stretch;                     /* misma altura los dos */
   margin-bottom: 14px;
+}
+
+/* Con el selector de cuenta visible: dos columnas identicas. */
+.workspace-toolbar:has(.ml-account-field:not(.is-hidden)) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 /* El boton ya trae su margen; dentro de la barra lo maneja el gap. */
@@ -253,15 +261,10 @@
   margin-bottom: 0;
 }
 
-/* El selector de cuenta va del MISMO ancho y alto que "Volver a negocios":
-   los dos reparten la barra en partes iguales y el selector perdio el label
-   "Cuenta" de arriba (ahora es aria-label). */
-.workspace-toolbar .platform-back-button,
-.ml-account-field {
-  flex: 1 1 0;
-  min-width: 180px;
-}
+/* El selector llena su celda: mismo ancho y alto que "Volver a negocios"
+   (perdio el label "Cuenta" de arriba, ahora es aria-label). */
 .ml-account-field select {
+  height: 100%;
   min-height: 42px;
 }
 

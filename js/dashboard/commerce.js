@@ -1316,30 +1316,33 @@
 
     var r = resumenMercadoPago(orders);
 
-    // Tarjetas: primero la plata, despues los cargos.
-    // Disponible y "a liberar" salen del saldo REAL de Mercado Pago si se
-    // pudo leer (incluye plata que no viene de ventas de ML). Si no, se cae a
-    // la suma de las ventas del periodo, que es una aproximacion — y se dice.
+    // De donde salen los numeros del dinero:
+    //  - "A liberar" (lo pendiente de liberar): PREFERIMOS los pagos reales de
+    //    MP (cache.pagos, via /v1/payments/search). Si no hay, caemos al
+    //    estimado por las ventas de ML.
+    //  - "Ya liberado de tus ventas": idem.
+    //  - El SALDO DISPONIBLE de la billetera (ej $0,28) NO se puede traer: MP no
+    //    lo expone por API y depende de tus retiros (que la API tampoco muestra).
+    //    Por eso el hero muestra "a liberar", no el saldo, y lo decimos claro.
+    var pagosReal = cache.pagos;                       // {aLiberar, liberado, contados} o null
+    var usaPagos = !!(pagosReal && pagosReal.contados > 0);
     var usaSaldoReal = !!cache.saldo;
-    var disponible = usaSaldoReal ? cache.saldo.disponible : r.disponible;
-    var aLiberar = usaSaldoReal ? cache.saldo.aLiberar : r.aLiberar;
-    var pieDisp = usaSaldoReal ? "saldo real en tu billetera" : "estimado por tus ventas";
-    var pieLib = usaSaldoReal
-      ? (aLiberar > 0 ? "saldo real pendiente" : "nada pendiente")
-      : (aLiberar > 0 ? "estimado por tus ventas" : "nada pendiente");
+    var aLiberar = usaPagos ? pagosReal.aLiberar : (usaSaldoReal ? cache.saldo.aLiberar : r.aLiberar);
+    var liberado = usaPagos ? pagosReal.liberado : (usaSaldoReal ? cache.saldo.disponible : r.disponible);
+    var fuente = usaPagos ? "de tus pagos reales de MP" : "estimado por tus ventas";
+    var pieLib = usaPagos ? "de tus pagos reales" : (aLiberar > 0 ? "estimado por tus ventas" : "nada pendiente");
 
-    // --- Hero (Saldo) al estilo del dashboard de Mercado Pago ---
-    if (elements.mpHeroBalance) elements.mpHeroBalance.textContent = moneyWithCents.format(disponible);
+    // --- Hero: "A liberar de tus ventas" es lo unico del lado del dinero que la
+    // API deja calcular exacto. El saldo disponible vive en MP (boton abajo). ---
+    if (elements.mpHeroBalance) elements.mpHeroBalance.textContent = moneyWithCents.format(aLiberar);
     if (elements.mpHeroGrowth) {
-      if (r.hoyNeto > 0) {
-        elements.mpHeroGrowth.textContent = "Hasta hoy creció " + moneyWithCents.format(r.hoyNeto);
-        elements.mpHeroGrowth.classList.add("is-up");
-      } else {
-        elements.mpHeroGrowth.textContent = usaSaldoReal ? "Saldo real de tu billetera" : "Estimado por tus ventas del periodo";
-        elements.mpHeroGrowth.classList.remove("is-up");
-      }
+      elements.mpHeroGrowth.classList.remove("is-up");
+      elements.mpHeroGrowth.textContent = usaPagos
+        ? "Pendiente de liberar · tu saldo disponible está en Mercado Pago"
+        : "Estimado por tus ventas · conectá Mercado Pago para el dato real";
     }
-    if (elements.mpReleaseAmount) elements.mpReleaseAmount.textContent = moneyWithCents.format(aLiberar);
+    // Fila de abajo: lo YA liberado de tus ventas (otro numero real, no el saldo).
+    if (elements.mpReleaseAmount) elements.mpReleaseAmount.textContent = moneyWithCents.format(liberado);
 
     // --- Últimas actividades: los cobros como lista, estilo MP ---
     if (elements.mpActivityList) {
@@ -1367,8 +1370,8 @@
 
     if (elements.mpStats) {
       elements.mpStats.innerHTML = [
-        tarjetaMP("Disponible", moneyWithCents.format(disponible), pieDisp, "is-good"),
-        tarjetaMP("A liberar", moneyWithCents.format(aLiberar), pieLib, ""),
+        tarjetaMP("A liberar", moneyWithCents.format(aLiberar), pieLib, "is-good"),
+        tarjetaMP("Ya liberado de ventas", moneyWithCents.format(liberado), fuente, ""),
         tarjetaMP("Facturacion bruta", moneyWithCents.format(r.bruto), "ventas del periodo", ""),
         tarjetaMP("Comisiones ML", "- " + moneyWithCents.format(r.comision), pct(r.comision, r.bruto), "is-bad"),
         tarjetaMP("Envios", "- " + moneyWithCents.format(r.envio), pct(r.envio, r.bruto), "is-bad"),
@@ -1411,7 +1414,9 @@
     }
 
     if (elements.mpNote) {
-      elements.mpNote.textContent = r.sinFecha > 0
+      // Con pagos reales de MP el "a liberar" ya es exacto: la nota de ventas
+      // "sin fecha" (que sale del estimado por ordenes de ML) solo confunde.
+      elements.mpNote.textContent = (!usaPagos && r.sinFecha > 0)
         ? "Hay " + moneyWithCents.format(r.sinFecha) + " de ventas cuya fecha de liberacion todavia no se consulto o Mercado Pago no informa."
         : "";
     }
@@ -1493,6 +1498,63 @@
     return null;
   }
 
+  // "Dinero a liberar" REAL: los pagos aprobados cuya plata todavia no se
+  // libero. Sale de /v1/payments/search, que trae money_release_date, el estado
+  // de liberacion y el neto EN CADA resultado (no hace falta una llamada por
+  // pago). Se acota a los pagos recientes: los pendientes de liberar son de las
+  // ultimas semanas, los viejos ya estan liberados.
+  //
+  // OJO — lo que NO se puede: el SALDO DISPONIBLE de la billetera (ej $0,28)
+  // no lo expone MP por API y ademas depende de tus retiros, que la API no
+  // muestra. Por eso el hero muestra "a liberar" (esto), no el saldo.
+  async function cargarPagosMP(cuenta) {
+    var api = S.requireSecureApi();
+    var pagos = [];
+    var LIMITE = 50, offset = 0, guard = 0;
+    var corteISO = new Date(Date.now() - 60 * 86400000).toISOString();  // 60 dias atras
+    while (guard < 12) {
+      var url = "/v1/payments/search?sort=date_created&criteria=desc&limit=" + LIMITE + "&offset=" + offset;
+      var res = await api.mpApi(url, "GET", null, cuenta);
+      var p = res.payload || {};
+      var batch = p.results || [];
+      if (!batch.length) break;
+      pagos = pagos.concat(batch);
+      var total = (p.paging && p.paging.total) || pagos.length;
+      var ultimo = batch[batch.length - 1] || {};
+      var fechaUlt = String(ultimo.date_created || ultimo.date_approved || "");
+      if (fechaUlt && fechaUlt < corteISO) break;   // ya son viejos: cortar
+      if (pagos.length >= total) break;
+      offset += LIMITE;
+      guard++;
+      await dormirMP(150);
+    }
+    return pagos;
+  }
+
+  // De los pagos crudos saca: lo pendiente de liberar (a liberar) y lo ya
+  // liberado (de tus ventas). El neto sale de transaction_details.net_received_amount;
+  // si no viniera, se estima con transaction_amount menos las comisiones.
+  function resumenPagosMP(pagos) {
+    var ahora = new Date().toISOString();
+    var aLiberar = 0, liberado = 0, pendientes = 0, contados = 0;
+    (pagos || []).forEach(function (pg) {
+      if (!pg || pg.status !== "approved") return;
+      var td = pg.transaction_details || {};
+      var neto = td.net_received_amount;
+      if (neto == null) {
+        var fees = (pg.fee_details || []).reduce(function (s, f) { return s + (Number(f.amount) || 0); }, 0);
+        neto = (Number(pg.transaction_amount) || 0) - fees;
+      }
+      neto = Number(neto) || 0;
+      contados++;
+      var rel = String(pg.money_release_date || "");
+      var pendiente = pg.money_release_status === "pending" || (rel && rel > ahora);
+      if (pendiente) { aLiberar += neto; pendientes++; }
+      else liberado += neto;
+    });
+    return { aLiberar: aLiberar, liberado: liberado, pendientes: pendientes, contados: contados };
+  }
+
   // Fecha de liberacion de cada pago. NO viene en /orders/search: hay que
   // pedir el detalle del pago a Mercado Pago. Se hace de a uno y con tope,
   // para no castigar la cuota de la API en periodos largos.
@@ -1565,6 +1627,14 @@
       } catch (e) {
         errorSaldo = e;
         pintarSaldoMP(null, e);
+      }
+      // Dinero a liberar REAL, de los pagos de MP (no del estimado por ventas).
+      // Si falla (sin token o error), se cae al estimado y no rompe nada.
+      try {
+        cache.pagos = resumenPagosMP(await cargarPagosMP(cuenta));
+        renderMercadoPago();
+      } catch (ep) {
+        cache.pagos = null;
       }
       var r = await cargarLiberaciones(cuenta, orders, cache);
       if (r) {
