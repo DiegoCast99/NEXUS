@@ -1326,23 +1326,27 @@
     //    Por eso el hero muestra "a liberar", no el saldo, y lo decimos claro.
     var pagosReal = cache.pagos;                       // {aLiberar, liberado, contados} o null
     var usaPagos = !!(pagosReal && pagosReal.contados > 0);
-    var usaSaldoReal = !!cache.saldo;
+    var usaSaldoReal = !!cache.saldo;                  // el balance de billetera, SI MP lo da
     var aLiberar = usaPagos ? pagosReal.aLiberar : (usaSaldoReal ? cache.saldo.aLiberar : r.aLiberar);
-    var liberado = usaPagos ? pagosReal.liberado : (usaSaldoReal ? cache.saldo.disponible : r.disponible);
+    var liberado = usaPagos ? pagosReal.liberado : r.disponible;
     var fuente = usaPagos ? "de tus pagos reales de MP" : "estimado por tus ventas";
     var pieLib = usaPagos ? "de tus pagos reales" : (aLiberar > 0 ? "estimado por tus ventas" : "nada pendiente");
 
-    // --- Hero: "A liberar de tus ventas" es lo unico del lado del dinero que la
-    // API deja calcular exacto. El saldo disponible vive en MP (boton abajo). ---
-    if (elements.mpHeroBalance) elements.mpHeroBalance.textContent = moneyWithCents.format(aLiberar);
+    // --- Hero GRANDE = SALDO DISPONIBLE real de tu billetera (como en MP). Ese
+    // numero solo lo da MP si el balance de billetera esta habilitado para el
+    // token; si no (lo comun en tokens de app), va "—" y se aclara — no se
+    // inventa. La fila de abajo lleva el "a liberar", que SIEMPRE es exacto. ---
+    if (elements.mpHeroBalance) {
+      elements.mpHeroBalance.textContent = usaSaldoReal ? moneyWithCents.format(cache.saldo.disponible) : "—";
+    }
     if (elements.mpHeroGrowth) {
       elements.mpHeroGrowth.classList.remove("is-up");
-      elements.mpHeroGrowth.textContent = usaPagos
-        ? "Pendiente de liberar · tu saldo disponible está en Mercado Pago"
-        : "Estimado por tus ventas · conectá Mercado Pago para el dato real";
+      elements.mpHeroGrowth.textContent = usaSaldoReal
+        ? "Saldo disponible real en tu billetera"
+        : "MP no comparte tu saldo por API — miralo con “Ir a tu dinero”";
     }
-    // Fila de abajo: lo YA liberado de tus ventas (otro numero real, no el saldo).
-    if (elements.mpReleaseAmount) elements.mpReleaseAmount.textContent = moneyWithCents.format(liberado);
+    // Fila de abajo: A LIBERAR (pendiente de liberar), real de tus pagos de MP.
+    if (elements.mpReleaseAmount) elements.mpReleaseAmount.textContent = moneyWithCents.format(aLiberar);
 
     // --- Últimas actividades: los cobros como lista, estilo MP ---
     if (elements.mpActivityList) {
