@@ -1246,7 +1246,7 @@
     var hoy = hoyISO();
     var res = {
       bruto: 0, comision: 0, envio: 0, neto: 0,
-      disponible: 0, aLiberar: 0, sinFecha: 0,
+      disponible: 0, aLiberar: 0, sinFecha: 0, hoyNeto: 0,
       cobros: [], proximas: {}
     };
 
@@ -1257,6 +1257,11 @@
       res.comision += o.commission || 0;
       res.envio += o.shipping || 0;
       res.neto += neto;
+
+      // "Crecio hoy": neto de las ventas registradas hoy (aproxima el numero
+      // que MP muestra arriba del saldo). No es el delta de la billetera, que
+      // vive en su API bloqueada; es lo que entro hoy por ventas.
+      if (!o.refunded && String(o.date || "").slice(0, 10) === hoy) res.hoyNeto += neto;
 
       var fecha = String(o.releaseDate || "").slice(0, 10);
       if (o.refunded) {
@@ -1301,6 +1306,10 @@
       if (elements.mpStats) elements.mpStats.innerHTML = "";
       if (elements.mpNextBody) elements.mpNextBody.innerHTML = "";
       if (elements.mpTableBody) elements.mpTableBody.innerHTML = "";
+      if (elements.mpActivityList) elements.mpActivityList.innerHTML = "";
+      if (elements.mpHeroBalance) elements.mpHeroBalance.textContent = moneyWithCents.format(0);
+      if (elements.mpHeroGrowth) elements.mpHeroGrowth.textContent = "";
+      if (elements.mpReleaseAmount) elements.mpReleaseAmount.textContent = moneyWithCents.format(0);
       return;
     }
     elements.mpEmpty?.classList.remove("is-visible");
@@ -1318,6 +1327,43 @@
     var pieLib = usaSaldoReal
       ? (aLiberar > 0 ? "saldo real pendiente" : "nada pendiente")
       : (aLiberar > 0 ? "estimado por tus ventas" : "nada pendiente");
+
+    // --- Hero (Saldo) al estilo del dashboard de Mercado Pago ---
+    if (elements.mpHeroBalance) elements.mpHeroBalance.textContent = moneyWithCents.format(disponible);
+    if (elements.mpHeroGrowth) {
+      if (r.hoyNeto > 0) {
+        elements.mpHeroGrowth.textContent = "Hasta hoy creció " + moneyWithCents.format(r.hoyNeto);
+        elements.mpHeroGrowth.classList.add("is-up");
+      } else {
+        elements.mpHeroGrowth.textContent = usaSaldoReal ? "Saldo real de tu billetera" : "Estimado por tus ventas del periodo";
+        elements.mpHeroGrowth.classList.remove("is-up");
+      }
+    }
+    if (elements.mpReleaseAmount) elements.mpReleaseAmount.textContent = moneyWithCents.format(aLiberar);
+
+    // --- Últimas actividades: los cobros como lista, estilo MP ---
+    if (elements.mpActivityList) {
+      elements.mpActivityList.innerHTML = r.cobros.slice(0, 12).map(function (c) {
+        var devuelto = !!c.refunded;
+        var disp = c.libera && c.libera <= hoyISO();
+        var estado = devuelto ? "Devuelto" : (!c.libera ? "Pendiente" : (disp ? "Disponible" : "A liberar"));
+        var iconClase = devuelto ? "is-back" : "is-in";
+        var icono = devuelto ? "↩" : "↓";
+        var signo = devuelto ? "- " : "+ ";
+        var montoClase = devuelto ? "is-back" : "is-in";
+        return '<li class="mp-act">' +
+            '<span class="mp-act-icon ' + iconClase + '" aria-hidden="true">' + icono + "</span>" +
+            '<span class="mp-act-body">' +
+              '<span class="mp-act-title">' + escapeHtml(c.producto || "Cobro") + "</span>" +
+              '<span class="mp-act-sub">' + (devuelto ? "Devolución" : "Cobro de venta") + " · " + escapeHtml(S.formatDate(c.fecha)) + "</span>" +
+            "</span>" +
+            '<span class="mp-act-side">' +
+              '<span class="mp-act-amount ' + montoClase + '">' + signo + moneyWithCents.format(c.neto) + "</span>" +
+              '<span class="mp-act-status">' + estado + "</span>" +
+            "</span>" +
+          "</li>";
+      }).join("");
+    }
 
     if (elements.mpStats) {
       elements.mpStats.innerHTML = [

@@ -633,6 +633,159 @@
    Mercado Pago — cobros y liberaciones
    ============================================================ */
 
+/* ===== Réplica del dashboard de Mercado Pago (misma info, paleta Nexus) ===== */
+.mp-dash {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+/* Saldo: la tarjeta protagonista, con el disponible en grande */
+.mp-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 22px 22px 20px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background:
+    radial-gradient(130% 150% at 100% 0%, rgba(255, 26, 157, 0.16), transparent 58%),
+    var(--panel-strong);
+}
+.mp-hero-label {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.mp-hero-balance {
+  display: block;
+  margin: 6px 0 4px;
+  font-size: clamp(30px, 6vw, 40px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.mp-hero-growth {
+  display: block;
+  min-height: 16px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.mp-hero-growth.is-up { color: var(--green); font-weight: 500; }
+.mp-hero-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.mp-hero-btn {
+  flex: 1 1 auto;
+  min-width: 130px;
+  padding: 11px 16px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: transform 0.12s ease, background 0.12s ease, border-color 0.12s ease;
+}
+.mp-hero-btn.is-primary { background: var(--accent); color: #fff; }
+.mp-hero-btn.is-primary:hover { transform: translateY(-1px); background: #ff40ad; }
+.mp-hero-btn.is-ghost { background: var(--panel-soft); border-color: var(--border); color: var(--text); }
+.mp-hero-btn.is-ghost:hover { transform: translateY(-1px); border-color: var(--accent); }
+
+/* Dinero a liberar: fila clickeable que abre el detalle ("Consultar todo") */
+.mp-release {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+.mp-release:hover { border-color: var(--accent); background: var(--panel-strong); }
+.mp-release-icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  border-radius: 12px;
+  background: rgba(255, 26, 157, 0.12);
+  color: var(--accent);
+  font-size: 18px;
+}
+.mp-release-info { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; }
+.mp-release-label { color: var(--muted); font-size: 12px; }
+.mp-release-amount { font-size: 18px; font-weight: 600; color: var(--text); }
+.mp-release-cta {
+  flex: 0 0 auto;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mp-release-cta::after { content: " ›"; }
+
+/* Últimas actividades: los cobros como lista, al estilo MP */
+.mp-activity { margin-top: 4px; }
+.mp-activity-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--panel);
+}
+.mp-act {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.mp-act:last-child { border-bottom: none; }
+.mp-act-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  font-size: 16px;
+  font-weight: 700;
+}
+.mp-act-icon.is-in { background: rgba(49, 230, 173, 0.14); color: var(--green); }
+.mp-act-icon.is-back { background: rgba(255, 107, 147, 0.14); color: var(--danger); }
+.mp-act-body { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 0; }
+.mp-act-title {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mp-act-sub { font-size: 11.5px; color: var(--muted); }
+.mp-act-side { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: 0 0 auto; }
+.mp-act-amount { font-size: 13.5px; font-weight: 600; }
+.mp-act-amount.is-in { color: var(--green); }
+.mp-act-amount.is-back { color: var(--danger); }
+.mp-act-status { font-size: 11px; color: var(--muted); }
+
+/* Detalle completo, se despliega con "Consultar todo" */
+.mp-detail.is-collapsed { display: none; }
+
 .mp-stats {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-bottom: 14px;

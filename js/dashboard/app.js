@@ -209,6 +209,13 @@
     elements.mlListingsReload?.addEventListener("click", () => S.loadMLListings(true));
     elements.mlListingsSave?.addEventListener("click", () => S.saveMLListingChanges());
     elements.mpSaveToken?.addEventListener("click", () => S.guardarTokenMP());
+    // "Consultar todo": despliega el detalle completo (tarjetas + tablas).
+    elements.mpReleaseToggle?.addEventListener("click", () => {
+      if (!elements.mpDetail) return;
+      const abierto = elements.mpDetail.classList.toggle("is-collapsed");
+      elements.mpReleaseToggle.setAttribute("aria-expanded", abierto ? "false" : "true");
+      if (!abierto) elements.mpDetail.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
     // Lo tipeado queda pendiente en memoria: recien se manda a ML al Guardar.
     elements.mlListingsTable?.addEventListener("input", (event) => {
       const inp = event.target.closest("input[data-listing-stock], input[data-variant-stock]");
