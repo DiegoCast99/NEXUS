@@ -207,8 +207,14 @@
   display: none;
 }
 
+/* Los tres campos (Periodo / Desde / Hasta) van del MISMO ancho: el input date
+   tiene un ancho intrinseco mayor que el select, por eso "Fecha personalizada"
+   se veia mas fino. 240px entra el texto completo del select y quedan iguales. */
 .period-bar .field {
-  min-width: 168px;
+  width: 240px;
+  max-width: 100%;
+  min-width: 0;
+  flex: 0 0 auto;
 }
 
 .period-bar-end {

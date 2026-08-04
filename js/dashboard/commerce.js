@@ -97,6 +97,7 @@
       variation: String(order.variation || ""),
       shippingId: String(order.shippingId || ""),
       paymentId: String(order.paymentId || ""),
+      createdAt: String(order.createdAt || order.date_created || order.date || ""),
       date: String(order.date || order.createdAt || toDateInput()).slice(0, 10)
     };
   }
@@ -184,7 +185,7 @@
       appId: state.commerce.activeApp,
       range: info.range || null,
       totals,
-      orders: normalizedOrders.sort((a, b) => b.date.localeCompare(a.date)),
+      orders: normalizedOrders.sort((a, b) => String(b.createdAt || b.date).localeCompare(String(a.createdAt || a.date))),
       products: aggregateCommerceProducts(normalizedOrders),
       trend: aggregateCommerceTrend(normalizedOrders, info.range)
     };
@@ -391,6 +392,9 @@
       variation: variation,
       shippingId: shippingId,
       paymentId: paymentId,
+      // Timestamp COMPLETO (con hora): para ordenar por el orden real en que
+      // cayeron, no solo por dia. `date` (solo dia) queda para agrupar/graficar.
+      createdAt: String(mlOrder.date_created || ""),
       date: String(mlOrder.date_created || "").slice(0, 10) || toDateInput()
     };
   }
@@ -433,6 +437,43 @@
       var info = mapa[o.itemId];
       if (info) { o.thumbnail = info.thumbnail; o.stock = info.stock; }
     });
+    return orders;
+  }
+
+  // Costo de envio que ML te COBRA a vos (el vendedor). NO viene en
+  // /orders/search: vive en el envio. /shipments/{id}/costs devuelve lo que paga
+  // cada parte; el costo del vendedor esta en senders[].cost (fallback:
+  // gross_amount menos lo que puso el comprador). Best-effort: si ML lo
+  // restringe, devuelve null y la venta queda sin costo de envio (como antes).
+  async function fetchSellerShipping(shippingId) {
+    if (!shippingId) return null;
+    var api = S.requireSecureApi();
+    try {
+      var res = await api.mlApi("/shipments/" + shippingId + "/costs", "GET", null, activeMLId());
+      var c = res.payload || {};
+      var senders = c.senders || [];
+      if (senders.length && typeof senders[0].cost === "number") return senders[0].cost;
+      if (typeof c.gross_amount === "number") {
+        var recibio = (c.receiver && typeof c.receiver.cost === "number") ? c.receiver.cost : 0;
+        return Math.max(0, c.gross_amount - recibio);
+      }
+    } catch (e) { /* ML puede restringirlo: se deja sin envio */ }
+    return null;
+  }
+
+  // Le pega a cada venta reciente el costo de envio real y recalcula el lucro.
+  // Acotado y con pausa: es una llamada por envio (no se puede batchear).
+  async function enrichMLOrdersWithShipping(orders) {
+    for (var i = 0; i < orders.length; i++) {
+      var o = orders[i];
+      if (!o || !o.shippingId || o.cancelled) continue;
+      var costo = await fetchSellerShipping(o.shippingId);
+      if (costo != null && costo > 0) {
+        o.shipping = costo;
+        o.margin = (o.total || 0) - (o.commission || 0) - costo;
+      }
+      await dormirMP(120);
+    }
     return orders;
   }
 
@@ -539,8 +580,11 @@
   }
 
   // ML espera ISO con zona; el dia "hasta" va completo (hasta las 23:59:59).
-  function isoFrom(d) { return d + "T00:00:00.000-00:00"; }
-  function isoTo(d) { return d + "T23:59:59.999-00:00"; }
+  // Uruguay es UTC-3: con "-00:00" (UTC) una venta hecha hoy despues de las ~21h
+  // caia FUERA del rango y no se traia. Con "-03:00" el rango coincide con el dia
+  // local y entran todas las ventas del dia, incluida la ultima.
+  function isoFrom(d) { return d + "T00:00:00.000-03:00"; }
+  function isoTo(d) { return d + "T23:59:59.999-03:00"; }
 
   async function getMLUserId(api) {
     var config = getCommerceConfig(activeMLId());
@@ -783,7 +827,7 @@
 
     const orders = snapshot?.orders || [];
     if (elements.commerceOrdersTable) {
-      elements.commerceOrdersTable.innerHTML = orders.slice(0, 12).map((order) => {
+      elements.commerceOrdersTable.innerHTML = orders.slice(0, 300).map((order) => {
         var foto = order.thumbnail
           ? `<img class="order-thumb" src="${escapeHtml(order.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'" />`
           : `<span class="order-thumb order-thumb-empty" aria-hidden="true"></span>`;
@@ -955,8 +999,22 @@
   // ML lo restringe o no hay id, se avisa y no rompe nada. Con guard por si el
   // titular cambio de venta mientras cargaba.
   async function cargarEnvioVenta(shippingId) {
-    if (!shippingId || !elements.ventaEnvioDatos) return;
+    if (!shippingId) return;
     var pedido = shippingId;
+
+    // En paralelo con la direccion: asegurar el costo de envio real en el
+    // desglose (por si esta venta no entro en el enriquecido del sync). Corrige
+    // Envios y recalcula el Lucro liquido en vivo, para que coincida con ML.
+    fetchSellerShipping(shippingId).then(function (costo) {
+      if (costo == null || costo <= 0) return;
+      if (!ventaActual || ventaActual.shippingId !== pedido) return;
+      ventaActual.shipping = costo;
+      ventaActual.margin = (ventaActual.total || 0) - (ventaActual.commission || 0) - costo;
+      txtVenta(elements.ventaEnvio, moneyWithCents.format(costo));
+      txtVenta(elements.ventaTotal, moneyWithCents.format(ventaActual.margin));
+    });
+
+    if (!elements.ventaEnvioDatos) return;
     try {
       var api = S.requireSecureApi();
       var res = await api.mlApi("/shipments/" + shippingId, "GET", null, activeMLId());
@@ -2007,9 +2065,11 @@
           fetchMLOrders(range),
           fetchMLVisits(range)
         ]);
-        // Enriquecer solo los que se van a mostrar (la tabla corta en 12): la
-        // foto y el stock salen de /items, no de la API de pedidos.
-        await enrichMLOrdersWithItems(orders.slice(0, 12));
+        // Foto/stock (de /items, batcheado) para las ventas recientes, y el
+        // costo de envio real (de /shipments/{id}/costs, 1 llamada c/u) para las
+        // mas nuevas — con eso el lucro coincide con lo que muestra ML.
+        await enrichMLOrdersWithItems(orders.slice(0, 60));
+        await enrichMLOrdersWithShipping(orders.slice(0, 30));
         var next = createCommerceSnapshot(orders, "live", { visits: visits, range: range });
         var mlId = activeMLId();
         var prev = state.commerce.snapshots[mlId];
