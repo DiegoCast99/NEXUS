@@ -291,7 +291,14 @@
   function normalizeMLOrder(mlOrder, index) {
     var payments = mlOrder.payments || [];
     var orderItems = mlOrder.order_items || [];
-    var total = payments.reduce(function (s, p) { return s + (p.total_paid_amount || 0); }, 0) || (mlOrder.total_amount || 0);
+    // "Precio del producto" = SOLO los productos (order_items), sin el envio que
+    // pago el comprador. total_paid_amount lo INCLUYE y por eso inflaba el precio
+    // (ML muestra $875, Nexus mostraba $1.120 = 875 + 245 de envio del comprador).
+    var itemsTotal = orderItems.reduce(function (s, i) {
+      return s + (Number(i.unit_price) || 0) * (Number(i.quantity) || 1);
+    }, 0);
+    var total = Number(mlOrder.total_amount) || itemsTotal ||
+      payments.reduce(function (s, p) { return s + (p.total_paid_amount || 0); }, 0);
 
     // Comisión REAL de ML. Dos fuentes que vienen en la misma respuesta de
     // /orders/search (sin llamadas extra):
@@ -306,8 +313,11 @@
     }, 0);
     var commission = paymentFee > 0 ? paymentFee : itemFee > 0 ? itemFee : total * 0.13;
 
-    // Envío pagado por el vendedor, si ML lo informa en el pago.
-    var shipping = payments.reduce(function (s, p) { return s + (Number(p.shipping_cost) || 0); }, 0);
+    // Envio que paga el VENDEDOR: NO sale de aca. payments[].shipping_cost es lo
+    // que pago el COMPRADOR (ej $245), no tu costo. El costo real del vendedor
+    // (0 si lo pago el comprador, o X en envio gratis) lo trae despues
+    // enrichMLOrdersWithShipping desde /shipments/{id}/costs. Arranca en 0.
+    var shipping = 0;
 
     var margin = total - commission - shipping;
 
@@ -451,12 +461,12 @@
     try {
       var res = await api.mlApi("/shipments/" + shippingId + "/costs", "GET", null, activeMLId());
       var c = res.payload || {};
+      // SOLO el costo del VENDEDOR (senders[].cost). Si no hay dato de sender, el
+      // vendedor NO paga envio (0). NO usar gross_amount: incluye lo que pago el
+      // comprador, y ese era el bug (mostraba el envio del comprador como costo).
       var senders = c.senders || [];
       if (senders.length && typeof senders[0].cost === "number") return senders[0].cost;
-      if (typeof c.gross_amount === "number") {
-        var recibio = (c.receiver && typeof c.receiver.cost === "number") ? c.receiver.cost : 0;
-        return Math.max(0, c.gross_amount - recibio);
-      }
+      return 0;
     } catch (e) { /* ML puede restringirlo: se deja sin envio */ }
     return null;
   }
