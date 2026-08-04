@@ -33,7 +33,7 @@
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260727-rev1" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260712-dedup1" />
     <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260803-ventas2" />
-    <link rel="stylesheet" href="./css/dashboard/tools.css?v=20260721-pub7" />
+    <link rel="stylesheet" href="./css/dashboard/tools.css?v=20260804-hub1" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260724-adapt1" />
     <link rel="stylesheet" href="./css/dashboard/mobile.css?v=20260727-mob5" />
@@ -934,13 +934,54 @@
 
         <!-- ============ HERRAMIENTAS ============ -->
         <section class="view-panel" data-panel="tools">
-          <div class="tool-card-grid" id="toolsCards">
-            <article class="welcome-card" data-tool="publicador">
-              <span>Mercado Libre</span>
-              <h3>Publicador Masivo</h3>
-              <p>Cloná publicaciones de una cuenta a otra, en lote. Todo se crea pausado y sin stock: nada se activa solo.</p>
-              <button class="primary-button" type="button" data-tool="publicador">Entrar</button>
-            </article>
+          <div class="pub-hub" id="toolsCards">
+            <div class="pub-hub-head">
+              <span>Publicador Masivo</span>
+              <h2>Cloná tus anuncios a otros marketplaces</h2>
+              <p>Elegí a dónde querés clonar. Lo que se puede se copia automático (fotos, título, descripción); los detalles de cada plataforma (precio, envío, comisión) se ajustan al final.</p>
+            </div>
+
+            <div class="pub-dest-grid">
+              <!-- Destino 1: entre cuentas de Mercado Libre (motor propio de Nexus) -->
+              <article class="pub-dest-card" data-tool="publicador">
+                <div class="pub-dest-top">
+                  <span class="pub-dest-badge is-ready">Listo</span>
+                  <span class="pub-dest-flow">Mercado Libre → Mercado Libre</span>
+                </div>
+                <h3>Entre tus cuentas de ML</h3>
+                <p>Cloná publicaciones de una cuenta de Mercado Libre a otra, en lote. Todo se crea pausado y sin stock: nada se activa solo.</p>
+                <button class="primary-button pub-dest-cta" type="button" data-tool="publicador">Entrar</button>
+              </article>
+
+              <!-- Destino 2: Shopee, vía MeuML (herramienta externa especializada) -->
+              <article class="pub-dest-card">
+                <div class="pub-dest-top">
+                  <span class="pub-dest-badge is-ready">Vía MeuML</span>
+                  <span class="pub-dest-flow">Mercado Livre → Shopee</span>
+                </div>
+                <h3>Clonar a Shopee</h3>
+                <p>El clonado a Shopee lo hace <b>MeuML</b>, una herramienta que ya tiene resuelto el mapeo de categorías y atributos. Conectás ML y Shopee con un click y clona. <b>R$0,25 por anuncio.</b></p>
+                <ol class="pub-dest-steps">
+                  <li>Abrí MeuML y conectá tu Mercado Livre y tu Shopee (OAuth, sin contraseñas).</li>
+                  <li>Elegí qué anuncios querés replicar.</li>
+                  <li>Ajustá precio y envío por plataforma (reglas de markup).</li>
+                  <li>Clona: MeuML mapea categoría, atributos y re-sube las fotos.</li>
+                </ol>
+                <a class="primary-button pub-dest-cta" href="https://meuml.com/copiar-anuncio-mercado-livre-shopee/" target="_blank" rel="noopener">Abrir MeuML ↗</a>
+                <p class="pub-dest-note">Suplementos: Shopee da de baja anuncios con claims de cura, adelgazar o anabólicos. Mantené título y descripción conformes a ANVISA.</p>
+              </article>
+
+              <!-- Destino 3: Amazon, en evaluación (categoría gated + sin clonador directo) -->
+              <article class="pub-dest-card is-soon">
+                <div class="pub-dest-top">
+                  <span class="pub-dest-badge is-soon">En evaluación</span>
+                  <span class="pub-dest-flow">Mercado Livre → Amazon</span>
+                </div>
+                <h3>Clonar a Amazon</h3>
+                <p>Amazon Brasil tiene los <b>suplementos restringidos</b>: hay que desbloquear la categoría a mano (licencia sanitaria + ANVISA) y no existe un clonador directo tan simple como el de Shopee.</p>
+                <p class="pub-dest-note">Cuando tengas la categoría desbloqueada en Seller Central, lo evaluamos y armamos el conector.</p>
+              </article>
+            </div>
           </div>
 
           <div class="tools-layout is-hidden" id="toolsLayout">
