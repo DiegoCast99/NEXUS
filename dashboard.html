@@ -32,7 +32,7 @@
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260724-adapt1" />
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260727-rev1" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260712-dedup1" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260804-ads1" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260804-ads2" />
     <link rel="stylesheet" href="./css/dashboard/tools.css?v=20260804-hub1" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260724-adapt1" />
@@ -982,28 +982,65 @@
               </div>
 
               <p class="meta-message" id="adsMessage"></p>
-              <div class="metric-grid ads-stats" id="adsStats"></div>
 
-              <div class="table-wrap">
-                <table class="meta-table ads-table">
-                  <thead>
-                    <tr>
-                      <th>Campaña</th>
-                      <th>Estado</th>
-                      <th>Presupuesto</th>
-                      <th>Gasto</th>
-                      <th>Impresiones</th>
-                      <th>Clicks</th>
-                      <th>ROAS</th>
-                    </tr>
-                  </thead>
-                  <tbody id="adsTableBody"></tbody>
-                </table>
-                <div class="empty-state" id="adsEmpty">
-                  <span></span>
-                  <h3>Sin campañas todavía</h3>
-                  <p>Activá Product Ads en tu cuenta de Mercado Libre y reconectá para ver acá tus campañas, métricas y gasto.</p>
+              <!-- Lista de campañas (tocá una fila para gestionarla) -->
+              <div id="adsLista">
+                <div class="metric-grid ads-stats" id="adsStats"></div>
+                <div class="table-wrap">
+                  <table class="meta-table ads-table">
+                    <thead>
+                      <tr>
+                        <th>Campaña</th>
+                        <th>Estado</th>
+                        <th>Presupuesto</th>
+                        <th>Gasto</th>
+                        <th>Impresiones</th>
+                        <th>Clicks</th>
+                        <th>ROAS</th>
+                      </tr>
+                    </thead>
+                    <tbody id="adsTableBody"></tbody>
+                  </table>
+                  <div class="empty-state" id="adsEmpty">
+                    <span></span>
+                    <h3>Sin campañas todavía</h3>
+                    <p>Activá Product Ads en tu cuenta de Mercado Libre y reconectá para ver acá tus campañas, métricas y gasto.</p>
+                  </div>
                 </div>
+              </div>
+
+              <!-- Detalle + controles de una campaña (pausar, presupuesto, anuncios) -->
+              <div id="adsDetail" class="is-hidden">
+                <button class="ghost-button ads-back" type="button" id="adsBack">← Volver a campañas</button>
+                <div class="ads-detail-head">
+                  <h3 id="adsDetailName">—</h3>
+                  <span id="adsDetailStatus"></span>
+                </div>
+
+                <div class="ads-controls">
+                  <button class="primary-button" type="button" id="adsToggleBtn">Pausar campaña</button>
+                  <label class="field compact-field">
+                    <span>Presupuesto diario</span>
+                    <input type="text" inputmode="decimal" id="adsBudgetInput" placeholder="0" />
+                  </label>
+                  <label class="field compact-field">
+                    <span>ROAS objetivo</span>
+                    <input type="text" inputmode="decimal" id="adsRoasInput" placeholder="0" />
+                  </label>
+                  <button class="ghost-button" type="button" id="adsSaveBtn">Guardar cambios</button>
+                </div>
+
+                <h4 class="ads-subtitle">Anuncios de la campaña</h4>
+                <div class="ads-additem">
+                  <label class="field compact-field">
+                    <span>Agregar publicación (ID)</span>
+                    <input type="text" id="adsAddInput" placeholder="MLB..." autocomplete="off" />
+                  </label>
+                  <button class="ghost-button" type="button" id="adsAddBtn">Agregar anuncio</button>
+                </div>
+                <ul class="ads-item-list" id="adsItemList"></ul>
+
+                <p class="meta-message" id="adsDetailMsg"></p>
               </div>
             </section>
           </div>
@@ -1232,18 +1269,18 @@
     <script src="./js/firebase/secure-api.js?v=20260803-mp2"></script>
     <!-- Dashboard modules -->
     <script src="./js/core/auth.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/store.js?v=20260804-ads1"></script>
+    <script src="./js/dashboard/store.js?v=20260804-ads2"></script>
     <script src="./js/dashboard/integration-core.js?v=20260716-live1"></script>
     <script src="./js/dashboard/charts.js?v=20260727-rev2"></script>
     <script src="./js/dashboard/finance.js?v=20260727-rev2"></script>
     <script src="./js/dashboard/revolut.js?v=20260727-rev1"></script>
     <script src="./js/dashboard/meta.js?v=20260716-nav1"></script>
-    <script src="./js/dashboard/commerce.js?v=20260804-ads1"></script>
+    <script src="./js/dashboard/commerce.js?v=20260804-ads2"></script>
     <script src="./js/dashboard/notifications.js?v=20260717-acct4"></script>
     <script src="./js/dashboard/tools.js?v=20260727-mob5"></script>
     <script src="./js/dashboard/platform-nav.js?v=20260804-ads1"></script>
     <script src="./js/dashboard/router.js?v=20260727-mob5"></script>
-    <script src="./js/dashboard/app.js?v=20260804-ads1"></script>
+    <script src="./js/dashboard/app.js?v=20260804-ads2"></script>
     <script src="./js/dashboard/mobile-tables.js?v=20260727-mob3"></script>
     <script src="./js/pwa.js?v=20260711-push1" defer></script>
   </body>

@@ -217,6 +217,22 @@
     });
     elements.ventaBack?.addEventListener("click", () => S.cerrarVentaDetail());
     elements.adsReload?.addEventListener("click", () => S.reloadAds());
+    // Tocar una campaña abre su detalle con los controles (pausar, presupuesto, anuncios).
+    elements.adsTableBody?.addEventListener("click", (event) => {
+      const row = event.target.closest("tr[data-ads-campaign]");
+      if (!row) return;
+      S.renderAdsDetail(row.getAttribute("data-ads-campaign"));
+    });
+    elements.adsBack?.addEventListener("click", () => S.adsCerrarDetail());
+    elements.adsToggleBtn?.addEventListener("click", () => S.adsToggleCampaign());
+    elements.adsSaveBtn?.addEventListener("click", () => S.adsGuardarCampaign());
+    elements.adsAddBtn?.addEventListener("click", () => S.adsAgregarItem());
+    // Pausar/activar un anuncio dentro de la campaña (delegado, se re-renderiza).
+    elements.adsItemList?.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-ads-item]");
+      if (!btn) return;
+      S.adsToggleItem(btn.getAttribute("data-ads-item"), btn.getAttribute("data-activar") === "1");
+    });
     // Lo tipeado queda pendiente en memoria: recien se manda a ML al Guardar.
     elements.mlListingsTable?.addEventListener("input", (event) => {
       const inp = event.target.closest("input[data-listing-stock], input[data-variant-stock]");

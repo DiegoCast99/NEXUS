@@ -1419,9 +1419,10 @@
     }
 
     if (d.section === "publicidad") {
-      // Al entrar a Publicidad: si no se trajeron las campañas todavia, traerlas
-      // (lazy, como Publicaciones). Si ya estan, solo repintar.
+      // Al entrar a Publicidad: siempre a la lista (no a un detalle viejo). Si no
+      // se trajeron las campañas todavia, traerlas (lazy). Si ya estan, repintar.
       if (isMLApp(state.commerce.selectedApp)) {
+        adsCerrarDetail();
         var ca = adsDatos(activeMLId());
         if (!ca.campaigns && !ca.error && !ca.cargando) cargarAds(activeMLId());
         else renderAdsPanel();
@@ -2304,6 +2305,11 @@
     var adv = advertisers[0];
     var advertiserId = adv.advertiser_id || adv.id;
     var siteId = adv.site_id || "MLU";
+    // Guardar advertiser+site: los necesitan las operaciones de escritura
+    // (pausar, presupuesto, items) sin volver a pedir el advertiser.
+    var cc = adsDatos(cuenta);
+    cc.advertiserId = advertiserId;
+    cc.siteId = siteId;
     // 2) campañas con metricas (rango 90 dias: tope de la API)
     var qs = "/marketplace/advertising/" + siteId + "/advertisers/" + advertiserId +
       "/product_ads/campaigns/search?limit=100&date_from=" + adsDesdeISO(89) + "&date_to=" + hoyISO() +
@@ -2369,7 +2375,7 @@
 
     if (elements.adsTableBody) {
       elements.adsTableBody.innerHTML = hay ? campaigns.map(function (c) {
-        return "<tr>" +
+        return '<tr class="ads-row" data-ads-campaign="' + escapeHtml(c.id) + '" title="Gestionar campaña">' +
           "<td>" + escapeHtml(c.name) + "</td>" +
           "<td>" + estadoAdsPill(c.status) + "</td>" +
           '<td class="num">' + (c.budget ? moneyWithCents.format(c.budget) : "—") + "</td>" +
@@ -2380,6 +2386,158 @@
         "</tr>";
       }).join("") : "";
     }
+  }
+
+  /* ---- Fase 2: ESCRITURA (pausar, presupuesto, ROAS, anuncios) ----
+     ML no publica los paths de escritura abiertamente y no se pudieron probar
+     en vivo: van CENTRALIZADOS aca (un solo lugar para corregir si la respuesta
+     real difiere) y SIEMPRE con confirmacion del titular antes de tocar la
+     publicidad real. */
+  var adsCampActual = null;
+
+  function adsBasePath(cache) {
+    return "/marketplace/advertising/" + cache.siteId + "/advertisers/" + cache.advertiserId + "/product_ads";
+  }
+  function adsParseNum(v) {
+    var n = Number(String(v == null ? "" : v).replace(/[^\d.,]/g, "").replace(/\.(?=\d{3}\b)/g, "").replace(",", "."));
+    return Number.isFinite(n) ? n : NaN;
+  }
+  function adsErr(e) {
+    var st = (e && (e.mlStatus || e.httpStatus)) || 0;
+    return ((e && e.message) ? e.message : "error") + (st ? " (" + st + ")" : "");
+  }
+  function setAdsDetailMsg(txt, tipo) {
+    if (!elements.adsDetailMsg) return;
+    elements.adsDetailMsg.textContent = txt || "";
+    elements.adsDetailMsg.className = "meta-message" + (tipo ? " is-" + tipo : "");
+  }
+  function adsCampaignById(id) {
+    var c = adsDatos(activeMLId()).campaigns || [];
+    for (var i = 0; i < c.length; i++) if (String(c[i].id) === String(id)) return c[i];
+    return null;
+  }
+  function adsEsActiva(status) { return status === "active" || status === "enabled"; }
+
+  async function adsUpdateCampaign(cuenta, campaignId, patch) {
+    var api = S.requireSecureApi();
+    var cache = adsDatos(cuenta);
+    if (!cache.siteId || !cache.advertiserId) throw new Error("Recargá la sección de Publicidad primero.");
+    return api.mlApi(adsBasePath(cache) + "/campaigns/" + campaignId, "PUT", patch, cuenta);
+  }
+
+  function renderAdsDetail(campaignId) {
+    var camp = adsCampaignById(campaignId);
+    if (!camp || !elements.adsDetail) return;
+    adsCampActual = camp;
+    txtVenta(elements.adsDetailName, camp.name);
+    if (elements.adsDetailStatus) elements.adsDetailStatus.innerHTML = estadoAdsPill(camp.status);
+    if (elements.adsToggleBtn) elements.adsToggleBtn.textContent = adsEsActiva(camp.status) ? "Pausar campaña" : "Activar campaña";
+    if (elements.adsBudgetInput) elements.adsBudgetInput.value = camp.budget || "";
+    if (elements.adsRoasInput) elements.adsRoasInput.value = camp.roas || "";
+    setAdsDetailMsg("");
+    if (elements.adsItemList) elements.adsItemList.innerHTML = '<li class="ads-item-empty">Cargando anuncios…</li>';
+    elements.adsLista?.classList.add("is-hidden");
+    elements.adsDetail.classList.remove("is-hidden");
+    elements.adsDetail.scrollIntoView({ behavior: "smooth", block: "start" });
+    cargarAdsItems(campaignId);
+  }
+  function adsCerrarDetail() {
+    adsCampActual = null;
+    elements.adsDetail?.classList.add("is-hidden");
+    elements.adsLista?.classList.remove("is-hidden");
+  }
+
+  async function adsToggleCampaign() {
+    if (!adsCampActual) return;
+    var activar = !adsEsActiva(adsCampActual.status);
+    if (!window.confirm((activar ? "¿Activar" : "¿Pausar") + ' la campaña "' + adsCampActual.name + '" en Mercado Libre?')) return;
+    var cuenta = activeMLId(), id = adsCampActual.id;
+    setAdsDetailMsg((activar ? "Activando" : "Pausando") + "…");
+    try {
+      await adsUpdateCampaign(cuenta, id, { status: activar ? "active" : "paused" });
+      setAdsDetailMsg(activar ? "Campaña activada." : "Campaña pausada.", "success");
+      await cargarAds(cuenta);
+      renderAdsDetail(id);
+    } catch (e) { setAdsDetailMsg("No se pudo cambiar el estado: " + adsErr(e), "error"); }
+  }
+
+  async function adsGuardarCampaign() {
+    if (!adsCampActual) return;
+    var cuenta = activeMLId(), id = adsCampActual.id;
+    var budget = adsParseNum(elements.adsBudgetInput ? elements.adsBudgetInput.value : "");
+    var roas = adsParseNum(elements.adsRoasInput ? elements.adsRoasInput.value : "");
+    var patch = {};
+    if (Number.isFinite(budget) && budget > 0) patch.budget = budget;
+    if (Number.isFinite(roas) && roas > 0) patch.roas_target = roas;
+    if (!Object.keys(patch).length) { setAdsDetailMsg("Poné un presupuesto o ROAS válido.", "error"); return; }
+    if (!window.confirm("¿Guardar estos cambios en la campaña en Mercado Libre?")) return;
+    setAdsDetailMsg("Guardando…");
+    try {
+      await adsUpdateCampaign(cuenta, id, patch);
+      setAdsDetailMsg("Cambios guardados.", "success");
+      await cargarAds(cuenta);
+      renderAdsDetail(id);
+    } catch (e) { setAdsDetailMsg("No se pudo guardar: " + adsErr(e), "error"); }
+  }
+
+  // Anuncios (items) de una campaña
+  async function cargarAdsItems(campaignId) {
+    if (!elements.adsItemList) return;
+    var cuenta = activeMLId();
+    try {
+      var api = S.requireSecureApi();
+      var cache = adsDatos(cuenta);
+      var res = await api.mlApi(adsBasePath(cache) + "/campaigns/" + campaignId + "/items?limit=100", "GET", null, cuenta);
+      var results = (res.payload && (res.payload.results || res.payload)) || [];
+      renderAdsItems(Array.isArray(results) ? results : []);
+    } catch (e) {
+      elements.adsItemList.innerHTML = '<li class="ads-item-empty">No se pudieron traer los anuncios (' + escapeHtml(adsErr(e)) + ").</li>";
+    }
+  }
+  function renderAdsItems(items) {
+    if (!elements.adsItemList) return;
+    if (!items.length) { elements.adsItemList.innerHTML = '<li class="ads-item-empty">Esta campaña no tiene anuncios. Agregá uno arriba.</li>'; return; }
+    elements.adsItemList.innerHTML = items.map(function (it) {
+      var id = it.item_id || it.id || "";
+      var titulo = it.title || it.item_id || id;
+      var st = String(it.status || "").toLowerCase();
+      var activo = adsEsActiva(st);
+      return '<li class="ads-item">' +
+        '<span class="ads-item-title">' + escapeHtml(String(titulo)) + "</span>" +
+        '<span class="ads-item-status">' + estadoAdsPill(st) + "</span>" +
+        '<button class="ghost-button ads-item-btn" type="button" data-ads-item="' + escapeHtml(String(id)) +
+          '" data-activar="' + (activo ? "0" : "1") + '">' + (activo ? "Pausar" : "Activar") + "</button>" +
+      "</li>";
+    }).join("");
+  }
+  async function adsToggleItem(itemId, activar) {
+    if (!adsCampActual || !itemId) return;
+    var cuenta = activeMLId(), campId = adsCampActual.id;
+    if (!window.confirm((activar ? "¿Activar" : "¿Pausar") + " el anuncio " + itemId + "?")) return;
+    setAdsDetailMsg((activar ? "Activando" : "Pausando") + " anuncio…");
+    try {
+      var api = S.requireSecureApi();
+      var cache = adsDatos(cuenta);
+      await api.mlApi(adsBasePath(cache) + "/campaigns/" + campId + "/items/" + itemId, "PUT", { status: activar ? "active" : "paused" }, cuenta);
+      setAdsDetailMsg("Anuncio actualizado.", "success");
+      cargarAdsItems(campId);
+    } catch (e) { setAdsDetailMsg("No se pudo actualizar el anuncio: " + adsErr(e), "error"); }
+  }
+  async function adsAgregarItem() {
+    if (!adsCampActual) return;
+    var cuenta = activeMLId(), campId = adsCampActual.id;
+    var itemId = (elements.adsAddInput ? elements.adsAddInput.value : "").trim().toUpperCase();
+    if (!itemId) { setAdsDetailMsg("Poné el ID de la publicación (ej: MLB123...).", "error"); return; }
+    if (!window.confirm("¿Agregar la publicación " + itemId + " a esta campaña?")) return;
+    setAdsDetailMsg("Agregando anuncio…");
+    try {
+      var api = S.requireSecureApi();
+      var cache = adsDatos(cuenta);
+      await api.mlApi(adsBasePath(cache) + "/campaigns/" + campId + "/items", "POST", { item_id: itemId }, cuenta);
+      if (elements.adsAddInput) elements.adsAddInput.value = "";
+      setAdsDetailMsg("Anuncio agregado.", "success");
+      cargarAdsItems(campId);
+    } catch (e) { setAdsDetailMsg("No se pudo agregar: " + adsErr(e), "error"); }
   }
 
   Object.assign(S, {
@@ -2393,5 +2551,6 @@
     renderMercadoPago, resumenMercadoPago, guardarTokenMP,
     renderVentaDetail, cerrarVentaDetail,
     renderAdsPanel, cargarAds, reloadAds,
+    renderAdsDetail, adsCerrarDetail, adsToggleCampaign, adsGuardarCampaign, adsAgregarItem, adsToggleItem,
   });
 })();
