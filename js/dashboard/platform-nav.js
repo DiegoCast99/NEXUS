@@ -27,9 +27,8 @@
   var SECTIONS = {
     ecommerce: [
       { id: "resumen", label: "Metricas", hint: "Ventas, costos y tendencia" },
-      { id: "pedidos", label: "Pedidos", hint: "Operaciones recientes" },
+      { id: "pedidos", label: "Ventas", hint: "Detalle de tus ventas" },
       { id: "publicaciones", label: "Publicaciones", hint: "Stock y estado", flag: "ml" },
-      { id: "mercadopago", label: "Mercado Pago", hint: "Cobros y liberaciones", flag: "ml" },
       { id: "productos", label: "Productos", hint: "Top rendimiento" },
       { id: "config", label: "Configuracion", hint: "Conexion y avisos" }
     ],

@@ -921,3 +921,130 @@
 @media (max-width: 760px) {
   .mp-connect-row > * { width: 100%; }
 }
+
+/* ============================================================
+   Detalle de una venta (réplica del layout de Mercado Libre)
+   ============================================================ */
+.venta-row { cursor: pointer; transition: background 0.12s ease; }
+.venta-row:hover { background: rgba(255, 255, 255, 0.045); }
+
+.venta-back { margin-bottom: 16px; }
+
+.venta-detail-head { margin-bottom: 18px; }
+.venta-detail-head h2 {
+  margin: 0 0 6px;
+  font-size: clamp(18px, 3.4vw, 24px);
+  line-height: 1.2;
+  color: var(--text);
+}
+.venta-sub {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.venta-ml-badge {
+  display: inline-grid;
+  place-items: center;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: #ffe600;
+  color: #2d3277;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+/* Dos columnas: producto (izquierda) + desglose (derecha), como en ML */
+.venta-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 16px;
+  align-items: start;
+  margin-bottom: 18px;
+}
+@media (max-width: 720px) {
+  .venta-detail-grid { grid-template-columns: minmax(0, 1fr); }
+}
+
+.venta-producto-card {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel);
+}
+.venta-foto-wrap {
+  flex: 0 0 auto;
+  width: 84px;
+  height: 84px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--panel-soft);
+  display: grid;
+  place-items: center;
+}
+.venta-foto { width: 84px; height: 84px; object-fit: cover; }
+.venta-producto-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.venta-producto-info b { color: var(--text); font-size: 14.5px; line-height: 1.35; }
+
+.venta-desglose {
+  padding: 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel-strong);
+}
+.venta-desglose-titulo { margin: 0 0 2px; font-size: 15px; color: var(--green); }
+.venta-pago-id { margin: 0 0 12px; font-size: 11.5px; }
+.venta-linea {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13.5px;
+  color: var(--muted);
+}
+.venta-linea b { color: var(--text); font-weight: 600; }
+.venta-linea .venta-neg { color: var(--danger); }
+.venta-total {
+  border-bottom: none;
+  margin-top: 4px;
+  padding-top: 13px;
+  font-size: 15px;
+  color: var(--text);
+}
+.venta-total b { color: var(--green); font-size: 18px; }
+.venta-liberacion { margin: 12px 0 0; font-size: 11.5px; line-height: 1.5; }
+
+/* Bloques de datos: comprador, envío, producto */
+.venta-bloque {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  margin-bottom: 12px;
+}
+.venta-bloque-titulo {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.venta-dato {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 13px;
+}
+.venta-dato + .venta-dato { border-top: 1px solid var(--border); }
+.venta-dato span { color: var(--muted); }
+.venta-dato b { color: var(--text); font-weight: 500; text-align: right; }
+.venta-quiet { color: var(--muted); font-size: 12px; }

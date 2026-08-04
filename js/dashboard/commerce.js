@@ -92,6 +92,11 @@
       releaseDate: String(order.releaseDate || ""),
       credited: Boolean(order.credited),
       paymentIds: Array.isArray(order.paymentIds) ? order.paymentIds : [],
+      // Detalle de la venta (vista estilo ML): idem, explicitos.
+      unitPrice: Number(order.unitPrice ?? order.unit_price ?? 0) || 0,
+      variation: String(order.variation || ""),
+      shippingId: String(order.shippingId || ""),
+      paymentId: String(order.paymentId || ""),
       date: String(order.date || order.createdAt || toDateInput()).slice(0, 10)
     };
   }
@@ -347,6 +352,19 @@
     var acreditado = aprobados.length > 0;
     var idsPago = aprobados.map(function (p) { return String(p.id || ""); }).filter(Boolean);
 
+    // Detalle para la vista de venta (estilo ML): precio unitario, variacion
+    // (Sabor / Tipo de envase...), id del envio (para traer la direccion aparte)
+    // y el id del pago (el "#..." que muestra ML arriba del desglose).
+    var primerOI = orderItems[0] || {};
+    var unitPrice = Number(primerOI.unit_price) || (units ? total / units : total);
+    var variAttrs = (firstItem && firstItem.variation_attributes) || [];
+    var variation = variAttrs
+      .map(function (a) { return (a.name || "") + ": " + (a.value_name || ""); })
+      .filter(function (s) { return s !== ": " && s.indexOf(": ") !== s.length - 2; })
+      .join(" · ");
+    var shippingId = (mlOrder.shipping && mlOrder.shipping.id) ? String(mlOrder.shipping.id) : "";
+    var paymentId = idsPago[0] || (payments[0] && payments[0].id ? String(payments[0].id) : "");
+
     return {
       id: String(mlOrder.id || "ML-" + index),
       customer: customer.trim(),
@@ -369,6 +387,10 @@
       releaseDate: liberacion,
       credited: acreditado,
       paymentIds: idsPago,
+      unitPrice: unitPrice,
+      variation: variation,
+      shippingId: shippingId,
+      paymentId: paymentId,
       date: String(mlOrder.date_created || "").slice(0, 10) || toDateInput()
     };
   }
@@ -769,7 +791,7 @@
           ? `<small class="order-stock">Stock: ${integerNumber.format(order.stock)} u.</small>`
           : "";
         return `
-        <tr data-order-id="${escapeHtml(order.id)}">
+        <tr class="venta-row" data-order-id="${escapeHtml(order.id)}" title="Ver detalle de la venta">
           <td>${escapeHtml(order.id)}</td>
           <td>${escapeHtml(order.customer)}</td>
           <td class="order-product">
@@ -845,9 +867,116 @@
       setMlMessage("La venta " + orderId + " todavia no aparece en el periodo actual.", "error");
       return;
     }
-    row.scrollIntoView({ behavior: "smooth", block: "center" });
-    row.classList.add("order-row-flash");
-    window.setTimeout(function () { row.classList.remove("order-row-flash"); }, 7000);
+    // Abrir directo el DETALLE de esa venta (antes solo se resaltaba la fila).
+    renderVentaDetail(orderId);
+  }
+
+  // ---- Detalle de una venta (vista estilo Mercado Libre) -----
+
+  var ventaActual = null;
+
+  function ventaPorId(orderId) {
+    var snap = getCommerceSnapshot(state.commerce.selectedApp);
+    var orders = (snap && snap.orders) || [];
+    for (var i = 0; i < orders.length; i++) {
+      if (String(orders[i].id) === String(orderId)) return orders[i];
+    }
+    return null;
+  }
+
+  function txtVenta(el, value) { if (el) el.textContent = value; }
+
+  function renderVentaDetail(orderId) {
+    if (!elements.ventaDetail) return;
+    var o = ventaPorId(orderId);
+    if (!o) { setMlMessage("No se encontro esa venta en el periodo actual.", "error"); return; }
+    ventaActual = o;
+
+    // Encabezado
+    txtVenta(elements.ventaTitulo, o.product || "Venta");
+    txtVenta(elements.ventaId, "Venta #" + o.id);
+    txtVenta(elements.ventaFecha, S.formatDate(o.date));
+
+    // Izquierda: foto + producto + unidades
+    if (elements.ventaFoto) {
+      if (o.thumbnail) { elements.ventaFoto.src = o.thumbnail; elements.ventaFoto.style.display = ""; }
+      else { elements.ventaFoto.removeAttribute("src"); elements.ventaFoto.style.display = "none"; }
+    }
+    txtVenta(elements.ventaProductoTitulo, o.product || "");
+    txtVenta(elements.ventaVariacion, o.variation || "");
+    if (elements.ventaVariacion) elements.ventaVariacion.style.display = o.variation ? "" : "none";
+    txtVenta(elements.ventaUnidades, (o.units || 1) + ((o.units || 1) === 1 ? " unidad" : " unidades"));
+
+    // Derecha: desglose (a cuanto vendiste, cargos, lucro liquido)
+    var estado = o.refunded ? "Cobro devuelto"
+      : (o.credited ? "Cobro aprobado" : "Cobro " + String(o.status || "").toLowerCase());
+    txtVenta(elements.ventaCobroEstado, estado);
+    txtVenta(elements.ventaPagoId, o.paymentId ? "#" + o.paymentId : "");
+    txtVenta(elements.ventaPrecio, moneyWithCents.format(o.total || 0));
+    txtVenta(elements.ventaCargos, "- " + moneyWithCents.format(o.commission || 0));
+    txtVenta(elements.ventaEnvio, moneyWithCents.format(o.shipping || 0));
+    txtVenta(elements.ventaTotal, moneyWithCents.format(o.margin || 0));
+    txtVenta(elements.ventaLiberacion, o.releaseDate
+      ? "El dinero se libera el " + S.formatDate(o.releaseDate) + "."
+      : "El dinero se libera unos dias despues de la entrega del paquete.");
+
+    // Datos del comprador
+    txtVenta(elements.ventaComprador, o.customer || "Comprador");
+
+    // Datos del producto
+    if (elements.ventaProductoDatos) {
+      var precioU = moneyWithCents.format(o.unitPrice || (o.units ? (o.total || 0) / o.units : o.total || 0));
+      elements.ventaProductoDatos.innerHTML =
+        "<div class='venta-dato'><span>Producto</span><b>" + escapeHtml(o.product || "") + "</b></div>" +
+        (o.variation ? "<div class='venta-dato'><span>Variacion</span><b>" + escapeHtml(o.variation) + "</b></div>" : "") +
+        "<div class='venta-dato'><span>Unidades</span><b>" + (o.units || 1) + "</b></div>" +
+        "<div class='venta-dato'><span>Precio unitario</span><b>" + precioU + "</b></div>";
+    }
+
+    // Datos del envio: best-effort (necesita otra llamada a ML)
+    if (elements.ventaEnvioDatos) {
+      elements.ventaEnvioDatos.textContent = o.shippingId ? "Cargando direccion..." : "Sin datos de envio para esta venta.";
+    }
+    cargarEnvioVenta(o.shippingId);
+
+    // Mostrar el detalle, ocultar la lista
+    elements.ventaLista?.classList.add("is-hidden");
+    elements.ventaDetail.classList.remove("is-hidden");
+    elements.ventaDetail.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function cerrarVentaDetail() {
+    ventaActual = null;
+    elements.ventaDetail?.classList.add("is-hidden");
+    elements.ventaLista?.classList.remove("is-hidden");
+  }
+
+  // Direccion de envio: /shipments/{id} trae receiver_address. Best-effort: si
+  // ML lo restringe o no hay id, se avisa y no rompe nada. Con guard por si el
+  // titular cambio de venta mientras cargaba.
+  async function cargarEnvioVenta(shippingId) {
+    if (!shippingId || !elements.ventaEnvioDatos) return;
+    var pedido = shippingId;
+    try {
+      var api = S.requireSecureApi();
+      var res = await api.mlApi("/shipments/" + shippingId, "GET", null, activeMLId());
+      if (!ventaActual || ventaActual.shippingId !== pedido) return;
+      var p = res.payload || {};
+      var addr = p.receiver_address || {};
+      var linea1 = [addr.street_name, addr.street_number].filter(Boolean).join(" ");
+      var ciudad = [addr.city && addr.city.name, addr.state && addr.state.name].filter(Boolean).join(", ");
+      var nombre = addr.receiver_name || (ventaActual && ventaActual.customer) || "";
+      var filas = [];
+      if (nombre) filas.push("<div class='venta-dato'><span>Destinatario</span><b>" + escapeHtml(nombre) + "</b></div>");
+      if (linea1) filas.push("<div class='venta-dato'><span>Direccion</span><b>" + escapeHtml(linea1) + "</b></div>");
+      if (ciudad) filas.push("<div class='venta-dato'><span>Ciudad</span><b>" + escapeHtml(ciudad) + "</b></div>");
+      if (addr.zip_code) filas.push("<div class='venta-dato'><span>Codigo postal</span><b>" + escapeHtml(String(addr.zip_code)) + "</b></div>");
+      if (addr.comment) filas.push("<div class='venta-dato'><span>Referencia</span><b>" + escapeHtml(String(addr.comment)) + "</b></div>");
+      elements.ventaEnvioDatos.innerHTML = filas.length ? filas.join("") : "Mercado Libre no devolvio la direccion de esta venta.";
+    } catch (e) {
+      if (!ventaActual || ventaActual.shippingId !== pedido) return;
+      elements.ventaEnvioDatos.textContent = "No se pudo traer la direccion de envio (Mercado Libre la restringe para esta cuenta).";
+    }
   }
 
   // ---- Publicaciones (catalogo de ML con escritura) ----------
@@ -1206,13 +1335,13 @@
     var d = (event && event.detail) || {};
     if (d.module !== "ecommerce") return;
 
-    if (d.section === "publicaciones") {
-      if (isMLApp(state.commerce.selectedApp)) loadMLListings(false);
+    if (d.section === "pedidos") {
+      cerrarVentaDetail();   // al entrar a Ventas, siempre se ve la lista
       return;
     }
 
-    if (d.section === "mercadopago") {
-      if (isMLApp(state.commerce.selectedApp)) renderMercadoPago();
+    if (d.section === "publicaciones") {
+      if (isMLApp(state.commerce.selectedApp)) loadMLListings(false);
       return;
     }
 
@@ -1332,21 +1461,33 @@
     var fuente = usaPagos ? "de tus pagos reales de MP" : "estimado por tus ventas";
     var pieLib = usaPagos ? "de tus pagos reales" : (aLiberar > 0 ? "estimado por tus ventas" : "nada pendiente");
 
-    // --- Hero GRANDE = SALDO DISPONIBLE real de tu billetera (como en MP). Ese
-    // numero solo lo da MP si el balance de billetera esta habilitado para el
-    // token; si no (lo comun en tokens de app), va "—" y se aclara — no se
-    // inventa. La fila de abajo lleva el "a liberar", que SIEMPRE es exacto. ---
+    // --- Hero GRANDE = "A liberar de tus ventas": el numero REAL que si tenemos.
+    // El SALDO DISPONIBLE ($0,28) no se puede ni traer (403) ni CALCULAR: seria
+    // (liberado - retiros), y los retiros MP tampoco los da por API. Calcular
+    // solo con lo liberado daria un numero inflado (todo lo que entro, sin
+    // descontar lo retirado), asi que no se muestra ahi: para el saldo exacto,
+    // "Ir a tu dinero". La fila de abajo lleva lo ya liberado. ---
     if (elements.mpHeroBalance) {
-      elements.mpHeroBalance.textContent = usaSaldoReal ? moneyWithCents.format(cache.saldo.disponible) : "—";
+      elements.mpHeroBalance.textContent = usaSaldoReal ? moneyWithCents.format(cache.saldo.disponible) : moneyWithCents.format(aLiberar);
     }
     if (elements.mpHeroGrowth) {
       elements.mpHeroGrowth.classList.remove("is-up");
       elements.mpHeroGrowth.textContent = usaSaldoReal
         ? "Saldo disponible real en tu billetera"
-        : "MP no comparte tu saldo por API — miralo con “Ir a tu dinero”";
+        : "Pendiente de liberar · tu saldo disponible exacto: tocá “Ir a tu dinero”";
     }
-    // Fila de abajo: A LIBERAR (pendiente de liberar), real de tus pagos de MP.
-    if (elements.mpReleaseAmount) elements.mpReleaseAmount.textContent = moneyWithCents.format(aLiberar);
+    // Fila de abajo: PROXIMA liberacion (fecha + monto de lo proximo que se
+    // libera). Numero chico y con fecha: no se confunde con un saldo.
+    if (elements.mpReleaseAmount) {
+      if (usaPagos && pagosReal.proxFecha) {
+        elements.mpReleaseAmount.textContent = moneyWithCents.format(pagosReal.proxMonto) + " · " + S.formatDate(pagosReal.proxFecha);
+      } else {
+        var fp = Object.keys(r.proximas).sort();
+        elements.mpReleaseAmount.textContent = fp.length
+          ? moneyWithCents.format(r.proximas[fp[0]]) + " · " + S.formatDate(fp[0])
+          : "sin fecha próxima";
+      }
+    }
 
     // --- Últimas actividades: los cobros como lista, estilo MP ---
     if (elements.mpActivityList) {
@@ -1541,6 +1682,7 @@
   function resumenPagosMP(pagos) {
     var ahora = new Date().toISOString();
     var aLiberar = 0, liberado = 0, pendientes = 0, contados = 0;
+    var proximas = {};                 // fecha (YYYY-MM-DD) -> neto que se libera ese dia
     (pagos || []).forEach(function (pg) {
       if (!pg || pg.status !== "approved") return;
       var td = pg.transaction_details || {};
@@ -1553,10 +1695,18 @@
       contados++;
       var rel = String(pg.money_release_date || "");
       var pendiente = pg.money_release_status === "pending" || (rel && rel > ahora);
-      if (pendiente) { aLiberar += neto; pendientes++; }
-      else liberado += neto;
+      if (pendiente) {
+        aLiberar += neto; pendientes++;
+        if (rel) { var d = rel.slice(0, 10); proximas[d] = (proximas[d] || 0) + neto; }
+      } else {
+        liberado += neto;
+      }
     });
-    return { aLiberar: aLiberar, liberado: liberado, pendientes: pendientes, contados: contados };
+    var fechasP = Object.keys(proximas).sort();
+    return {
+      aLiberar: aLiberar, liberado: liberado, pendientes: pendientes, contados: contados,
+      proxFecha: fechasP[0] || null, proxMonto: fechasP.length ? proximas[fechasP[0]] : 0
+    };
   }
 
   // Fecha de liberacion de cada pago. NO viene en /orders/search: hay que
@@ -2008,5 +2158,6 @@
     scheduleCommerceRefresh, scheduleMLRefresh, selectCommerceApp, setCommerceMessage, setMlMessage,
     startMLOAuth, syncCommerce, syncMercadoLibre,
     renderMercadoPago, resumenMercadoPago, guardarTokenMP,
+    renderVentaDetail, cerrarVentaDetail,
   });
 })();

@@ -32,7 +32,7 @@
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260724-adapt1" />
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260727-rev1" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260712-dedup1" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260803-mp3" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260803-ventas1" />
     <link rel="stylesheet" href="./css/dashboard/tools.css?v=20260721-pub7" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260724-adapt1" />
@@ -701,7 +701,7 @@
             <article class="metric-card">
               <span>Cantidad de ventas</span>
               <strong id="commerceOrdersValue">0</strong>
-              <small id="commerceOrdersHint">Ordenes del periodo</small>
+              <small id="commerceOrdersHint">Ventas del periodo</small>
             </article>
             <article class="metric-card">
               <span>Unidades vendidas</span>
@@ -760,11 +760,11 @@
               <div class="panel-heading">
                 <div>
                   <span>Ventas</span>
-                  <h2>Ingresos y pedidos por dia</h2>
+                  <h2>Ingresos y ventas por dia</h2>
                 </div>
                 <div class="chart-legend" aria-hidden="true">
-                  <span><i class="income-dot"></i>Ventas</span>
-                  <span><i class="cyan-dot"></i>Pedidos</span>
+                  <span><i class="income-dot"></i>Ingresos</span>
+                  <span><i class="cyan-dot"></i>Cantidad</span>
                 </div>
               </div>
               <canvas id="commerceTrendChart" height="280"></canvas>
@@ -800,30 +800,86 @@
             </section>
 
             <section class="panel wide-panel" data-section="pedidos">
-              <div class="panel-heading">
-                <div>
-                  <span>Pedidos</span>
-                  <h2>Operaciones recientes</h2>
+              <!-- ===== Lista de ventas (tocá una fila para ver el detalle) ===== -->
+              <div id="ventaLista">
+                <div class="panel-heading">
+                  <div>
+                    <span>Ventas</span>
+                    <h2>Detalle de tus ventas</h2>
+                  </div>
+                </div>
+                <div class="table-wrap meta-table-wrap">
+                  <table class="meta-table ventas-table">
+                    <thead>
+                      <tr>
+                        <th>Venta</th>
+                        <th>Cliente</th>
+                        <th>Producto</th>
+                        <th>Estado</th>
+                        <th>Total</th>
+                        <th>Lucro</th>
+                      </tr>
+                    </thead>
+                    <tbody id="commerceOrdersTable"></tbody>
+                  </table>
+                  <div class="empty-state" id="commerceEmptyState">
+                    <span></span>
+                    <h3>Sin ventas todavía</h3>
+                    <p>Selecciona un negocio y conecta su fuente de datos para ver tus ventas.</p>
+                  </div>
                 </div>
               </div>
-              <div class="table-wrap meta-table-wrap">
-                <table class="meta-table">
-                  <thead>
-                    <tr>
-                      <th>Pedido</th>
-                      <th>Cliente</th>
-                      <th>Producto</th>
-                      <th>Estado</th>
-                      <th>Total</th>
-                      <th>Margen</th>
-                    </tr>
-                  </thead>
-                  <tbody id="commerceOrdersTable"></tbody>
-                </table>
-                <div class="empty-state" id="commerceEmptyState">
-                  <span></span>
-                  <h3>E-Commerce sin datos</h3>
-                  <p>Selecciona un negocio y conecta su fuente de datos para activar esta vista.</p>
+
+              <!-- ===== Detalle de una venta (réplica del layout de Mercado Libre) ===== -->
+              <div id="ventaDetail" class="venta-detail is-hidden">
+                <button class="ghost-button venta-back" type="button" id="ventaBack">← Volver a ventas</button>
+
+                <div class="venta-detail-head">
+                  <h2 id="ventaTitulo">—</h2>
+                  <p class="venta-sub">
+                    <span class="venta-ml-badge">ML</span>
+                    <span id="ventaId"></span> · <span id="ventaFecha"></span>
+                  </p>
+                </div>
+
+                <div class="venta-detail-grid">
+                  <!-- Izquierda: foto + producto + unidades -->
+                  <div class="venta-producto-card">
+                    <span class="venta-foto-wrap">
+                      <img id="ventaFoto" class="venta-foto" alt="" onerror="this.style.display='none'" />
+                    </span>
+                    <div class="venta-producto-info">
+                      <b id="ventaProductoTitulo"></b>
+                      <small id="ventaVariacion" class="venta-quiet"></small>
+                      <small id="ventaUnidades" class="venta-quiet"></small>
+                    </div>
+                  </div>
+
+                  <!-- Derecha: desglose (a cuánto vendiste, cargos, lucro) -->
+                  <div class="venta-desglose">
+                    <h3 class="venta-desglose-titulo" id="ventaCobroEstado">Cobro aprobado</h3>
+                    <p class="venta-pago-id venta-quiet" id="ventaPagoId"></p>
+                    <div class="venta-linea"><span>Precio del producto</span><b id="ventaPrecio"></b></div>
+                    <div class="venta-linea"><span>Cargos por venta</span><b class="venta-neg" id="ventaCargos"></b></div>
+                    <div class="venta-linea"><span>Envíos</span><b id="ventaEnvio"></b></div>
+                    <div class="venta-linea venta-total"><span>Lucro líquido</span><b id="ventaTotal"></b></div>
+                    <p class="venta-liberacion venta-quiet" id="ventaLiberacion"></p>
+                  </div>
+                </div>
+
+                <div class="venta-bloque">
+                  <h3 class="venta-bloque-titulo">Datos del comprador</h3>
+                  <div id="ventaComprador"></div>
+                </div>
+
+                <div class="venta-bloque" id="ventaEnvioBloque">
+                  <h3 class="venta-bloque-titulo">Datos del envío</h3>
+                  <div id="ventaEnvioDatos" class="venta-quiet">—</div>
+                </div>
+
+                <div class="venta-bloque">
+                  <h3 class="venta-bloque-titulo">Datos del producto</h3>
+                  <div id="ventaProductoDatos"></div>
                 </div>
               </div>
             </section>
@@ -862,111 +918,6 @@
               <p class="meta-message" id="mlListingsMessage"></p>
             </section>
 
-            <!-- ---- Mercado Pago: cobros y liberaciones ---- -->
-            <section class="panel wide-panel" data-section="mercadopago" id="mpPanel">
-              <div class="panel-heading">
-                <div>
-                  <span>Mercado Pago</span>
-                  <h2>Cobros y liberaciones de <span id="mpAccountName">tu cuenta</span></h2>
-                </div>
-              </div>
-
-              <!-- ===== Réplica del panel de Mercado Pago (paleta Nexus) ===== -->
-              <div class="mp-dash" id="mpDash">
-                <div class="mp-hero">
-                  <span class="mp-hero-label">Saldo disponible</span>
-                  <strong class="mp-hero-balance" id="mpHeroBalance">$0,00</strong>
-                  <span class="mp-hero-growth" id="mpHeroGrowth"></span>
-                  <div class="mp-hero-actions">
-                    <a class="mp-hero-btn is-primary" href="https://www.mercadopago.com.uy/money-out" target="_blank" rel="noopener">Transferir</a>
-                    <a class="mp-hero-btn is-ghost" href="https://www.mercadopago.com.uy/home" target="_blank" rel="noopener">Ir a tu dinero</a>
-                  </div>
-                </div>
-
-                <button class="mp-release" id="mpReleaseToggle" type="button" aria-expanded="false" aria-controls="mpDetail">
-                  <span class="mp-release-icon" aria-hidden="true">◷</span>
-                  <span class="mp-release-info">
-                    <span class="mp-release-label">A liberar de tus ventas</span>
-                    <strong class="mp-release-amount" id="mpReleaseAmount">$0,00</strong>
-                  </span>
-                  <span class="mp-release-cta">Consultar todo</span>
-                </button>
-              </div>
-
-              <p class="mp-note" id="mpNote"></p>
-
-              <!-- Conexion propia de Mercado Pago: el token de ML no sirve
-                   para su API (da 403), hace falta el access token de MP. -->
-              <div class="mp-connect" id="mpConnect">
-                <div class="mp-connect-head">
-                  <b>Conectar Mercado Pago</b>
-                  <small id="mpConnectState">Sin conectar</small>
-                </div>
-                <p class="mp-connect-desc">
-                  El saldo de la billetera y las fechas de liberacion viven en la API de Mercado Pago,
-                  que usa credenciales propias. Pega el <b>Access Token de produccion</b> de tu cuenta:
-                  <a href="https://www.mercadopago.com.uy/developers/panel" target="_blank" rel="noopener">Panel de desarrolladores</a>
-                  → tu aplicacion → Credenciales de produccion.
-                </p>
-                <div class="mp-connect-row">
-                  <label class="field compact-field mp-token-field">
-                    <span>Access token de Mercado Pago</span>
-                    <input type="password" id="mpToken" placeholder="APP_USR-..." autocomplete="off" />
-                  </label>
-                  <button class="primary-button" type="button" id="mpSaveToken">Guardar y probar</button>
-                </div>
-                <p class="meta-message" id="mpConnectMsg"></p>
-              </div>
-
-              <!-- Últimas actividades: la lista de movimientos, estilo MP -->
-              <div class="mp-activity">
-                <h3 class="mp-subtitle">Últimas actividades</h3>
-                <ul class="mp-activity-list" id="mpActivityList"></ul>
-                <div class="empty-state" id="mpEmpty">
-                  <span></span>
-                  <h3>Sin actividad en el periodo</h3>
-                  <p>Sincroniza Mercado Libre o ampliá el periodo en Metricas para ver tus movimientos.</p>
-                </div>
-              </div>
-
-              <!-- Detalle completo: se despliega con "Consultar todo" -->
-              <div class="mp-detail is-collapsed" id="mpDetail">
-                <div class="metric-grid mp-stats" id="mpStats"></div>
-                <p class="meta-message" id="mpBalance"></p>
-
-                <div class="mp-split">
-                  <div class="mp-block">
-                    <h3 class="mp-subtitle">Proximas liberaciones</h3>
-                    <div class="table-wrap mp-next-wrap">
-                      <table class="meta-table mp-next-table">
-                        <thead>
-                          <tr><th>Fecha</th><th>Monto</th><th>Cuando</th></tr>
-                        </thead>
-                        <tbody id="mpNextBody"></tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-
-                <h3 class="mp-subtitle">Detalle de cobros</h3>
-                <div class="table-wrap">
-                  <table class="meta-table mp-table">
-                    <thead>
-                      <tr>
-                        <th>Fecha</th>
-                        <th>Venta</th>
-                        <th>Bruto</th>
-                        <th>Cargos</th>
-                        <th>Neto</th>
-                        <th>Se libera</th>
-                        <th>Estado</th>
-                      </tr>
-                    </thead>
-                    <tbody id="mpTableBody"></tbody>
-                  </table>
-                </div>
-              </div>
-            </section>
 
             <section class="panel wide-panel" data-section="productos">
               <div class="panel-heading">
@@ -1162,18 +1113,18 @@
     <script src="./js/firebase/secure-api.js?v=20260803-mp2"></script>
     <!-- Dashboard modules -->
     <script src="./js/core/auth.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/store.js?v=20260803-mp1"></script>
+    <script src="./js/dashboard/store.js?v=20260803-ventas1"></script>
     <script src="./js/dashboard/integration-core.js?v=20260716-live1"></script>
     <script src="./js/dashboard/charts.js?v=20260727-rev2"></script>
     <script src="./js/dashboard/finance.js?v=20260727-rev2"></script>
     <script src="./js/dashboard/revolut.js?v=20260727-rev1"></script>
     <script src="./js/dashboard/meta.js?v=20260716-nav1"></script>
-    <script src="./js/dashboard/commerce.js?v=20260803-mp4"></script>
+    <script src="./js/dashboard/commerce.js?v=20260803-ventas1"></script>
     <script src="./js/dashboard/notifications.js?v=20260717-acct4"></script>
     <script src="./js/dashboard/tools.js?v=20260727-mob5"></script>
-    <script src="./js/dashboard/platform-nav.js?v=20260727-mob2"></script>
+    <script src="./js/dashboard/platform-nav.js?v=20260803-ventas1"></script>
     <script src="./js/dashboard/router.js?v=20260727-mob5"></script>
-    <script src="./js/dashboard/app.js?v=20260803-mp1"></script>
+    <script src="./js/dashboard/app.js?v=20260803-ventas1"></script>
     <script src="./js/dashboard/mobile-tables.js?v=20260727-mob3"></script>
     <script src="./js/pwa.js?v=20260711-push1" defer></script>
   </body>
