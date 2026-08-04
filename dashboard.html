@@ -614,6 +614,48 @@
             </div>
           </div>
 
+          <!-- Panel de conexion de Shopee (Open Platform). El backend se activa
+               cuando el titular carga partner_id/partner_key (paso 1-2). -->
+          <div class="panel commerce-config-panel is-hidden" id="shopeeConnectPanel" data-section="config">
+            <div class="panel-heading">
+              <div>
+                <span>Shopee</span>
+                <h2>Conectar tienda de Shopee</h2>
+              </div>
+              <span class="source-pill" id="shopeeConnectStatus">Sin conectar</span>
+            </div>
+            <p class="ml-connect-desc">Traé tus ventas de Shopee Brasil a Nexus (ventas, lucro, métricas), igual que Mercado Libre. Usa la API oficial de Shopee (Open Platform) — solo para <b>leer ventas</b>, no publicar.</p>
+
+            <div class="shopee-steps">
+              <div class="shopee-step">
+                <span class="shopee-step-num">1</span>
+                <div>
+                  <b>Registrar Nexus en Shopee Open Platform</b>
+                  <small>Con tu <b>CNPJ</b> (empresa, no "Individual"). Ahí salen el <b>partner_id</b> y <b>partner_key</b>. Aprobación de Shopee: oficial 3 días hábiles (puede ir a semanas). Este paso es tuyo — va con tus datos de empresa.</small>
+                </div>
+              </div>
+              <div class="shopee-step">
+                <span class="shopee-step-num">2</span>
+                <div>
+                  <b>Cargar las credenciales (una vez)</b>
+                  <small>Cuando tengas partner_id + partner_key, me las pasás para cargarlas <b>cifradas del lado del servidor</b> (nunca en el chat) y activo el backend de Shopee.</small>
+                </div>
+              </div>
+              <div class="shopee-step">
+                <span class="shopee-step-num">3</span>
+                <div>
+                  <b>Conectar tu tienda con un click</b>
+                  <small>Ahí sí tocás "Conectar Shopee", autorizás tu tienda (OAuth) y tus ventas empiezan a aparecer acá — con el mismo detalle que Mercado Libre.</small>
+                </div>
+              </div>
+            </div>
+
+            <div class="meta-sync-actions">
+              <button class="primary-button" type="button" id="shopeeConnectButton" disabled>Conectar Shopee</button>
+            </div>
+            <p class="meta-message" id="shopeeMessage">La conexión se habilita cuando cargues las credenciales de Shopee Open Platform (pasos 1 y 2). Por ahora la sección queda estructurada y lista.</p>
+          </div>
+
           <form class="panel commerce-config-panel" id="commerceConfigForm" data-section="config">
             <div class="panel-heading">
               <div>

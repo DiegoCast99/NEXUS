@@ -755,12 +755,17 @@
   function renderCommerceDashboard() {
     var hasApp = !!state.commerce.selectedApp;
     var ml = isMLApp(state.commerce.selectedApp);
+    // Shopee tiene su propio panel de conexion (OAuth Open Platform), no el
+    // panel generico de pixel/endpoint. Se estructura ya; el backend se activa
+    // cuando el titular carga las credenciales de Shopee Open Platform.
+    var shopee = state.commerce.selectedApp === "shopee";
 
     elements.commerceAppSwitcher?.classList.toggle("is-hidden", hasApp);
     elements.commerceWorkspace?.classList.toggle("is-hidden", !hasApp);
 
     elements.mlConnectPanel?.classList.toggle("is-hidden", !(hasApp && ml));
-    elements.commerceConfigForm?.classList.toggle("is-hidden", !hasApp || ml);
+    elements.shopeeConnectPanel?.classList.toggle("is-hidden", !(hasApp && shopee));
+    elements.commerceConfigForm?.classList.toggle("is-hidden", !hasApp || ml || shopee);
 
     // Fuera de updateMLPanel a proposito: tiene que correr SIEMPRE, porque es
     // quien oculta el selector de cuentas al entrar a una plataforma que no es
@@ -775,7 +780,7 @@
     const sourceLabel = snapshot?.source === "live" ? "API real" : snapshot?.source === "demo" ? "Demo" : "Datos locales";
 
     renderCommerceSwitcher();
-    if (!ml) populateCommerceConfigForm();
+    if (!ml && !shopee) populateCommerceConfigForm();
 
     if (elements.commerceDataSource) elements.commerceDataSource.textContent = sourceLabel;
     if (elements.commerceRevenueValue) elements.commerceRevenueValue.textContent = currency.format(totals.revenue || 0);

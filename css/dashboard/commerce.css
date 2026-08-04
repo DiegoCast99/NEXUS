@@ -1054,3 +1054,38 @@
 .venta-dato span { color: var(--muted); }
 .venta-dato b { color: var(--text); font-weight: 500; text-align: right; }
 .venta-quiet { color: var(--muted); font-size: 12px; }
+
+/* ============================================================
+   Shopee — pasos de conexión (panel de config de la plataforma)
+   ============================================================ */
+.shopee-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 0 18px;
+}
+.shopee-step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.shopee-step-num {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(238, 77, 45, 0.16);
+  color: #ff7a5c;
+  font-size: 13px;
+  font-weight: 700;
+}
+.shopee-step > div { display: flex; flex-direction: column; gap: 3px; }
+.shopee-step b { color: var(--text); font-size: 13.5px; }
+.shopee-step small { color: var(--muted); font-size: 12px; line-height: 1.55; }
+.shopee-step small b { color: var(--text); font-weight: 600; }
