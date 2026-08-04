@@ -88,6 +88,12 @@ exports.handler = async (event) => {
       },
       cache: "no-store"
     };
+    // La API de Publicidad (Product Ads / Mercado Ads) EXIGE el header
+    // Api-Version. El resto de endpoints de ML lo ignoran, asi que es seguro
+    // ponerlo solo cuando el path es de advertising.
+    if (/\/advertising\//.test(endpoint)) {
+      fetchOpts.headers["Api-Version"] = "2";
+    }
     if (reqBody && (fetchOpts.method === "POST" || fetchOpts.method === "PUT" || fetchOpts.method === "PATCH")) {
       fetchOpts.headers["Content-Type"] = "application/json";
       fetchOpts.body = JSON.stringify(reqBody);

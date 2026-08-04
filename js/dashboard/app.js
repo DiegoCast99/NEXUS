@@ -216,6 +216,7 @@
       S.renderVentaDetail(row.getAttribute("data-order-id"));
     });
     elements.ventaBack?.addEventListener("click", () => S.cerrarVentaDetail());
+    elements.adsReload?.addEventListener("click", () => S.reloadAds());
     // Lo tipeado queda pendiente en memoria: recien se manda a ML al Guardar.
     elements.mlListingsTable?.addEventListener("input", (event) => {
       const inp = event.target.closest("input[data-listing-stock], input[data-variant-stock]");

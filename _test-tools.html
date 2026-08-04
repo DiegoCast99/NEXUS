@@ -26,17 +26,17 @@
         } catch (error) {}
       })();
     </script>
-    <link rel="stylesheet" href="./css/dashboard/base.css?v=1785850902" />
-    <link rel="stylesheet" href="./css/dashboard/layout.css?v=1785850902" />
-    <link rel="stylesheet" href="./css/dashboard/controls.css?v=1785850902" />
-    <link rel="stylesheet" href="./css/dashboard/welcome.css?v=1785850902" />
-    <link rel="stylesheet" href="./css/dashboard/finance.css?v=1785850902" />
-    <link rel="stylesheet" href="./css/dashboard/meta.css?v=1785850902" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=1785850902" />
-    <link rel="stylesheet" href="./css/dashboard/tools.css?v=1785850902" />
-    <link rel="stylesheet" href="./css/dashboard/integrations.css?v=1785850902" />
-    <link rel="stylesheet" href="./css/dashboard/responsive.css?v=1785850902" />
-    <link rel="stylesheet" href="./css/dashboard/mobile.css?v=1785850902" />
+    <link rel="stylesheet" href="./css/dashboard/base.css?v=1785853705" />
+    <link rel="stylesheet" href="./css/dashboard/layout.css?v=1785853705" />
+    <link rel="stylesheet" href="./css/dashboard/controls.css?v=1785853705" />
+    <link rel="stylesheet" href="./css/dashboard/welcome.css?v=1785853705" />
+    <link rel="stylesheet" href="./css/dashboard/finance.css?v=1785853705" />
+    <link rel="stylesheet" href="./css/dashboard/meta.css?v=1785853705" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=1785853705" />
+    <link rel="stylesheet" href="./css/dashboard/tools.css?v=1785853705" />
+    <link rel="stylesheet" href="./css/dashboard/integrations.css?v=1785853705" />
+    <link rel="stylesheet" href="./css/dashboard/responsive.css?v=1785853705" />
+    <link rel="stylesheet" href="./css/dashboard/mobile.css?v=1785853705" />
   </head>
   <body>
     <div class="dashboard-shell" id="dashboardShell">
@@ -970,6 +970,42 @@
               </div>
               <div class="event-list" id="commerceProductList"></div>
             </section>
+
+            <!-- ---- Publicidad: campañas de Product Ads (Mercado Ads) ---- -->
+            <section class="panel wide-panel" data-section="publicidad" id="adsPanel">
+              <div class="panel-heading">
+                <div>
+                  <span>Publicidad</span>
+                  <h2>Campañas de Product Ads</h2>
+                </div>
+                <button class="ghost-button" type="button" id="adsReload">Actualizar</button>
+              </div>
+
+              <p class="meta-message" id="adsMessage"></p>
+              <div class="metric-grid ads-stats" id="adsStats"></div>
+
+              <div class="table-wrap">
+                <table class="meta-table ads-table">
+                  <thead>
+                    <tr>
+                      <th>Campaña</th>
+                      <th>Estado</th>
+                      <th>Presupuesto</th>
+                      <th>Gasto</th>
+                      <th>Impresiones</th>
+                      <th>Clicks</th>
+                      <th>ROAS</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adsTableBody"></tbody>
+                </table>
+                <div class="empty-state" id="adsEmpty">
+                  <span></span>
+                  <h3>Sin campañas todavía</h3>
+                  <p>Activá Product Ads en tu cuenta de Mercado Libre y reconectá para ver acá tus campañas, métricas y gasto.</p>
+                </div>
+              </div>
+            </section>
           </div>
           </div>
         </section>
@@ -1187,21 +1223,21 @@
 
     <!-- Firebase SDK (CDN, builds compat para la API namespaced) -->
     <!-- Nexus Firebase config + auth + db + proxy seguro -->
-    <script src="./js/firebase/secure-api.js?v=1785850902"></script>
+    <script src="./js/firebase/secure-api.js?v=1785853705"></script>
     <!-- Dashboard modules -->
-    <script src="./js/core/auth.js?v=1785850902"></script>
-    <script src="./js/dashboard/store.js?v=1785850902"></script>
-    <script src="./js/dashboard/integration-core.js?v=1785850902"></script>
-    <script src="./js/dashboard/charts.js?v=1785850902"></script>
-    <script src="./js/dashboard/finance.js?v=1785850902"></script>
-    <script src="./js/dashboard/revolut.js?v=1785850902"></script>
-    <script src="./js/dashboard/meta.js?v=1785850902"></script>
-    <script src="./js/dashboard/commerce.js?v=1785850902"></script>
-    <script src="./js/dashboard/notifications.js?v=1785850902"></script>
-    <script src="./js/dashboard/tools.js?v=1785850902"></script>
-    <script src="./js/dashboard/platform-nav.js?v=1785850902"></script>
-    <script src="./js/dashboard/router.js?v=1785850902"></script>
-    <script src="./js/dashboard/app.js?v=1785850902"></script>
-    <script src="./js/dashboard/mobile-tables.js?v=1785850902"></script>
+    <script src="./js/core/auth.js?v=1785853705"></script>
+    <script src="./js/dashboard/store.js?v=1785853705"></script>
+    <script src="./js/dashboard/integration-core.js?v=1785853705"></script>
+    <script src="./js/dashboard/charts.js?v=1785853705"></script>
+    <script src="./js/dashboard/finance.js?v=1785853705"></script>
+    <script src="./js/dashboard/revolut.js?v=1785853705"></script>
+    <script src="./js/dashboard/meta.js?v=1785853705"></script>
+    <script src="./js/dashboard/commerce.js?v=1785853705"></script>
+    <script src="./js/dashboard/notifications.js?v=1785853705"></script>
+    <script src="./js/dashboard/tools.js?v=1785853705"></script>
+    <script src="./js/dashboard/platform-nav.js?v=1785853705"></script>
+    <script src="./js/dashboard/router.js?v=1785853705"></script>
+    <script src="./js/dashboard/app.js?v=1785853705"></script>
+    <script src="./js/dashboard/mobile-tables.js?v=1785853705"></script>
   </body>
 </html>

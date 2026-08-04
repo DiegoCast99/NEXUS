@@ -29,6 +29,7 @@
       { id: "resumen", label: "Metricas", hint: "Ventas, costos y tendencia" },
       { id: "pedidos", label: "Ventas", hint: "Detalle de tus ventas" },
       { id: "publicaciones", label: "Publicaciones", hint: "Stock y estado", flag: "ml" },
+      { id: "publicidad", label: "Publicidad", hint: "Campañas y ROAS", flag: "ml" },
       { id: "productos", label: "Productos", hint: "Top rendimiento" },
       { id: "config", label: "Configuracion", hint: "Conexion y avisos" }
     ],

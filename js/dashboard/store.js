@@ -623,6 +623,13 @@
     ventaEnvioDatos: document.getElementById("ventaEnvioDatos"),
     ventaProductoDatos: document.getElementById("ventaProductoDatos"),
     commerceProductList: document.getElementById("commerceProductList"),
+    // Publicidad (Product Ads / Mercado Ads)
+    adsPanel: document.getElementById("adsPanel"),
+    adsReload: document.getElementById("adsReload"),
+    adsMessage: document.getElementById("adsMessage"),
+    adsStats: document.getElementById("adsStats"),
+    adsTableBody: document.getElementById("adsTableBody"),
+    adsEmpty: document.getElementById("adsEmpty"),
     commerceTrendChart: document.getElementById("commerceTrendChart"),
     chartTooltip: document.getElementById("chartTooltip"),
     toolsCards: document.getElementById("toolsCards"),

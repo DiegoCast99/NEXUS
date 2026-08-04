@@ -1418,6 +1418,17 @@
       return;
     }
 
+    if (d.section === "publicidad") {
+      // Al entrar a Publicidad: si no se trajeron las campañas todavia, traerlas
+      // (lazy, como Publicaciones). Si ya estan, solo repintar.
+      if (isMLApp(state.commerce.selectedApp)) {
+        var ca = adsDatos(activeMLId());
+        if (!ca.campaigns && !ca.error && !ca.cargando) cargarAds(activeMLId());
+        else renderAdsPanel();
+      }
+      return;
+    }
+
     if (d.section === "resumen") {
       dibujarCuandoSeVea(elements.commerceTrendChart, drawCommerceTrendChart);
       if (isMLApp(state.commerce.selectedApp)) {
@@ -2224,6 +2235,153 @@
     }
   }
 
+  /* ============================================================
+     Publicidad — campañas de Product Ads (Mercado Ads)
+     Solo LECTURA (fase 1): trae campañas + metricas + gasto. La API es la
+     misma de ML (host "ml"), con el header Api-Version que agrega el proxy.
+     Los nombres de campos de metricas se leen defensivo (varian por version)
+     y hay que verificarlos contra la respuesta real de la cuenta.
+     ============================================================ */
+  var adsCache = {};
+  function adsDatos(cuenta) {
+    if (!adsCache[cuenta]) adsCache[cuenta] = { campaigns: null, totals: null, error: null, cargando: false };
+    return adsCache[cuenta];
+  }
+
+  function adsNum(o, campos) {
+    for (var i = 0; i < campos.length; i++) {
+      var v = o ? o[campos[i]] : null;
+      if (v != null && !isNaN(Number(v))) return Number(v);
+    }
+    return 0;
+  }
+
+  function adsDesdeISO(dias) {
+    var d = new Date(); d.setDate(d.getDate() - dias);
+    return d.toISOString().slice(0, 10);
+  }
+
+  function normalizeAdsCampaign(c) {
+    var m = c.metrics || c;   // las metricas pueden venir anidadas o al ras
+    var gasto = adsNum(m, ["cost", "total_amount", "spend"]);
+    var clicks = adsNum(m, ["clicks", "total_clicks"]);
+    var prints = adsNum(m, ["prints", "impressions", "total_prints"]);
+    var cpc = adsNum(m, ["cpc"]) || (clicks ? gasto / clicks : 0);
+    var acos = adsNum(m, ["acos"]);
+    var roas = adsNum(m, ["roas", "roas_target"]);
+    if (!roas && acos) roas = 100 / acos;                 // ACOS en %, ROAS = 100/ACOS
+    var revenue = adsNum(m, ["total_amount_ads", "amount", "revenue", "direct_amount"]);
+    if (!roas && revenue && gasto) roas = revenue / gasto;
+    return {
+      id: String(c.id || c.campaign_id || ""),
+      name: String(c.name || c.campaign_name || "Campaña"),
+      status: String(c.status || "").toLowerCase(),
+      budget: adsNum(c, ["budget", "daily_budget"]) || adsNum(m, ["budget"]),
+      gasto: gasto, clicks: clicks, prints: prints, cpc: cpc, roas: roas
+    };
+  }
+
+  function estadoAdsPill(status) {
+    if (status === "active" || status === "enabled") return '<span class="type-pill income">Activa</span>';
+    if (status === "paused") return '<span class="type-pill pub-warn">Pausada</span>';
+    if (status) return '<span class="type-pill expense">' + escapeHtml(status) + "</span>";
+    return '<span class="type-pill">—</span>';
+  }
+
+  function tarjetaAds(titulo, valor, pie, clase) {
+    return '<div class="metric-card ' + (clase || "") + '"><span>' + titulo + "</span>" +
+      "<strong>" + valor + "</strong><small>" + escapeHtml(pie || "") + "</small></div>";
+  }
+
+  async function fetchMLAds(cuenta) {
+    var api = S.requireSecureApi();
+    // 1) advertiser habilitado para Product Ads
+    var advRes = await api.mlApi("/advertising/advertisers?product_id=PADS", "GET", null, cuenta);
+    var advertisers = (advRes.payload && (advRes.payload.advertisers || advRes.payload)) || [];
+    if (!Array.isArray(advertisers) || !advertisers.length) {
+      throw Object.assign(new Error("Sin Product Ads."), { code: "sin_ads" });
+    }
+    var adv = advertisers[0];
+    var advertiserId = adv.advertiser_id || adv.id;
+    var siteId = adv.site_id || "MLU";
+    // 2) campañas con metricas (rango 90 dias: tope de la API)
+    var qs = "/marketplace/advertising/" + siteId + "/advertisers/" + advertiserId +
+      "/product_ads/campaigns/search?limit=100&date_from=" + adsDesdeISO(89) + "&date_to=" + hoyISO() +
+      "&metrics=clicks,prints,cost,cpc,acos";
+    var campRes = await api.mlApi(qs, "GET", null, cuenta);
+    var results = (campRes.payload && (campRes.payload.results || campRes.payload)) || [];
+    return (Array.isArray(results) ? results : []).map(normalizeAdsCampaign);
+  }
+
+  async function cargarAds(cuenta) {
+    var cache = adsDatos(cuenta);
+    if (cache.cargando) return;
+    cache.cargando = true;
+    if (elements.adsMessage) { elements.adsMessage.textContent = "Cargando campañas..."; elements.adsMessage.className = "meta-message"; }
+    try {
+      var campaigns = await fetchMLAds(cuenta);
+      var g = 0, cl = 0, pr = 0;
+      campaigns.forEach(function (c) { g += c.gasto; cl += c.clicks; pr += c.prints; });
+      cache.campaigns = campaigns;
+      cache.totals = { gasto: g, clicks: cl, prints: pr, cpc: cl ? g / cl : 0 };
+      cache.error = null;
+      if (elements.adsMessage) elements.adsMessage.textContent = campaigns.length ? "" : "No hay campañas en los últimos 90 días.";
+    } catch (e) {
+      cache.error = e; cache.campaigns = null; cache.totals = null;
+      if (elements.adsMessage) {
+        var st = (e && (e.mlStatus || e.httpStatus)) || 0;
+        elements.adsMessage.textContent = (e && e.code === "sin_ads")
+          ? "Tu cuenta no tiene Product Ads habilitado. Activalo en Mercado Libre (Publicidad) y reconectá tu cuenta."
+          : (st === 403 || st === 404)
+            ? "La conexión de Mercado Libre no incluye permiso de publicidad (o Product Ads no está activo). Reconectá tu cuenta e intentá de nuevo."
+            : "No se pudieron traer las campañas: " + ((e && e.message) || "error") + ".";
+        elements.adsMessage.className = "meta-message is-error";
+      }
+    } finally {
+      cache.cargando = false;
+      renderAdsPanel();
+    }
+  }
+
+  function reloadAds() { cargarAds(activeMLId()); }
+
+  function renderAdsPanel() {
+    if (!elements.adsPanel) return;
+    var cache = adsDatos(activeMLId());
+    var campaigns = cache.campaigns;
+    var hay = Array.isArray(campaigns) && campaigns.length > 0;
+
+    elements.adsEmpty?.classList.toggle("is-visible", !hay && !cache.error && !cache.cargando);
+
+    if (elements.adsStats) {
+      if (hay && cache.totals) {
+        var t = cache.totals;
+        elements.adsStats.innerHTML = [
+          tarjetaAds("Gasto (90 días)", moneyWithCents.format(t.gasto), campaigns.length + (campaigns.length === 1 ? " campaña" : " campañas"), "ads-neg"),
+          tarjetaAds("Impresiones", integerNumber.format(t.prints), "", ""),
+          tarjetaAds("Clicks", integerNumber.format(t.clicks), t.prints ? (t.clicks / t.prints * 100).toFixed(2) + "% CTR" : "", ""),
+          tarjetaAds("CPC promedio", moneyWithCents.format(t.cpc), "costo por click", "")
+        ].join("");
+      } else {
+        elements.adsStats.innerHTML = "";
+      }
+    }
+
+    if (elements.adsTableBody) {
+      elements.adsTableBody.innerHTML = hay ? campaigns.map(function (c) {
+        return "<tr>" +
+          "<td>" + escapeHtml(c.name) + "</td>" +
+          "<td>" + estadoAdsPill(c.status) + "</td>" +
+          '<td class="num">' + (c.budget ? moneyWithCents.format(c.budget) : "—") + "</td>" +
+          '<td class="num">' + moneyWithCents.format(c.gasto) + "</td>" +
+          '<td class="num">' + integerNumber.format(c.prints) + "</td>" +
+          '<td class="num">' + integerNumber.format(c.clicks) + "</td>" +
+          '<td class="num">' + (c.roas ? c.roas.toFixed(2) + "x" : "—") + "</td>" +
+        "</tr>";
+      }).join("") : "";
+    }
+  }
+
   Object.assign(S, {
     aggregateCommerceProducts, aggregateCommerceTrend, buildDemoCommerceSnapshot, buildMLAuthUrl,
     clearSelectedCommerceApp, clearSelectedCommerceGroup, createCommerceSnapshot, disconnectML, ensureMLLiveDefaults, fetchCommerceData, fetchMLOrders,
@@ -2234,5 +2392,6 @@
     startMLOAuth, syncCommerce, syncMercadoLibre,
     renderMercadoPago, resumenMercadoPago, guardarTokenMP,
     renderVentaDetail, cerrarVentaDetail,
+    renderAdsPanel, cargarAds, reloadAds,
   });
 })();

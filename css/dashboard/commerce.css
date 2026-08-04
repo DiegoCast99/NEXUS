@@ -1089,3 +1089,17 @@
 .shopee-step b { color: var(--text); font-size: 13.5px; }
 .shopee-step small { color: var(--muted); font-size: 12px; line-height: 1.55; }
 .shopee-step small b { color: var(--text); font-weight: 600; }
+
+/* ============================================================
+   Publicidad — Product Ads (campañas + métricas)
+   ============================================================ */
+.ads-stats {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 14px;
+}
+.ads-stats .metric-card.ads-neg strong { color: var(--danger); }
+
+.ads-table { table-layout: fixed; width: 100%; min-width: 820px; }
+.ads-table th:nth-child(1), .ads-table td:nth-child(1) { width: 30%; }
+.ads-table th:nth-child(2), .ads-table td:nth-child(2) { width: 12%; }
+.ads-table th:nth-child(n + 3), .ads-table td:nth-child(n + 3) { text-align: right; }
