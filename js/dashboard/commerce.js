@@ -2278,6 +2278,9 @@
       name: String(c.name || c.campaign_name || "Campaña"),
       status: String(c.status || "").toLowerCase(),
       budget: adsNum(c, ["budget", "daily_budget"]) || adsNum(m, ["budget"]),
+      // roasTarget = el objetivo configurado (lo que se EDITA). roas = el logrado
+      // (metrica). Son cosas distintas: no confundir uno con el otro.
+      roasTarget: adsNum(c, ["roas_target"]) || adsNum(m, ["roas_target"]),
       gasto: gasto, clicks: clicks, prints: prints, cpc: cpc, roas: roas
     };
   }
@@ -2395,8 +2398,14 @@
      publicidad real. */
   var adsCampActual = null;
 
-  function adsBasePath(cache) {
+  // Dos bases distintas en la API de Mercado Ads (confirmado en la doc):
+  //  - BUSQUEDA (search de campañas/anuncios): /marketplace/advertising/{site}/advertisers/{adv}/product_ads
+  //  - GESTION/METRICAS (detalle, update, items): /advertising/advertisers/{adv}/product_ads
+  function adsMktBase(cache) {
     return "/marketplace/advertising/" + cache.siteId + "/advertisers/" + cache.advertiserId + "/product_ads";
+  }
+  function adsAdvBase(cache) {
+    return "/advertising/advertisers/" + cache.advertiserId + "/product_ads";
   }
   function adsParseNum(v) {
     var n = Number(String(v == null ? "" : v).replace(/[^\d.,]/g, "").replace(/\.(?=\d{3}\b)/g, "").replace(",", "."));
@@ -2422,7 +2431,7 @@
     var api = S.requireSecureApi();
     var cache = adsDatos(cuenta);
     if (!cache.siteId || !cache.advertiserId) throw new Error("Recargá la sección de Publicidad primero.");
-    return api.mlApi(adsBasePath(cache) + "/campaigns/" + campaignId, "PUT", patch, cuenta);
+    return api.mlApi(adsAdvBase(cache) + "/campaigns/" + campaignId, "PUT", patch, cuenta);
   }
 
   function renderAdsDetail(campaignId) {
@@ -2433,7 +2442,9 @@
     if (elements.adsDetailStatus) elements.adsDetailStatus.innerHTML = estadoAdsPill(camp.status);
     if (elements.adsToggleBtn) elements.adsToggleBtn.textContent = adsEsActiva(camp.status) ? "Pausar campaña" : "Activar campaña";
     if (elements.adsBudgetInput) elements.adsBudgetInput.value = camp.budget || "";
-    if (elements.adsRoasInput) elements.adsRoasInput.value = camp.roas || "";
+    // El input es el ROAS OBJETIVO (config), redondeado. Si la campaña no lo
+    // trae, queda vacio para que el titular lo ponga.
+    if (elements.adsRoasInput) elements.adsRoasInput.value = camp.roasTarget ? (Math.round(camp.roasTarget * 100) / 100) : "";
     setAdsDetailMsg("");
     if (elements.adsItemList) elements.adsItemList.innerHTML = '<li class="ads-item-empty">Cargando anuncios…</li>';
     elements.adsLista?.classList.add("is-hidden");
@@ -2487,7 +2498,8 @@
     try {
       var api = S.requireSecureApi();
       var cache = adsDatos(cuenta);
-      var res = await api.mlApi(adsBasePath(cache) + "/campaigns/" + campaignId + "/items?limit=100", "GET", null, cuenta);
+      // Los anuncios de una campaña salen del search de ads, filtrando por campaign_id.
+      var res = await api.mlApi(adsMktBase(cache) + "/ads/search?campaign_id=" + campaignId + "&limit=100", "GET", null, cuenta);
       var results = (res.payload && (res.payload.results || res.payload)) || [];
       renderAdsItems(Array.isArray(results) ? results : []);
     } catch (e) {
@@ -2518,7 +2530,7 @@
     try {
       var api = S.requireSecureApi();
       var cache = adsDatos(cuenta);
-      await api.mlApi(adsBasePath(cache) + "/campaigns/" + campId + "/items/" + itemId, "PUT", { status: activar ? "active" : "paused" }, cuenta);
+      await api.mlApi(adsAdvBase(cache) + "/items/" + itemId, "PUT", { status: activar ? "active" : "paused" }, cuenta);
       setAdsDetailMsg("Anuncio actualizado.", "success");
       cargarAdsItems(campId);
     } catch (e) { setAdsDetailMsg("No se pudo actualizar el anuncio: " + adsErr(e), "error"); }
@@ -2533,7 +2545,7 @@
     try {
       var api = S.requireSecureApi();
       var cache = adsDatos(cuenta);
-      await api.mlApi(adsBasePath(cache) + "/campaigns/" + campId + "/items", "POST", { item_id: itemId }, cuenta);
+      await api.mlApi(adsAdvBase(cache) + "/items", "POST", { campaign_id: campId, item_id: itemId }, cuenta);
       if (elements.adsAddInput) elements.adsAddInput.value = "";
       setAdsDetailMsg("Anuncio agregado.", "success");
       cargarAdsItems(campId);
