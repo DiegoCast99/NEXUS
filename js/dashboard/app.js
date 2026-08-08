@@ -226,7 +226,12 @@
     elements.adsBack?.addEventListener("click", () => S.adsCerrarDetail());
     elements.adsToggleBtn?.addEventListener("click", () => S.adsToggleCampaign());
     elements.adsSaveBtn?.addEventListener("click", () => S.adsGuardarCampaign());
+    elements.adsDeleteBtn?.addEventListener("click", () => S.adsEliminarCampaign());
     elements.adsAddBtn?.addEventListener("click", () => S.adsAgregarItem());
+    // Crear campaña (abrir/cerrar el formulario + crear)
+    elements.adsCreateToggle?.addEventListener("click", () => S.adsToggleCreateForm());
+    elements.adsCreateCancel?.addEventListener("click", () => S.adsToggleCreateForm(false));
+    elements.adsCreateBtn?.addEventListener("click", () => S.adsCrearCampaign());
     // Pausar/activar un anuncio dentro de la campaña (delegado, se re-renderiza).
     elements.adsItemList?.addEventListener("click", (event) => {
       const btn = event.target.closest("button[data-ads-item]");

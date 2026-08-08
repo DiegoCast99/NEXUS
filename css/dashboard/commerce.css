@@ -1124,6 +1124,40 @@
 .ads-aporte { margin: 0; flex: 1; min-width: 220px; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
 .ads-cnt { color: var(--muted); font-size: 11px; font-weight: 400; }
 
+.ads-head-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* Crear campaña */
+.ads-create-form {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel-strong);
+  margin-bottom: 16px;
+}
+.ads-create-form.is-hidden { display: none; }
+.ads-create-fields { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+.ads-create-fields .compact-field { flex: 1; min-width: 150px; }
+
+/* Grafica diaria */
+.ads-chart-wrap {
+  margin: 4px 0 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+}
+.ads-chart-wrap canvas { width: 100%; display: block; }
+.ads-chart-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; color: var(--muted); font-size: 11.5px; }
+.ads-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.ads-dot { width: 9px; height: 9px; display: inline-block; border-radius: 2px; }
+.ads-dot-atr { background: #3b82f6; }
+.ads-dot-otr { background: rgba(96, 165, 250, 0.55); }
+.ads-dot-roas { background: #b06cf0; border-radius: 50%; }
+
+/* Segunda fila de controles del detalle (pausar + eliminar) */
+.ads-controls-2 { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+.ads-name-field { flex: 1 1 220px; }
+
 .ads-table { table-layout: fixed; width: 100%; min-width: 820px; }
 .ads-table th:nth-child(1), .ads-table td:nth-child(1) { width: 30%; }
 .ads-table th:nth-child(2), .ads-table td:nth-child(2) { width: 12%; }

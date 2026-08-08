@@ -26,17 +26,17 @@
         } catch (error) {}
       })();
     </script>
-    <link rel="stylesheet" href="./css/dashboard/base.css?v=1786200369" />
-    <link rel="stylesheet" href="./css/dashboard/layout.css?v=1786200369" />
-    <link rel="stylesheet" href="./css/dashboard/controls.css?v=1786200369" />
-    <link rel="stylesheet" href="./css/dashboard/welcome.css?v=1786200369" />
-    <link rel="stylesheet" href="./css/dashboard/finance.css?v=1786200369" />
-    <link rel="stylesheet" href="./css/dashboard/meta.css?v=1786200369" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=1786200369" />
-    <link rel="stylesheet" href="./css/dashboard/tools.css?v=1786200369" />
-    <link rel="stylesheet" href="./css/dashboard/integrations.css?v=1786200369" />
-    <link rel="stylesheet" href="./css/dashboard/responsive.css?v=1786200369" />
-    <link rel="stylesheet" href="./css/dashboard/mobile.css?v=1786200369" />
+    <link rel="stylesheet" href="./css/dashboard/base.css?v=1786214162" />
+    <link rel="stylesheet" href="./css/dashboard/layout.css?v=1786214162" />
+    <link rel="stylesheet" href="./css/dashboard/controls.css?v=1786214162" />
+    <link rel="stylesheet" href="./css/dashboard/welcome.css?v=1786214162" />
+    <link rel="stylesheet" href="./css/dashboard/finance.css?v=1786214162" />
+    <link rel="stylesheet" href="./css/dashboard/meta.css?v=1786214162" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=1786214162" />
+    <link rel="stylesheet" href="./css/dashboard/tools.css?v=1786214162" />
+    <link rel="stylesheet" href="./css/dashboard/integrations.css?v=1786214162" />
+    <link rel="stylesheet" href="./css/dashboard/responsive.css?v=1786214162" />
+    <link rel="stylesheet" href="./css/dashboard/mobile.css?v=1786214162" />
   </head>
   <body>
     <div class="dashboard-shell" id="dashboardShell">
@@ -978,10 +978,34 @@
                   <span>Publicidad</span>
                   <h2>Campañas de Product Ads</h2>
                 </div>
-                <button class="ghost-button" type="button" id="adsReload">Actualizar</button>
+                <div class="ads-head-actions">
+                  <button class="ghost-button" type="button" id="adsReload">Actualizar</button>
+                  <button class="primary-button" type="button" id="adsCreateToggle">Crear campaña</button>
+                </div>
               </div>
 
               <p class="meta-message" id="adsMessage"></p>
+
+              <!-- Crear campaña (se abre con "Crear campaña") -->
+              <div class="ads-create-form is-hidden" id="adsCreateForm">
+                <div class="ads-create-fields">
+                  <label class="field compact-field">
+                    <span>Nombre de la campaña</span>
+                    <input type="text" id="adsNewName" placeholder="Ej: Suplementos verano" autocomplete="off" />
+                  </label>
+                  <label class="field compact-field">
+                    <span>Presupuesto diario</span>
+                    <input type="text" inputmode="decimal" id="adsNewBudget" placeholder="0" />
+                  </label>
+                  <label class="field compact-field">
+                    <span>ROAS objetivo (opcional)</span>
+                    <input type="text" inputmode="decimal" id="adsNewRoas" placeholder="Ej: 3" />
+                  </label>
+                  <button class="primary-button" type="button" id="adsCreateBtn">Crear</button>
+                  <button class="ghost-button" type="button" id="adsCreateCancel">Cancelar</button>
+                </div>
+                <p class="meta-message" id="adsCreateMsg"></p>
+              </div>
 
               <!-- Lista de campañas (tocá una fila para gestionarla) -->
               <div id="adsLista">
@@ -994,6 +1018,17 @@
                 </div>
 
                 <div class="metric-grid ads-stats" id="adsStats"></div>
+
+                <!-- Grafica diaria: barras (atribuidas + otras) + linea ROAS -->
+                <div class="ads-chart-wrap">
+                  <canvas id="adsChart" height="240"></canvas>
+                  <div class="ads-chart-legend">
+                    <span><i class="ads-dot ads-dot-atr"></i>Ventas atribuidas</span>
+                    <span><i class="ads-dot ads-dot-otr"></i>Otras ventas</span>
+                    <span><i class="ads-dot ads-dot-roas"></i>ROAS</span>
+                  </div>
+                </div>
+
                 <div class="table-wrap">
                   <table class="meta-table ads-table">
                     <thead>
@@ -1026,7 +1061,10 @@
                 </div>
 
                 <div class="ads-controls">
-                  <button class="primary-button" type="button" id="adsToggleBtn">Pausar campaña</button>
+                  <label class="field compact-field ads-name-field">
+                    <span>Nombre de la campaña</span>
+                    <input type="text" id="adsNameInput" autocomplete="off" />
+                  </label>
                   <label class="field compact-field">
                     <span>Presupuesto diario</span>
                     <input type="text" inputmode="decimal" id="adsBudgetInput" placeholder="0" />
@@ -1036,6 +1074,10 @@
                     <input type="text" inputmode="decimal" id="adsRoasInput" placeholder="0" />
                   </label>
                   <button class="ghost-button" type="button" id="adsSaveBtn">Guardar cambios</button>
+                </div>
+                <div class="ads-controls-2">
+                  <button class="primary-button" type="button" id="adsToggleBtn">Pausar campaña</button>
+                  <button class="ghost-button danger-button" type="button" id="adsDeleteBtn">Eliminar campaña</button>
                 </div>
 
                 <h4 class="ads-subtitle">Anuncios de la campaña</h4>
@@ -1268,21 +1310,21 @@
 
     <!-- Firebase SDK (CDN, builds compat para la API namespaced) -->
     <!-- Nexus Firebase config + auth + db + proxy seguro -->
-    <script src="./js/firebase/secure-api.js?v=1786200369"></script>
+    <script src="./js/firebase/secure-api.js?v=1786214162"></script>
     <!-- Dashboard modules -->
-    <script src="./js/core/auth.js?v=1786200369"></script>
-    <script src="./js/dashboard/store.js?v=1786200369"></script>
-    <script src="./js/dashboard/integration-core.js?v=1786200369"></script>
-    <script src="./js/dashboard/charts.js?v=1786200369"></script>
-    <script src="./js/dashboard/finance.js?v=1786200369"></script>
-    <script src="./js/dashboard/revolut.js?v=1786200369"></script>
-    <script src="./js/dashboard/meta.js?v=1786200369"></script>
-    <script src="./js/dashboard/commerce.js?v=1786200369"></script>
-    <script src="./js/dashboard/notifications.js?v=1786200369"></script>
-    <script src="./js/dashboard/tools.js?v=1786200369"></script>
-    <script src="./js/dashboard/platform-nav.js?v=1786200369"></script>
-    <script src="./js/dashboard/router.js?v=1786200369"></script>
-    <script src="./js/dashboard/app.js?v=1786200369"></script>
-    <script src="./js/dashboard/mobile-tables.js?v=1786200369"></script>
+    <script src="./js/core/auth.js?v=1786214162"></script>
+    <script src="./js/dashboard/store.js?v=1786214162"></script>
+    <script src="./js/dashboard/integration-core.js?v=1786214162"></script>
+    <script src="./js/dashboard/charts.js?v=1786214162"></script>
+    <script src="./js/dashboard/finance.js?v=1786214162"></script>
+    <script src="./js/dashboard/revolut.js?v=1786214162"></script>
+    <script src="./js/dashboard/meta.js?v=1786214162"></script>
+    <script src="./js/dashboard/commerce.js?v=1786214162"></script>
+    <script src="./js/dashboard/notifications.js?v=1786214162"></script>
+    <script src="./js/dashboard/tools.js?v=1786214162"></script>
+    <script src="./js/dashboard/platform-nav.js?v=1786214162"></script>
+    <script src="./js/dashboard/router.js?v=1786214162"></script>
+    <script src="./js/dashboard/app.js?v=1786214162"></script>
+    <script src="./js/dashboard/mobile-tables.js?v=1786214162"></script>
   </body>
 </html>

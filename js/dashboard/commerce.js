@@ -1426,9 +1426,11 @@
         var ca = adsDatos(activeMLId());
         if (!ca.campaigns && !ca.error && !ca.cargando) cargarAds(activeMLId());
         else renderAdsPanel();
+        iniciarAdsTiempoReal();   // refresco automatico mientras se ve la seccion
       }
       return;
     }
+    detenerAdsTiempoReal();       // al salir de Publicidad, cortar el polling
 
     if (d.section === "resumen") {
       dibujarCuandoSeVea(elements.commerceTrendChart, drawCommerceTrendChart);
@@ -2355,6 +2357,7 @@
       cache.campaigns = campaigns;
       cache.totals = s;
       cache.error = null;
+      cargarAdsGrafico(cuenta);   // la grafica diaria va en paralelo (no bloquea)
       if (elements.adsMessage) elements.adsMessage.textContent = campaigns.length ? "" : "No hay campañas en los últimos 30 días.";
     } catch (e) {
       cache.error = e; cache.campaigns = null; cache.totals = null;
@@ -2374,6 +2377,100 @@
   }
 
   function reloadAds() { cargarAds(activeMLId()); }
+
+  // --- Grafica diaria (barras atribuidas+organicas + linea ROAS), como en ML ---
+  async function cargarAdsGrafico(cuenta) {
+    if (!elements.adsChart) return;
+    try {
+      var api = S.requireSecureApi();
+      var cache = adsDatos(cuenta);
+      if (!cache.advertiserId) return;
+      var METRICS = "units_quantity,organic_units_quantity,cost,total_amount,roas,direct_items_quantity,indirect_items_quantity";
+      var url = adsAdvBase(cache) + "/campaigns?date_from=" + adsDesdeISO(29) + "&date_to=" + hoyISO() +
+        "&metrics=" + METRICS + "&aggregation_type=DAILY";
+      var res = await api.mlApi(url, "GET", null, cuenta);
+      var p = res.payload || {};
+      var raw = p.results || p.metrics || (Array.isArray(p) ? p : []);
+      var serie = adsSerieDiaria(raw);
+      cache.serie = serie;
+      drawAdsChart(serie);
+    } catch (e) { adsDatos(cuenta).serie = null; drawAdsChart([]); }
+  }
+
+  // Normaliza la respuesta DAILY (varios formatos posibles) a
+  // [{date, atribuidas, otras, roas}] ordenado por fecha.
+  function adsSerieDiaria(raw) {
+    if (!Array.isArray(raw)) return [];
+    var porDia = {};
+    raw.forEach(function (r) {
+      var fecha = String(r.date || r.date_from || r.day || "").slice(0, 10);
+      if (!fecha) return;
+      var m = r.metrics || r;
+      var d = porDia[fecha] || { date: fecha, atribuidas: 0, otras: 0, ingresos: 0, gasto: 0 };
+      d.atribuidas += adsNum(m, ["units_quantity"]) || (adsNum(m, ["direct_items_quantity"]) + adsNum(m, ["indirect_items_quantity"]));
+      d.otras += adsNum(m, ["organic_units_quantity", "organic_items_quantity"]);
+      d.ingresos += adsNum(m, ["total_amount"]);
+      d.gasto += adsNum(m, ["cost"]);
+      porDia[fecha] = d;
+    });
+    return Object.keys(porDia).sort().map(function (k) {
+      var d = porDia[k];
+      d.roas = d.gasto ? d.ingresos / d.gasto : 0;
+      return d;
+    });
+  }
+
+  function drawAdsChart(serie) {
+    var canvas = elements.adsChart;
+    if (!canvas) return;
+    var ctx = canvas.getContext("2d");
+    var W = canvas.width = canvas.clientWidth || 900;
+    var H = canvas.height = 240;
+    ctx.clearRect(0, 0, W, H);
+    if (!serie || !serie.length) return;
+    var padL = 6, padR = 6, padT = 12, padB = 8;
+    var plotW = W - padL - padR, plotH = H - padT - padB;
+    var n = serie.length;
+    var maxU = 1, maxR = 1;
+    serie.forEach(function (d) { maxU = Math.max(maxU, d.atribuidas + d.otras); maxR = Math.max(maxR, d.roas); });
+    var slot = plotW / n, barW = Math.max(2, slot * 0.55);
+    var azul = "#3b82f6", azulClaro = "rgba(96,165,250,0.45)", roasCol = "#b06cf0";
+    serie.forEach(function (d, i) {
+      var x = padL + i * slot + (slot - barW) / 2;
+      var hAtr = (d.atribuidas / maxU) * plotH;
+      var hOtr = (d.otras / maxU) * plotH;
+      ctx.fillStyle = azulClaro;
+      ctx.fillRect(x, padT + plotH - hAtr - hOtr, barW, hOtr);
+      ctx.fillStyle = azul;
+      ctx.fillRect(x, padT + plotH - hAtr, barW, hAtr);
+    });
+    ctx.beginPath();
+    ctx.strokeStyle = roasCol; ctx.lineWidth = 2; ctx.lineJoin = "round";
+    serie.forEach(function (d, i) {
+      var x = padL + i * slot + slot / 2;
+      var y = padT + plotH - (d.roas / maxR) * plotH;
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  }
+
+  // Tiempo real: mientras la seccion Publicidad esta visible, refresca sola cada
+  // 45s (ML tambien es polling). No refresca si hay un detalle abierto (para no
+  // pisar lo que el titular esta editando) ni si el panel no se ve.
+  var adsPollTimer = null;
+  function iniciarAdsTiempoReal() {
+    if (adsPollTimer) return;
+    adsPollTimer = setInterval(function () {
+      if (!elements.adsPanel || elements.adsPanel.offsetParent === null) return;
+      if (adsCampActual) return;
+      var c = adsDatos(activeMLId());
+      if (c.cargando) return;
+      if (isMLApp(state.commerce.selectedApp)) cargarAds(activeMLId());
+    }, 45000);
+  }
+  function detenerAdsTiempoReal() {
+    if (adsPollTimer) { clearInterval(adsPollTimer); adsPollTimer = null; }
+  }
 
   function renderAdsPanel() {
     if (!elements.adsPanel) return;
@@ -2403,6 +2500,9 @@
         tarjetaAds("Clics", integerNumber.format(t.clicks), t.prints ? integerNumber.format(t.prints) + " impresiones" : "", "")
       ].join("") : "";
     }
+
+    // Repintar la grafica desde el cache (en re-renders sin fetch nuevo).
+    if (elements.adsChart && cache.serie) drawAdsChart(cache.serie);
 
     // Tabla de campañas (columnas del panel de ML).
     if (elements.adsTableBody) {
@@ -2468,6 +2568,7 @@
     if (!camp || !elements.adsDetail) return;
     adsCampActual = camp;
     txtVenta(elements.adsDetailName, camp.name);
+    if (elements.adsNameInput) elements.adsNameInput.value = camp.name || "";
     if (elements.adsDetailStatus) elements.adsDetailStatus.innerHTML = estadoAdsPill(camp.status);
     if (elements.adsToggleBtn) elements.adsToggleBtn.textContent = adsEsActiva(camp.status) ? "Pausar campaña" : "Activar campaña";
     if (elements.adsBudgetInput) elements.adsBudgetInput.value = camp.budget || "";
@@ -2506,10 +2607,12 @@
     var cuenta = activeMLId(), id = adsCampActual.id;
     var budget = adsParseNum(elements.adsBudgetInput ? elements.adsBudgetInput.value : "");
     var roas = adsParseNum(elements.adsRoasInput ? elements.adsRoasInput.value : "");
+    var nombre = (elements.adsNameInput ? elements.adsNameInput.value : "").trim();
     var patch = {};
+    if (nombre && nombre !== adsCampActual.name) patch.name = nombre;   // renombrar
     if (Number.isFinite(budget) && budget > 0) patch.budget = budget;
     if (Number.isFinite(roas) && roas > 0) patch.roas_target = roas;
-    if (!Object.keys(patch).length) { setAdsDetailMsg("Poné un presupuesto o ROAS válido.", "error"); return; }
+    if (!Object.keys(patch).length) { setAdsDetailMsg("No hay cambios para guardar.", "error"); return; }
     if (!window.confirm("¿Guardar estos cambios en la campaña en Mercado Libre?")) return;
     setAdsDetailMsg("Guardando…");
     try {
@@ -2518,6 +2621,58 @@
       await cargarAds(cuenta);
       renderAdsDetail(id);
     } catch (e) { setAdsDetailMsg("No se pudo guardar: " + adsErr(e), "error"); }
+  }
+
+  // Eliminar campaña: reusa el PUT que YA funciona (status "deleted", como lo
+  // marca ML). Doble confirmacion porque no se puede reactivar una eliminada.
+  async function adsEliminarCampaign() {
+    if (!adsCampActual) return;
+    var cuenta = activeMLId(), id = adsCampActual.id, nombre = adsCampActual.name;
+    if (!window.confirm('¿ELIMINAR la campaña "' + nombre + '"? Esto no se puede deshacer.')) return;
+    setAdsDetailMsg("Eliminando…");
+    try {
+      await adsUpdateCampaign(cuenta, id, { status: "deleted" });
+      setAdsDetailMsg("Campaña eliminada.", "success");
+      await cargarAds(cuenta);
+      adsCerrarDetail();
+    } catch (e) { setAdsDetailMsg("No se pudo eliminar: " + adsErr(e), "error"); }
+  }
+
+  // Crear campaña: POST al recurso de campañas del advertiser (base de gestion).
+  async function adsCrearCampaign() {
+    var cuenta = activeMLId();
+    var nombre = (elements.adsNewName ? elements.adsNewName.value : "").trim();
+    var budget = adsParseNum(elements.adsNewBudget ? elements.adsNewBudget.value : "");
+    var roas = adsParseNum(elements.adsNewRoas ? elements.adsNewRoas.value : "");
+    if (!nombre) { setAdsCreateMsg("Poné un nombre para la campaña.", "error"); return; }
+    if (!Number.isFinite(budget) || budget <= 0) { setAdsCreateMsg("Poné un presupuesto diario válido.", "error"); return; }
+    if (!window.confirm('¿Crear la campaña "' + nombre + '" en Mercado Libre con presupuesto ' + moneyWithCents.format(budget) + "?")) return;
+    var body = { name: nombre, budget: budget, status: "active" };
+    if (Number.isFinite(roas) && roas > 0) body.roas_target = roas;
+    setAdsCreateMsg("Creando campaña…");
+    try {
+      var api = S.requireSecureApi();
+      var cache = adsDatos(cuenta);
+      if (!cache.advertiserId) throw new Error("Recargá la sección de Publicidad primero.");
+      await api.mlApi(adsAdvBase(cache) + "/campaigns", "POST", body, cuenta);
+      if (elements.adsNewName) elements.adsNewName.value = "";
+      if (elements.adsNewBudget) elements.adsNewBudget.value = "";
+      if (elements.adsNewRoas) elements.adsNewRoas.value = "";
+      setAdsCreateMsg("Campaña creada.", "success");
+      adsToggleCreateForm(false);
+      await cargarAds(cuenta);
+    } catch (e) { setAdsCreateMsg("No se pudo crear: " + adsErr(e), "error"); }
+  }
+  function setAdsCreateMsg(txt, tipo) {
+    if (!elements.adsCreateMsg) return;
+    elements.adsCreateMsg.textContent = txt || "";
+    elements.adsCreateMsg.className = "meta-message" + (tipo ? " is-" + tipo : "");
+  }
+  function adsToggleCreateForm(mostrar) {
+    if (!elements.adsCreateForm) return;
+    var abrir = mostrar === undefined ? elements.adsCreateForm.classList.contains("is-hidden") : mostrar;
+    elements.adsCreateForm.classList.toggle("is-hidden", !abrir);
+    if (abrir) { setAdsCreateMsg(""); elements.adsNewName?.focus(); }
   }
 
   // Anuncios (items) de una campaña
@@ -2593,5 +2748,6 @@
     renderVentaDetail, cerrarVentaDetail,
     renderAdsPanel, cargarAds, reloadAds,
     renderAdsDetail, adsCerrarDetail, adsToggleCampaign, adsGuardarCampaign, adsAgregarItem, adsToggleItem,
+    adsEliminarCampaign, adsCrearCampaign, adsToggleCreateForm,
   });
 })();
