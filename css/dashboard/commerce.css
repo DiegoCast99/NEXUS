@@ -1209,3 +1209,98 @@
 .ads-item-status { flex: 0 0 auto; }
 .ads-item-btn { flex: 0 0 auto; }
 .ads-item-empty { color: var(--muted); font-size: 12.5px; padding: 8px 2px; }
+
+/* ============================================================
+   Inventario central (stock + sincronización a Mercado Libre)
+   ============================================================ */
+.inv-subtitle {
+  margin: 22px 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.inv-hint { margin: 0 0 12px; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+.inv-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0 6px; }
+
+/* Tablas del inventario: números a la derecha, tabulares */
+.inv-prod-table .num, .inv-listing-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.inv-prod-table { min-width: 640px; }
+.inv-listing-table { min-width: 760px; }
+.inv-listing-table th:nth-child(1), .inv-listing-table td:nth-child(1) { width: 34%; }
+
+/* Inputs inline dentro de la tabla de productos */
+.inv-in {
+  width: 100%;
+  min-width: 60px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+}
+.inv-in:focus { outline: none; border-color: var(--accent); }
+.inv-stock { max-width: 90px; text-align: right; font-variant-numeric: tabular-nums; }
+.inv-mlb { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+
+/* Editor de composición */
+.inv-compose {
+  margin: 16px 0 6px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel-strong);
+}
+.inv-compose.is-hidden { display: none; }
+.inv-comp-row { display: flex; gap: 10px; align-items: center; margin-bottom: 8px; }
+.inv-comp-prod {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+}
+.inv-comp-qty {
+  flex: 0 0 84px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 13px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-family: inherit;
+}
+.inv-comp-prod:focus, .inv-comp-qty:focus { outline: none; border-color: var(--accent); }
+
+/* Historial de sincronización */
+.inv-log { display: flex; flex-direction: column; gap: 6px; }
+.inv-log-row {
+  display: grid;
+  grid-template-columns: 128px 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  font-size: 12.5px;
+}
+.inv-log-when { color: var(--muted); font-variant-numeric: tabular-nums; }
+.inv-log-what { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inv-log-why { color: var(--muted); }
+.inv-log-ok { color: var(--green); font-weight: 500; }
+.inv-log-err { color: var(--danger); font-weight: 500; }
+
+@media (max-width: 620px) {
+  .inv-log-row { grid-template-columns: 1fr auto; row-gap: 4px; }
+  .inv-log-why { grid-column: 1 / -1; }
+}

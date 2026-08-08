@@ -238,6 +238,30 @@
       if (!btn) return;
       S.adsToggleItem(btn.getAttribute("data-ads-item"), btn.getAttribute("data-activar") === "1");
     });
+    // ---- Inventario central (stock + sync a ML) ----
+    elements.invReload?.addEventListener("click", () => S.abrirInventario());
+    elements.invAddProd?.addEventListener("click", () => S.invAddProduct());
+    elements.invSaveProds?.addEventListener("click", () => S.invGuardarProductos());
+    elements.invLoadListings?.addEventListener("click", () => S.invCargarPublicaciones());
+    elements.invResync?.addEventListener("click", () => S.invResyncAll());
+    // Borrar producto (delegado: la tabla se re-renderiza).
+    elements.invProdBody?.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-inv-del]");
+      if (btn) S.invDeleteProduct(btn.getAttribute("data-inv-del"));
+    });
+    // Configurar la composición de una publicación (delegado).
+    elements.invListingBody?.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-inv-config]");
+      if (btn) S.invConfigurar(btn.getAttribute("data-inv-config"));
+    });
+    elements.invComposeAdd?.addEventListener("click", () => S.invComposeAgregar());
+    elements.invComposeSave?.addEventListener("click", () => S.invComposeGuardar());
+    elements.invComposeCancel?.addEventListener("click", () => S.invComposeCancelar());
+    // Quitar un componente de la composición (delegado).
+    elements.invComposeRows?.addEventListener("click", (event) => {
+      const btn = event.target.closest("button[data-comp-del]");
+      if (btn) S.invComposeQuitar(parseInt(btn.getAttribute("data-comp-del"), 10));
+    });
     // Lo tipeado queda pendiente en memoria: recien se manda a ML al Guardar.
     elements.mlListingsTable?.addEventListener("input", (event) => {
       const inp = event.target.closest("input[data-listing-stock], input[data-variant-stock]");

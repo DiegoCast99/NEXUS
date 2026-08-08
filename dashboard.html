@@ -32,7 +32,7 @@
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260724-adapt1" />
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260727-rev1" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260712-dedup1" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260804-ads5" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260808-inv1" />
     <link rel="stylesheet" href="./css/dashboard/tools.css?v=20260804-hub1" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260709-ola0css" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260724-adapt1" />
@@ -971,6 +971,71 @@
               <div class="event-list" id="commerceProductList"></div>
             </section>
 
+            <!-- ---- Inventario: stock central + sincronización a ML ---- -->
+            <section class="panel wide-panel" data-section="inventario" id="invPanel">
+              <div class="panel-heading">
+                <div>
+                  <span>Inventario</span>
+                  <h2>Stock central y sincronización</h2>
+                </div>
+                <button class="ghost-button" type="button" id="invReload">Actualizar</button>
+              </div>
+              <p class="meta-message" id="invMessage"></p>
+
+              <!-- 1) Productos físicos (fuente de verdad del stock) -->
+              <h3 class="inv-subtitle">Productos físicos — stock real</h3>
+              <p class="inv-hint">Modificá el stock de un producto y tocá <b>Aplicar</b>: Nexus recalcula y actualiza solas todas las publicaciones que lo usan.</p>
+              <div class="table-wrap">
+                <table class="meta-table inv-prod-table">
+                  <thead>
+                    <tr><th>SKU</th><th>Producto</th><th>Stock</th><th>Publicaciones</th><th></th></tr>
+                  </thead>
+                  <tbody id="invProdBody"></tbody>
+                </table>
+              </div>
+              <div class="inv-actions">
+                <button class="ghost-button" type="button" id="invAddProd">+ Agregar producto</button>
+                <button class="ghost-button" type="button" id="invSaveProds">Guardar productos</button>
+              </div>
+
+              <!-- 2) Publicaciones + composición -->
+              <h3 class="inv-subtitle">Publicaciones de Mercado Libre</h3>
+              <div class="inv-actions">
+                <button class="ghost-button" type="button" id="invLoadListings">Cargar publicaciones de ML</button>
+                <button class="primary-button" type="button" id="invResync">Sincronizar todo</button>
+              </div>
+              <div class="table-wrap">
+                <table class="meta-table inv-listing-table">
+                  <thead>
+                    <tr><th>Publicación</th><th>Composición</th><th>Stock calc.</th><th>Publicado</th><th>Estado</th><th></th></tr>
+                  </thead>
+                  <tbody id="invListingBody"></tbody>
+                </table>
+                <div class="empty-state" id="invListingEmpty">
+                  <span></span>
+                  <h3>Cargá tus publicaciones</h3>
+                  <p>Tocá "Cargar publicaciones de ML" para traer tu catálogo y asociar productos a cada publicación.</p>
+                </div>
+              </div>
+
+              <!-- Editor de composición (se abre con "Configurar") -->
+              <div class="inv-compose is-hidden" id="invCompose">
+                <h4 class="inv-subtitle" id="invComposeTitle">Composición</h4>
+                <p class="inv-hint">Definí qué productos físicos (y cuántos) consume esta publicación.</p>
+                <div id="invComposeRows"></div>
+                <button class="ghost-button" type="button" id="invComposeAdd">+ Componente</button>
+                <div class="inv-actions">
+                  <button class="primary-button" type="button" id="invComposeSave">Guardar composición</button>
+                  <button class="ghost-button" type="button" id="invComposeCancel">Cancelar</button>
+                </div>
+                <p class="meta-message" id="invComposeMsg"></p>
+              </div>
+
+              <!-- 3) Historial de sincronización -->
+              <h3 class="inv-subtitle">Historial de sincronización</h3>
+              <div class="inv-log" id="invLog"></div>
+            </section>
+
             <!-- ---- Publicidad: campañas de Product Ads (Mercado Ads) ---- -->
             <section class="panel wide-panel" data-section="publicidad" id="adsPanel">
               <div class="panel-heading">
@@ -1319,18 +1384,19 @@
     <script src="./js/firebase/secure-api.js?v=20260803-mp2"></script>
     <!-- Dashboard modules -->
     <script src="./js/core/auth.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/store.js?v=20260804-ads5"></script>
+    <script src="./js/dashboard/store.js?v=20260808-inv1"></script>
     <script src="./js/dashboard/integration-core.js?v=20260716-live1"></script>
     <script src="./js/dashboard/charts.js?v=20260727-rev2"></script>
     <script src="./js/dashboard/finance.js?v=20260727-rev2"></script>
     <script src="./js/dashboard/revolut.js?v=20260727-rev1"></script>
     <script src="./js/dashboard/meta.js?v=20260716-nav1"></script>
-    <script src="./js/dashboard/commerce.js?v=20260804-ads5"></script>
+    <script src="./js/dashboard/commerce.js?v=20260808-inv1"></script>
+    <script src="./js/dashboard/inventory.js?v=20260808-inv1"></script>
     <script src="./js/dashboard/notifications.js?v=20260717-acct4"></script>
     <script src="./js/dashboard/tools.js?v=20260727-mob5"></script>
     <script src="./js/dashboard/platform-nav.js?v=20260804-ads1"></script>
     <script src="./js/dashboard/router.js?v=20260727-mob5"></script>
-    <script src="./js/dashboard/app.js?v=20260804-ads5"></script>
+    <script src="./js/dashboard/app.js?v=20260808-inv1"></script>
     <script src="./js/dashboard/mobile-tables.js?v=20260727-mob3"></script>
     <script src="./js/pwa.js?v=20260711-push1" defer></script>
   </body>

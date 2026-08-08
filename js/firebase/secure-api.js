@@ -115,6 +115,10 @@
     // save-keys | status | link | confirm | sync | disconnect.
     revolut: function (action, extra) {
       return call("revolut", Object.assign({ action: action }, extra || {}));
+    },
+    // Inventario central de Mercado Libre. action: get | save.
+    inventory: function (action, extra) {
+      return call("ml-inventory", Object.assign({ action: action }, extra || {}));
     }
   };
 })();

@@ -1432,6 +1432,11 @@
     }
     detenerAdsTiempoReal();       // al salir de Publicidad, cortar el polling
 
+    if (d.section === "inventario") {
+      if (isMLApp(state.commerce.selectedApp) && S.abrirInventario) S.abrirInventario();
+      return;
+    }
+
     if (d.section === "resumen") {
       dibujarCuandoSeVea(elements.commerceTrendChart, drawCommerceTrendChart);
       if (isMLApp(state.commerce.selectedApp)) {
