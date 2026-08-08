@@ -2262,26 +2262,35 @@
     return d.toISOString().slice(0, 10);
   }
 
+  // Mapeo de campos de metricas de la API de Mercado Ads a lo que muestra el
+  // panel de ML. OJO: total_amount es INGRESOS (revenue), NO el costo — el costo
+  // es `cost`. units_quantity = ventas atribuidas; organic_units_quantity = otras.
   function normalizeAdsCampaign(c) {
-    var m = c.metrics || c;   // las metricas pueden venir anidadas o al ras
-    var gasto = adsNum(m, ["cost", "total_amount", "spend"]);
-    var clicks = adsNum(m, ["clicks", "total_clicks"]);
-    var prints = adsNum(m, ["prints", "impressions", "total_prints"]);
+    var m = c.metrics || c;
+    var gasto = adsNum(m, ["cost", "spend"]);                                   // lo gastado
+    var ingresos = adsNum(m, ["total_amount", "amount"]) ||                     // revenue de ads
+      (adsNum(m, ["direct_amount"]) + adsNum(m, ["indirect_amount"]));
+    var atribuidas = adsNum(m, ["units_quantity"]) ||                           // ventas atribuidas (u.)
+      (adsNum(m, ["direct_items_quantity"]) + adsNum(m, ["indirect_items_quantity"])) ||
+      (adsNum(m, ["direct_units_quantity"]) + adsNum(m, ["indirect_units_quantity"]));
+    var otras = adsNum(m, ["organic_units_quantity", "organic_items_quantity"]); // ventas organicas
+    var clicks = adsNum(m, ["clicks"]);
+    var prints = adsNum(m, ["prints", "impressions"]);
     var cpc = adsNum(m, ["cpc"]) || (clicks ? gasto / clicks : 0);
-    var acos = adsNum(m, ["acos"]);
-    var roas = adsNum(m, ["roas", "roas_target"]);
-    if (!roas && acos) roas = 100 / acos;                 // ACOS en %, ROAS = 100/ACOS
-    var revenue = adsNum(m, ["total_amount_ads", "amount", "revenue", "direct_amount"]);
-    if (!roas && revenue && gasto) roas = revenue / gasto;
+    var acos = adsNum(m, ["acos"]) || (ingresos ? gasto / ingresos * 100 : 0);
+    var roas = adsNum(m, ["roas"]);
+    if (!roas && gasto && ingresos) roas = ingresos / gasto;
+    if (!roas && acos) roas = 100 / acos;
     return {
       id: String(c.id || c.campaign_id || ""),
       name: String(c.name || c.campaign_name || "Campaña"),
       status: String(c.status || "").toLowerCase(),
       budget: adsNum(c, ["budget", "daily_budget"]) || adsNum(m, ["budget"]),
-      // roasTarget = el objetivo configurado (lo que se EDITA). roas = el logrado
-      // (metrica). Son cosas distintas: no confundir uno con el otro.
+      // roasTarget = objetivo configurado (lo que se EDITA). roas = el logrado.
       roasTarget: adsNum(c, ["roas_target"]) || adsNum(m, ["roas_target"]),
-      gasto: gasto, clicks: clicks, prints: prints, cpc: cpc, roas: roas
+      anuncios: adsNum(c, ["ads_quantity", "total_ads", "ads_count", "items_quantity"]),
+      gasto: gasto, ingresos: ingresos, atribuidas: atribuidas, otras: otras,
+      clicks: clicks, prints: prints, cpc: cpc, acos: acos, roas: roas
     };
   }
 
@@ -2313,10 +2322,13 @@
     var cc = adsDatos(cuenta);
     cc.advertiserId = advertiserId;
     cc.siteId = siteId;
-    // 2) campañas con metricas (rango 90 dias: tope de la API)
+    // 2) campañas con el set COMPLETO de metricas (para replicar el panel de ML),
+    // rango 30 dias como el default de ML.
+    var METRICS = "clicks,prints,ctr,cost,cpc,acos,roas,cvr,total_amount,direct_amount,indirect_amount," +
+      "units_quantity,direct_items_quantity,indirect_items_quantity,organic_units_quantity,organic_items_quantity";
     var qs = "/marketplace/advertising/" + siteId + "/advertisers/" + advertiserId +
-      "/product_ads/campaigns/search?limit=100&date_from=" + adsDesdeISO(89) + "&date_to=" + hoyISO() +
-      "&metrics=clicks,prints,cost,cpc,acos";
+      "/product_ads/campaigns/search?limit=100&date_from=" + adsDesdeISO(29) + "&date_to=" + hoyISO() +
+      "&metrics=" + METRICS;
     var campRes = await api.mlApi(qs, "GET", null, cuenta);
     var results = (campRes.payload && (campRes.payload.results || campRes.payload)) || [];
     return (Array.isArray(results) ? results : []).map(normalizeAdsCampaign);
@@ -2329,12 +2341,21 @@
     if (elements.adsMessage) { elements.adsMessage.textContent = "Cargando campañas..."; elements.adsMessage.className = "meta-message"; }
     try {
       var campaigns = await fetchMLAds(cuenta);
-      var g = 0, cl = 0, pr = 0;
-      campaigns.forEach(function (c) { g += c.gasto; cl += c.clicks; pr += c.prints; });
+      // Resumen agregado, igual que arriba del panel de ML.
+      var s = { gasto: 0, ingresos: 0, atribuidas: 0, otras: 0, clicks: 0, prints: 0, presupuesto: 0 };
+      campaigns.forEach(function (c) {
+        s.gasto += c.gasto; s.ingresos += c.ingresos; s.atribuidas += c.atribuidas;
+        s.otras += c.otras; s.clicks += c.clicks; s.prints += c.prints; s.presupuesto += c.budget || 0;
+      });
+      s.roas = s.gasto ? s.ingresos / s.gasto : 0;
+      s.acos = s.ingresos ? s.gasto / s.ingresos * 100 : 0;
+      s.cpc = s.clicks ? s.gasto / s.clicks : 0;
+      var totalVentas = s.atribuidas + s.otras;
+      s.aporte = totalVentas ? s.atribuidas / totalVentas * 100 : 0;   // "Aporte por publicidad"
       cache.campaigns = campaigns;
-      cache.totals = { gasto: g, clicks: cl, prints: pr, cpc: cl ? g / cl : 0 };
+      cache.totals = s;
       cache.error = null;
-      if (elements.adsMessage) elements.adsMessage.textContent = campaigns.length ? "" : "No hay campañas en los últimos 90 días.";
+      if (elements.adsMessage) elements.adsMessage.textContent = campaigns.length ? "" : "No hay campañas en los últimos 30 días.";
     } catch (e) {
       cache.error = e; cache.campaigns = null; cache.totals = null;
       if (elements.adsMessage) {
@@ -2362,30 +2383,38 @@
 
     elements.adsEmpty?.classList.toggle("is-visible", !hay && !cache.error && !cache.cargando);
 
-    if (elements.adsStats) {
-      if (hay && cache.totals) {
-        var t = cache.totals;
-        elements.adsStats.innerHTML = [
-          tarjetaAds("Gasto (90 días)", moneyWithCents.format(t.gasto), campaigns.length + (campaigns.length === 1 ? " campaña" : " campañas"), "ads-neg"),
-          tarjetaAds("Impresiones", integerNumber.format(t.prints), "", ""),
-          tarjetaAds("Clicks", integerNumber.format(t.clicks), t.prints ? (t.clicks / t.prints * 100).toFixed(2) + "% CTR" : "", ""),
-          tarjetaAds("CPC promedio", moneyWithCents.format(t.cpc), "costo por click", "")
-        ].join("");
-      } else {
-        elements.adsStats.innerHTML = "";
-      }
+    var t = cache.totals;
+    // Presupuesto diario total + aporte por publicidad (como arriba en ML).
+    if (elements.adsBudgetTotal) elements.adsBudgetTotal.textContent = (hay && t) ? moneyWithCents.format(t.presupuesto) : "—";
+    if (elements.adsAporte) {
+      elements.adsAporte.textContent = (hay && t)
+        ? "Tus anuncios generaron el " + Math.round(t.aporte) + "% de las ventas de tus publicaciones promocionadas."
+        : "";
     }
 
+    // Las 6 metricas del panel de ML (últimos 30 días).
+    if (elements.adsStats) {
+      elements.adsStats.innerHTML = (hay && t) ? [
+        tarjetaAds("Ventas atribuidas", integerNumber.format(t.atribuidas), "por tus anuncios", "ads-pos"),
+        tarjetaAds("Otras ventas", integerNumber.format(t.otras), "orgánicas", ""),
+        tarjetaAds("ROAS", (t.roas ? t.roas.toFixed(2) : "0") + "x", "ingresos / gasto", "ads-pos"),
+        tarjetaAds("Ingresos", moneyWithCents.format(t.ingresos), "por publicidad", ""),
+        tarjetaAds("ACOS", (t.acos ? t.acos.toFixed(2) : "0") + "%", "gasto / ingresos", "ads-neg"),
+        tarjetaAds("Clics", integerNumber.format(t.clicks), t.prints ? integerNumber.format(t.prints) + " impresiones" : "", "")
+      ].join("") : "";
+    }
+
+    // Tabla de campañas (columnas del panel de ML).
     if (elements.adsTableBody) {
       elements.adsTableBody.innerHTML = hay ? campaigns.map(function (c) {
         return '<tr class="ads-row" data-ads-campaign="' + escapeHtml(c.id) + '" title="Gestionar campaña">' +
-          "<td>" + escapeHtml(c.name) + "</td>" +
+          "<td>" + escapeHtml(c.name) + (c.anuncios ? ' <small class="ads-cnt">' + integerNumber.format(c.anuncios) + " anuncios</small>" : "") + "</td>" +
           "<td>" + estadoAdsPill(c.status) + "</td>" +
           '<td class="num">' + (c.budget ? moneyWithCents.format(c.budget) : "—") + "</td>" +
-          '<td class="num">' + moneyWithCents.format(c.gasto) + "</td>" +
-          '<td class="num">' + integerNumber.format(c.prints) + "</td>" +
-          '<td class="num">' + integerNumber.format(c.clicks) + "</td>" +
+          '<td class="num">' + (c.roasTarget ? c.roasTarget.toFixed(1) + "x" : "—") + "</td>" +
+          '<td class="num">' + integerNumber.format(c.atribuidas) + "</td>" +
           '<td class="num">' + (c.roas ? c.roas.toFixed(2) + "x" : "—") + "</td>" +
+          '<td class="num">' + (c.acos ? c.acos.toFixed(2) + "%" : "—") + "</td>" +
         "</tr>";
       }).join("") : "";
     }

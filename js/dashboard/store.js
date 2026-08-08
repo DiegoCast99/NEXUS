@@ -628,6 +628,8 @@
     adsReload: document.getElementById("adsReload"),
     adsMessage: document.getElementById("adsMessage"),
     adsStats: document.getElementById("adsStats"),
+    adsBudgetTotal: document.getElementById("adsBudgetTotal"),
+    adsAporte: document.getElementById("adsAporte"),
     adsTableBody: document.getElementById("adsTableBody"),
     adsEmpty: document.getElementById("adsEmpty"),
     adsLista: document.getElementById("adsLista"),
