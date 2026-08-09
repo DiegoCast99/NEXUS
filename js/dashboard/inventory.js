@@ -321,11 +321,15 @@
     } catch (e) { if (elements.invComposeMsg) { elements.invComposeMsg.textContent = "Error: " + ((e && e.message) || "error"); elements.invComposeMsg.className = "meta-message is-error"; } }
   }
 
+  // Siempre recarga del servidor: las ventas (Fase 3) descuentan stock del lado
+  // servidor, así que mostrar una copia vieja en memoria sería peligroso para una
+  // herramienta de stock. Entrar a la sección o tocar "Actualizar" trae lo vigente.
   async function abrirInventario() {
     if (!elements.invPanel) return;
+    if (composeSel) return; // no pisar un editor de composición abierto a medias
     setInvMsg("Cargando inventario…");
     try {
-      if (!cargado) await invLoad();
+      await invLoad();
       renderInventory();
       setInvMsg("");
     } catch (e) { setInvMsg("No se pudo cargar el inventario: " + ((e && e.message) || "error"), "error"); }

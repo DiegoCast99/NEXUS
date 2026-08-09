@@ -86,6 +86,29 @@ async function adminPatchDoc(path, fields, maskPaths) {
   return res.json();
 }
 
+// PATCH con control de concurrencia optimista: solo escribe si el documento no
+// cambió desde que lo leíste (`updateTime`). Devuelve true si escribió, false si
+// la precondición falló (otro proceso lo modificó primero → el llamador reintenta
+// leyendo de nuevo). Cualquier otro error se lanza. Sin `updateTime` se comporta
+// como un PATCH normal. Firestore devuelve 409 (o 400 FAILED_PRECONDITION) cuando
+// el updateTime no coincide; tratamos ambos como conflicto reintentable.
+async function adminPatchDocIf(path, fields, maskPaths, updateTime) {
+  const token = await getAccessToken();
+  const mask = (maskPaths || Object.keys(fields)).map((f) => "updateMask.fieldPaths=" + encodeURIComponent(f)).join("&");
+  const precond = updateTime ? "&currentDocument.updateTime=" + encodeURIComponent(updateTime) : "";
+  const res = await fetch(FS_BASE + "/" + path + "?" + mask + precond, {
+    method: "PATCH",
+    headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" },
+    body: JSON.stringify({ fields })
+  });
+  if (res.ok) return true;
+  const txt = await res.text().catch(() => "");
+  if (res.status === 409 || (res.status === 400 && /FAILED_PRECONDITION|precondition/i.test(txt))) {
+    return false; // conflicto: el doc cambió → reintentar con lectura fresca
+  }
+  throw new Error("Firestore admin PATCH condicional falló (" + res.status + "): " + txt.slice(0, 200));
+}
+
 // Busca en la colección `users` el doc cuyo campo `field` == `value` (stringValue).
 // Devuelve { uid, doc } o null.
 async function adminQueryUsersByField(field, value) {
@@ -116,4 +139,4 @@ async function adminQueryUsersByField(field, value) {
   return { uid, doc: hit.document };
 }
 
-module.exports = { PROJECT_ID, getAccessToken, adminGetDoc, adminPatchDoc, adminQueryUsersByField, b64url };
+module.exports = { PROJECT_ID, getAccessToken, adminGetDoc, adminPatchDoc, adminPatchDocIf, adminQueryUsersByField, b64url };

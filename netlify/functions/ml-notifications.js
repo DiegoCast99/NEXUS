@@ -11,14 +11,23 @@
 
    Sin sesión de usuario: usa la cuenta de servicio de Firebase (_fbadmin).
    ============================================================ */
-const { adminGetDoc, adminPatchDoc, adminQueryUsersByField } = require("./_fbadmin");
+const { adminGetDoc, adminPatchDoc, adminPatchDocIf, adminQueryUsersByField } = require("./_fbadmin");
 const { sendPush } = require("./_webpush");
 const { ML_ACCOUNTS, mlAccountName, mlSellerField, decrypt, encrypt } = require("./_shared");
+const { normalizeInv, computeListing, listingsAfectadas, aplicarVenta } = require("./_inventory");
 
 const MAX_NOTIFIED = 60;
 const ML_API = "https://api.mercadolibre.com";
 const ML_TOKEN_URL = "https://api.mercadolibre.com/oauth/token";
 const REFRESH_BUFFER_SECS = 300;
+
+// Inventario (Fase 3): descuento de stock por venta.
+// El registro de idempotencia vive en un campo APARTE del blob `inventory`, para
+// que el guardado del navegador (que reescribe `inventory` entero) no lo borre.
+const INV_LEDGER_FIELD = "ml_inventory_processed";
+const INV_MAX_PROCESSED = 200;
+const INV_MAX_LOG = 200;
+const INV_MAX_RETRIES = 5;
 
 function ok() {
   return { statusCode: 200, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ok: true }) };
@@ -77,6 +86,29 @@ async function handleNotification(body) {
   const uid = hit.uid;
   const fields = (hit.doc && hit.doc.fields) || {};
 
+  // VERIFICAR LA ORDEN UNA SOLA VEZ. Sirve para dos cosas independientes:
+  // (a) descontar inventario y (b) decidir si el push es una venta real.
+  // ML manda orders_v2 por CUALQUIER evento de orden, incluidas compras que
+  // nunca se pagaron (el comprador toco "Comprar" y abandono, pago rechazado,
+  // antifraude). Esas ordenes no aparecen en el panel de ventas: tratarlas como
+  // venta es una venta fantasma (paso en produccion el 2026-07-20, dos avisos
+  // falsos de la cuenta 2). Solo es venta real una orden PAGA.
+  const chequeo = await verificarOrden(accountId, fields, uid, orderId);
+
+  // ---------- Fase 3: descuento de stock por venta ----------
+  // Corre INDEPENDIENTE del push (aunque no haya suscripciones). Solo ventas
+  // pagadas y verificadas: descontar por una orden fantasma seria un error dificil
+  // de revertir, asi que ante duda NO se descuenta. Idempotencia propia (registro
+  // ml_inventory_processed) para no descontar dos veces si ML reenvia el webhook.
+  if (chequeo.verificada && chequeo.esVenta && chequeo.orden && chequeo.accessToken) {
+    try {
+      await descontarStockPorVenta(accountId, uid, orderId, chequeo.orden, chequeo.accessToken);
+    } catch (e) {
+      console.error("ml-notifications inventario: descuento fallo para orden " + orderId + ":", e && e.message);
+    }
+  }
+
+  // ---------- Push de la venta ----------
   // Dedup: lista de últimas órdenes notificadas (JSON en un campo string).
   let notified = [];
   try {
@@ -99,15 +131,8 @@ async function handleNotification(body) {
   }
   if (subs.length === 0) return; // nada a donde notificar
 
-  // VERIFICAR LA ORDEN ANTES DE AVISAR. ML manda orders_v2 por CUALQUIER
-  // evento de orden, incluidas compras que nunca se pagaron (el comprador
-  // toco "Comprar" y abandono, pago rechazado, antifraude). Esas ordenes no
-  // aparecen en el panel de ventas: avisarlas es una venta fantasma (paso en
-  // produccion el 2026-07-20, dos avisos falsos de la cuenta 2). Solo es
-  // venta real una orden PAGA. Si no se puede verificar (ML caido, token
-  // irrecuperable), se avisa igual: peor que un falso aviso es callarse una
-  // venta real.
-  const chequeo = await verificarOrden(accountId, fields, uid, orderId);
+  // Si no se puede verificar (ML caido, token irrecuperable), se avisa igual:
+  // peor que un falso aviso es callarse una venta real.
   if (chequeo.verificada && !chequeo.esVenta) {
     console.warn("ml-notifications: orden " + orderId + " con status '" + chequeo.status +
       "' — no es una venta paga, no se notifica");
@@ -167,10 +192,12 @@ async function handleNotification(body) {
 
 /* ---------- verificacion de la orden contra ML ---------- */
 
-// Devuelve { verificada, esVenta, status } — o { verificada: false, motivo }
-// si no se pudo consultar. Una orden es venta REAL solo con status "paid":
-// confirmed / payment_required / payment_in_process son compras sin pagar,
-// cancelled / invalid son compras caidas. Ninguna de esas se avisa.
+// Devuelve { verificada, esVenta, status, orden, accessToken } — o
+// { verificada: false, motivo } si no se pudo consultar. Una orden es venta REAL
+// solo con status "paid": confirmed / payment_required / payment_in_process son
+// compras sin pagar, cancelled / invalid son compras caidas. Ninguna se avisa.
+// `orden` y `accessToken` se devuelven para reusarlos en el descuento de stock
+// (Fase 3) sin volver a descifrar el token ni re-consultar la orden.
 async function verificarOrden(accountId, fields, uid, orderId) {
   try {
     const campo = "secret_" + accountId;
@@ -188,13 +215,13 @@ async function verificarOrden(accountId, fields, uid, orderId) {
       headers: { Authorization: "Bearer " + tokens.access_token, Accept: "application/json" },
       cache: "no-store"
     });
-    if (!res.ok) return { verificada: false, motivo: "ML respondio " + res.status };
+    if (!res.ok) return { verificada: false, motivo: "ML respondio " + res.status, accessToken: tokens.access_token };
 
     const orden = await res.json().catch(() => null);
-    if (!orden || !orden.status) return { verificada: false, motivo: "orden sin status" };
+    if (!orden || !orden.status) return { verificada: false, motivo: "orden sin status", accessToken: tokens.access_token };
 
     const status = String(orden.status);
-    return { verificada: true, status: status, esVenta: status === "paid" };
+    return { verificada: true, status: status, esVenta: status === "paid", orden: orden, accessToken: tokens.access_token };
   } catch (error) {
     return { verificada: false, motivo: (error && error.message) || "error" };
   }
@@ -236,3 +263,150 @@ async function refrescarToken(tokens, uid, campo) {
   }, [campo]);
   return frescos;
 }
+
+/* ============================================================
+   Fase 3 · Descuento de stock por venta + re-sync a Mercado Libre
+   ============================================================ */
+
+function nowIso() { return new Date().toISOString(); }
+function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+function parseInvField(raw) {
+  try { return normalizeInv(JSON.parse(raw || "")); } catch (e) { return normalizeInv({}); }
+}
+function invFieldRaw(doc, field) {
+  return doc && doc.fields && doc.fields[field] && doc.fields[field].stringValue;
+}
+function parseLedger(doc) {
+  try { const a = JSON.parse(invFieldRaw(doc, INV_LEDGER_FIELD) || "[]"); return Array.isArray(a) ? a : []; }
+  catch (e) { return []; }
+}
+
+// Descuenta el stock físico consumido por una venta y re-sincroniza a ML las
+// publicaciones afectadas. Dos fases separadas a proposito, porque el PUT a ML es
+// un efecto externo que NO debe repetirse en cada reintento de la escritura:
+//
+//   Fase A) Descuento de stock + marca de orden procesada. Transaccional: lee el
+//           campo `inventory` con su updateTime, descuenta en memoria y escribe
+//           con precondición. Si otro proceso escribió primero, reintenta con
+//           lectura fresca. El registro ml_inventory_processed hace el descuento
+//           idempotente ante reenvios del webhook de ML.
+//
+//   Fase B) Recalcula las publicaciones afectadas, hace el PUT a ML UNA sola vez,
+//           y persiste listingState + log. La ESCRITURA reintenta ante conflicto;
+//           los PUT (ya hechos) no se repiten.
+async function descontarStockPorVenta(accountId, uid, orderId, orden, accessToken) {
+  const items = Array.isArray(orden.order_items) ? orden.order_items : [];
+  if (!items.length) return;
+  const orderKey = accountId + ":" + orderId;
+
+  // --- Fase A: descuento + idempotencia ---
+  // Lee el blob `inventory` (productos) y el registro `ml_inventory_processed`
+  // (órdenes ya descontadas, campo aparte). Descuenta el stock, agrega la orden al
+  // registro y escribe AMBOS campos en UN solo PATCH atómico con precondición sobre
+  // updateTime. Si otro proceso escribió antes, la precondición falla y reintenta
+  // con lectura fresca → nunca descuenta dos veces la misma venta.
+  let changed = null;
+  for (let intento = 0; intento < INV_MAX_RETRIES; intento++) {
+    const doc = await adminGetDoc("users/" + uid);
+    if (!doc) return;
+    const updateTime = doc.updateTime;
+    const inv = parseInvField(invFieldRaw(doc, "inventory"));
+    const ledger = parseLedger(doc);
+    if (ledger.indexOf(orderKey) !== -1) return; // ya descontada
+
+    const r = aplicarVenta(inv, items);
+    if (!r.detalle.length) return; // ninguna publicación de la orden está gestionada
+
+    ledger.unshift(orderKey);
+    if (ledger.length > INV_MAX_PROCESSED) ledger.length = INV_MAX_PROCESSED;
+
+    const ok = await adminPatchDocIf("users/" + uid, {
+      inventory: { stringValue: JSON.stringify(inv) },
+      [INV_LEDGER_FIELD]: { stringValue: JSON.stringify(ledger) }
+    }, ["inventory", INV_LEDGER_FIELD], updateTime);
+    if (ok) { changed = r.changedProducts; break; }
+    if (intento === INV_MAX_RETRIES - 1) {
+      console.error("ml-notifications inventario: no se pudo descontar orden " + orderId + " (conflictos)");
+      return;
+    }
+  }
+  if (!changed || !changed.length) return;
+
+  // --- Fase B: recalcular, empujar a ML (una vez) y persistir estado ---
+  let pushed = null;
+  for (let intento = 0; intento < INV_MAX_RETRIES; intento++) {
+    const doc = await adminGetDoc("users/" + uid);
+    if (!doc) return;
+    const updateTime = doc.updateTime;
+    const inv = parseInvField(invFieldRaw(doc, "inventory"));
+
+    if (pushed === null) {
+      pushed = {};
+      const afectadas = listingsAfectadas(inv, changed);
+      for (let i = 0; i < afectadas.length; i++) {
+        const mlbId = afectadas[i];
+        const computed = computeListing(inv, mlbId);
+        if (computed == null) continue;
+        const prev = inv.listingState[mlbId] || {};
+        if (prev.published === computed && prev.status === "synced") continue; // ya sincronizada
+        try {
+          await putMLStockServer(accessToken, mlbId, computed);
+          pushed[mlbId] = { computed: computed, ok: true, antes: prev.published != null ? prev.published : null };
+        } catch (e) {
+          pushed[mlbId] = { computed: computed, ok: false, error: (e && e.message) || "error", antes: prev.published != null ? prev.published : null };
+        }
+        await sleep(120);
+      }
+      if (!Object.keys(pushed).length) return; // nada que persistir
+    }
+
+    // Aplica los resultados de los PUT al inv fresco (idempotente ante reintento).
+    Object.keys(pushed).forEach(function (mlbId) {
+      const p = pushed[mlbId];
+      inv.listingState[mlbId] = p.ok
+        ? { computed: p.computed, published: p.computed, status: "synced", lastSyncAt: nowIso(), error: null }
+        : Object.assign({}, inv.listingState[mlbId], { computed: p.computed, status: "error", lastSyncAt: nowIso(), error: p.error });
+      inv.syncLog.unshift({
+        ts: nowIso(), listing: mlbId,
+        antes: p.antes == null ? "—" : p.antes, despues: p.computed,
+        motivo: "Venta " + orderId, resultado: p.ok ? "ok" : "error",
+        error: p.ok ? undefined : p.error
+      });
+    });
+    if (inv.syncLog.length > INV_MAX_LOG) inv.syncLog.length = INV_MAX_LOG;
+
+    const ok = await adminPatchDocIf("users/" + uid,
+      { inventory: { stringValue: JSON.stringify(inv) } }, ["inventory"], updateTime);
+    if (ok) return;
+    // conflicto: releer y re-aplicar `pushed` sin volver a hacer PUT a ML
+  }
+  console.error("ml-notifications inventario: no se pudo persistir el estado de sync de la orden " + orderId);
+}
+
+// PUT del stock de una publicación con el token de ML (server-side). Igual que
+// invPutMLStock del frontend: si la publicación tiene variaciones, setea el mismo
+// stock en todas; si no, setea available_quantity directo. (0 pausa, >0 reactiva.)
+async function putMLStockServer(accessToken, mlbId, qty) {
+  const detRes = await fetch(ML_API + "/items/" + mlbId + "?attributes=id,variations", {
+    headers: { Authorization: "Bearer " + accessToken, Accept: "application/json" },
+    cache: "no-store"
+  });
+  if (!detRes.ok) throw new Error("GET item " + mlbId + " -> " + detRes.status);
+  const det = await detRes.json().catch(() => ({}));
+  const vars = (det && det.variations) || [];
+  const body = vars.length
+    ? { variations: vars.map(function (v) { return { id: v.id, available_quantity: qty }; }) }
+    : { available_quantity: qty };
+  const putRes = await fetch(ML_API + "/items/" + mlbId, {
+    method: "PUT",
+    headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(body)
+  });
+  if (!putRes.ok) {
+    const t = await putRes.text().catch(() => "");
+    throw new Error("PUT item " + mlbId + " -> " + putRes.status + " " + t.slice(0, 120));
+  }
+}
+
+// Export interno para tests unitarios (Netlify solo invoca `handler`).
+exports._test = { descontarStockPorVenta, putMLStockServer };
