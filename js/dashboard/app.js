@@ -249,10 +249,12 @@
       const btn = event.target.closest("button[data-inv-del]");
       if (btn) S.invDeleteProduct(btn.getAttribute("data-inv-del"));
     });
-    // Configurar la composición de una publicación (delegado).
+    // Configurar la composición, o reintentar el sync de una publicación en error.
     elements.invListingBody?.addEventListener("click", (event) => {
-      const btn = event.target.closest("button[data-inv-config]");
-      if (btn) S.invConfigurar(btn.getAttribute("data-inv-config"));
+      const cfg = event.target.closest("button[data-inv-config]");
+      if (cfg) { S.invConfigurar(cfg.getAttribute("data-inv-config")); return; }
+      const retry = event.target.closest("button[data-inv-retry]");
+      if (retry) S.invReintentarUno(retry.getAttribute("data-inv-retry"));
     });
     elements.invComposeAdd?.addEventListener("click", () => S.invComposeAgregar());
     elements.invComposeSave?.addEventListener("click", () => S.invComposeGuardar());

@@ -18,23 +18,47 @@
   var catalogo = {};      // mlbId -> { title }  (publicaciones de ML)
   var catalogoCargado = false;
   var composeSel = "";    // publicacion en edicion de composicion
+  var serverStock = {};   // Fase 4: stock por producto tal como se cargó del servidor
+                          // (baseline para el merge 3-way al guardar).
 
   function activeML() { return S.state.commerce.selectedApp || S.state.commerce.activeApp || "mercadolibre"; }
   function dormir(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
+  function snapshotServerStock() {
+    serverStock = {};
+    Object.keys(inv.products).forEach(function (id) { serverStock[id] = Number(inv.products[id].stock) || 0; });
+  }
+  function adoptInv(o) {
+    inv = {
+      products: (o && o.products) || {}, compositions: (o && o.compositions) || {},
+      listingState: (o && o.listingState) || {}, syncLog: (o && Array.isArray(o.syncLog)) ? o.syncLog : []
+    };
+    snapshotServerStock();
+  }
+
   // ---- Persistencia ----
   async function invLoad() {
     var res = await S.requireSecureApi().inventory("get");
-    var o = (res && res.inventory) || {};
-    inv = {
-      products: o.products || {}, compositions: o.compositions || {},
-      listingState: o.listingState || {}, syncLog: Array.isArray(o.syncLog) ? o.syncLog : []
-    };
+    adoptInv((res && res.inventory) || {});
     cargado = true;
   }
+  // Fase 4: guardado con merge server-side. Manda cada producto con su baseStock
+  // (lo que valía al cargar) para que el servidor sepa cuáles tocó el usuario y
+  // cuáles preservar (posible descuento por venta). Adopta el inv ya fusionado.
   async function invSave() {
-    inv.updatedAt = new Date().toISOString();
-    await S.requireSecureApi().inventory("save", { inventory: inv });
+    var productos = {};
+    Object.keys(inv.products).forEach(function (id) {
+      var p = inv.products[id];
+      productos[id] = {
+        sku: p.sku || "", name: p.name || "", stock: Number(p.stock) || 0,
+        baseStock: Object.prototype.hasOwnProperty.call(serverStock, id) ? serverStock[id] : null
+      };
+    });
+    var res = await S.requireSecureApi().inventory("save", {
+      products: productos, compositions: inv.compositions,
+      listingState: inv.listingState, syncLog: inv.syncLog
+    });
+    if (res && res.inventory) adoptInv(res.inventory); // reflejar el estado real fusionado
   }
 
   // ---- Motor de reglas ----
@@ -176,16 +200,21 @@
         "<td>" + (resumen ? escapeHtml(resumen) : "<span class='pub-quiet'>Sin configurar</span>") + "</td>" +
         "<td class='num'>" + (computed == null ? "—" : integerNumber.format(computed)) + "</td>" +
         "<td class='num'>" + (st.published != null ? integerNumber.format(st.published) : "—") + "</td>" +
-        "<td>" + estadoPill(st.status, resumen) + "</td>" +
-        "<td><button class='table-action' type='button' data-inv-config='" + escapeHtml(mlbId) + "'>Configurar</button></td>" +
+        "<td>" + estadoPill(st.status, resumen, st.error) + "</td>" +
+        "<td>" + (st.status === "error"
+          ? "<button class='table-action' type='button' data-inv-retry='" + escapeHtml(mlbId) + "'>Reintentar</button>"
+          : "<button class='table-action' type='button' data-inv-config='" + escapeHtml(mlbId) + "'>Configurar</button>") + "</td>" +
       "</tr>";
     }).join("");
   }
-  function estadoPill(status, tieneComp) {
+  function estadoPill(status, tieneComp, error) {
     if (!tieneComp) return '<span class="type-pill">—</span>';
     if (status === "synced") return '<span class="type-pill income">Sincronizado</span>';
-    if (status === "error") return '<span class="type-pill expense">Error</span>';
+    if (status === "error") return '<span class="type-pill expense" title="' + escapeHtml(error || "Error al sincronizar") + '">Error</span>';
     return '<span class="type-pill pub-warn">Pendiente</span>';
+  }
+  function listingsConError() {
+    return Object.keys(inv.listingState).filter(function (m) { return (inv.listingState[m] || {}).status === "error"; });
   }
 
   function renderCompose() {
@@ -285,6 +314,18 @@
     } catch (e) { setInvMsg("Error: " + ((e && e.message) || "error"), "error"); }
   }
 
+  // Fase 4: reintento de una publicación cuyo PUT a ML quedó en error. invSyncListings
+  // no la saltea (su estado no es "synced"), así que recalcula y reintenta el PUT.
+  async function invReintentarUno(mlbId) {
+    setInvMsg("Reintentando sincronización de la publicación…");
+    try {
+      var r = await invSyncListings([mlbId], "Reintento manual");
+      await invSave();
+      setInvMsg(r.errores ? "La publicación sigue con error." : "Publicación sincronizada.", r.errores ? "error" : "success");
+      renderInventory();
+    } catch (e) { setInvMsg("Error al reintentar: " + ((e && e.message) || "error"), "error"); }
+  }
+
   function invConfigurar(mlbId) { composeSel = mlbId; renderCompose(); elements.invCompose?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
   function invComposeCancelar() { composeSel = ""; renderCompose(); }
   function invComposeAgregar() {
@@ -338,7 +379,7 @@
   Object.assign(S, {
     abrirInventario, renderInventory,
     invAddProduct, invGuardarProductos, invDeleteProduct,
-    invCargarPublicaciones, invResyncAll,
+    invCargarPublicaciones, invResyncAll, invReintentarUno,
     invConfigurar, invComposeCancelar, invComposeAgregar, invComposeQuitar, invComposeGuardar
   });
 })();

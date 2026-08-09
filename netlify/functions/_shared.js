@@ -150,6 +150,38 @@ async function writeUserField(uid, idToken, field, stringValue) {
   return true;
 }
 
+// Lee campos del doc del usuario devolviendo TAMBIÉN el updateTime del documento
+// (para control de concurrencia optimista). Usa el idToken del usuario, así las
+// reglas de Firestore siguen garantizando que solo accede a su propio doc.
+async function readUserDoc(uid, idToken, fields) {
+  const mask = (fields || []).map((f) => "mask.fieldPaths=" + encodeURIComponent(f)).join("&");
+  const url = FS_BASE + "/users/" + encodeURIComponent(uid) + (mask ? "?" + mask : "");
+  const res = await fetch(url, { headers: { Authorization: "Bearer " + idToken } });
+  if (res.status === 404) return { updateTime: null, fields: {} };
+  if (!res.ok) throw new Error("Firestore rechazó la lectura (" + res.status + ").");
+  const doc = await res.json();
+  return { updateTime: doc.updateTime || null, fields: doc.fields || {} };
+}
+
+// PATCH condicional con el idToken del usuario: solo escribe si el doc no cambió
+// desde `updateTime` (control optimista). Devuelve true si escribió, false si la
+// precondición falló (otro proceso escribió primero → el llamador reintenta con
+// lectura fresca). Sin updateTime, escribe sin precondición.
+async function writeUserFieldsIf(uid, idToken, fieldsObj, maskPaths, updateTime) {
+  const mask = (maskPaths || Object.keys(fieldsObj)).map((f) => "updateMask.fieldPaths=" + encodeURIComponent(f)).join("&");
+  const precond = updateTime ? "&currentDocument.updateTime=" + encodeURIComponent(updateTime) : "";
+  const url = FS_BASE + "/users/" + encodeURIComponent(uid) + "?" + mask + precond;
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: { Authorization: "Bearer " + idToken, "Content-Type": "application/json" },
+    body: JSON.stringify({ fields: fieldsObj })
+  });
+  if (res.ok) return true;
+  const txt = await res.text().catch(() => "");
+  if (res.status === 409 || (res.status === 400 && /FAILED_PRECONDITION|precondition/i.test(txt))) return false;
+  throw new Error("Firestore rechazó la escritura condicional (" + res.status + ").");
+}
+
 // --- SSRF guard (para URLs de e-commerce que da el usuario) ---
 function assertSafeUrl(raw) {
   let u;
@@ -211,6 +243,8 @@ module.exports = {
   providerField,
   readUserField,
   writeUserField,
+  readUserDoc,
+  writeUserFieldsIf,
   assertSafeUrl,
   parseBody,
   json

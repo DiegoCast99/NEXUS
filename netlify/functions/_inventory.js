@@ -76,4 +76,52 @@ function aplicarVenta(inv, items) {
   return { changedProducts: Object.keys(changed), detalle: detalle };
 }
 
-module.exports = { normalizeInv, computeListing, listingsAfectadas, aplicarVenta };
+// Merge 3-way del stock de productos entre lo que hay en el servidor y lo que
+// manda el navegador al guardar. Cada producto del navegador trae `baseStock` =
+// el stock que tenía cuando el navegador lo cargó. Reglas:
+//   - Producto nuevo (sin baseStock): gana el navegador.
+//   - El usuario NO tocó el stock (stock === baseStock): se PRESERVA el del
+//     servidor, que puede traer un descuento por venta ocurrido mientras el
+//     panel estaba abierto (evita pisar el descuento).
+//   - El usuario SÍ editó el stock (stock !== baseStock): gana el navegador.
+// sku/name siempre vienen del navegador (el webhook no los toca). Los productos
+// ausentes del payload del navegador se consideran borrados por el usuario.
+function mergeProducts(server, browser) {
+  const out = {};
+  const srv = server || {};
+  Object.keys(browser || {}).forEach(function (id) {
+    const b = browser[id] || {};
+    const cur = srv[id] || {};
+    const bStock = Math.max(0, Math.floor(Number(b.stock) || 0));
+    let stock;
+    if (b.baseStock == null) {
+      stock = bStock; // producto nuevo
+    } else if (Number(b.stock) === Number(b.baseStock)) {
+      stock = cur.stock != null ? Math.max(0, Math.floor(Number(cur.stock) || 0)) : bStock; // preservar servidor
+    } else {
+      stock = bStock; // el usuario lo editó
+    }
+    out[id] = { sku: String(b.sku || ""), name: String(b.name || ""), stock: stock };
+  });
+  return out;
+}
+
+// Une dos historiales de sync (servidor + navegador) sin perder entradas de
+// ninguno: concatena, deduplica por ts+listing+motivo, ordena por fecha desc y
+// recorta. Así el webhook (ventas) y el navegador (sync manual) no se pisan el log.
+function mergeSyncLog(a, b, cap) {
+  const seen = {};
+  const out = [];
+  (a || []).concat(b || []).forEach(function (e) {
+    if (!e) return;
+    const k = String(e.ts) + "|" + String(e.listing) + "|" + String(e.motivo);
+    if (seen[k]) return;
+    seen[k] = true;
+    out.push(e);
+  });
+  out.sort(function (x, y) { return String(y.ts).localeCompare(String(x.ts)); });
+  if (out.length > (cap || 200)) out.length = cap || 200;
+  return out;
+}
+
+module.exports = { normalizeInv, computeListing, listingsAfectadas, aplicarVenta, mergeProducts, mergeSyncLog };
