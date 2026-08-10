@@ -1304,3 +1304,29 @@
   .inv-log-row { grid-template-columns: 1fr auto; row-gap: 4px; }
   .inv-log-why { grid-column: 1 / -1; }
 }
+
+/* Pestañas del Inventario: Lista de productos / Publicaciones y enlaces */
+.inv-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 4px 0 18px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.inv-tab {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  padding: 10px 14px;
+  cursor: pointer;
+  margin-bottom: -1px;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+.inv-tab:hover { color: var(--text); }
+.inv-tab.is-active { color: var(--text); border-bottom-color: var(--accent); }
+.inv-view.is-hidden { display: none; }

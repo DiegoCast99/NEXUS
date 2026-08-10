@@ -661,6 +661,7 @@
     invReload: document.getElementById("invReload"),
     invMessage: document.getElementById("invMessage"),
     invProdBody: document.getElementById("invProdBody"),
+    invProdEmpty: document.getElementById("invProdEmpty"),
     invAddProd: document.getElementById("invAddProd"),
     invSaveProds: document.getElementById("invSaveProds"),
     invLoadListings: document.getElementById("invLoadListings"),

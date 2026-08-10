@@ -20,6 +20,23 @@
   var composeSel = "";    // publicacion en edicion de composicion
   var serverStock = {};   // Fase 4: stock por producto tal como se cargó del servidor
                           // (baseline para el merge 3-way al guardar).
+  var currentTab = "productos"; // pestaña activa: "productos" | "publicaciones"
+  var tabTocado = false;        // el usuario ya eligió pestaña (no forzar default)
+
+  // Cambia de pestaña dentro del panel de Inventario (Lista de productos /
+  // Publicaciones y enlaces). Es lo que separa CREAR productos de ENLAZARLOS.
+  function invTab(tab, porUsuario) {
+    currentTab = tab === "publicaciones" ? "publicaciones" : "productos";
+    if (porUsuario) tabTocado = true;
+    var panel = elements.invPanel;
+    if (!panel) return;
+    panel.querySelectorAll("[data-inv-view]").forEach(function (v) {
+      v.classList.toggle("is-hidden", v.getAttribute("data-inv-view") !== currentTab);
+    });
+    panel.querySelectorAll("[data-inv-tab]").forEach(function (b) {
+      b.classList.toggle("is-active", b.getAttribute("data-inv-tab") === currentTab);
+    });
+  }
 
   function activeML() { return S.state.commerce.selectedApp || S.state.commerce.activeApp || "mercadolibre"; }
   function dormir(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
@@ -177,11 +194,12 @@
   function renderProductos() {
     if (!elements.invProdBody) return;
     var ids = Object.keys(inv.products);
+    elements.invProdEmpty?.classList.toggle("is-visible", !ids.length);
     elements.invProdBody.innerHTML = ids.map(function (id) {
       var p = inv.products[id];
       return "<tr data-prod='" + escapeHtml(id) + "'>" +
-        "<td><input class='inv-in' data-f='sku' value='" + escapeHtml(p.sku || "") + "' placeholder='SKU' /></td>" +
-        "<td><input class='inv-in' data-f='name' value='" + escapeHtml(p.name || "") + "' placeholder='Nombre' /></td>" +
+        "<td><input class='inv-in' data-f='sku' value='" + escapeHtml(p.sku || "") + "' placeholder='SKU (opcional)' /></td>" +
+        "<td><input class='inv-in' data-f='name' value='" + escapeHtml(p.name || "") + "' placeholder='Ej: Creatina 1kg Growth' /></td>" +
         "<td class='num'><input class='inv-in inv-stock' data-f='stock' inputmode='numeric' value='" + escapeHtml(String(p.stock != null ? p.stock : 0)) + "' /></td>" +
         "<td class='num'>" + listingsDeProducto(id).length + "</td>" +
         "<td><button class='table-action delete-action' type='button' data-inv-del='" + escapeHtml(id) + "'>Borrar</button></td>" +
@@ -269,9 +287,13 @@
   //  ACCIONES (cableadas por app.js)
   // ============================================================
   function invAddProduct() {
+    invTab("productos", true);         // asegura estar en la Lista de productos
     var id = nuevoProductId();
     inv.products[id] = { sku: "", name: "", stock: 0 };
     renderProductos();
+    // Enfoca el campo Nombre de la fila nueva para escribir al toque.
+    var fila = elements.invProdBody?.querySelector("tr[data-prod='" + id + "'] input[data-f='name']");
+    if (fila) { fila.focus(); fila.scrollIntoView({ behavior: "smooth", block: "center" }); }
   }
 
   // Lee los inputs de la tabla, guarda, y sincroniza las publicaciones de los
@@ -342,7 +364,7 @@
   function invComposeAgregar() {
     if (!composeSel) return;
     var firstProd = Object.keys(inv.products)[0];
-    if (!firstProd) { if (elements.invComposeMsg) { elements.invComposeMsg.textContent = "Primero agregá productos físicos arriba."; elements.invComposeMsg.className = "meta-message is-error"; } return; }
+    if (!firstProd) { if (elements.invComposeMsg) { elements.invComposeMsg.textContent = "Primero creá productos en la pestaña “Lista de productos”."; elements.invComposeMsg.className = "meta-message is-error"; } return; }
     var comp = inv.compositions[composeSel] || [];
     comp.push({ productId: firstProd, qty: 1 });
     inv.compositions[composeSel] = comp;
@@ -383,12 +405,17 @@
     try {
       await invLoad();
       renderInventory();
+      // Primera vez: si todavía no hay productos, arrancá en "Lista de productos"
+      // (el paso lógico inicial); si ya hay, en Publicaciones. Si el usuario ya
+      // eligió pestaña, se respeta.
+      if (!tabTocado) invTab(Object.keys(inv.products).length ? "publicaciones" : "productos");
+      else invTab(currentTab);
       setInvMsg("");
     } catch (e) { setInvMsg("No se pudo cargar el inventario: " + ((e && e.message) || "error"), "error"); }
   }
 
   Object.assign(S, {
-    abrirInventario, renderInventory,
+    abrirInventario, renderInventory, invTab,
     invAddProduct, invGuardarProductos, invDeleteProduct,
     invCargarPublicaciones, invResyncAll, invReintentarUno,
     invConfigurar, invComposeCancelar, invComposeAgregar, invComposeQuitar, invComposeGuardar

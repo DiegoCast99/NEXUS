@@ -239,6 +239,11 @@
       S.adsToggleItem(btn.getAttribute("data-ads-item"), btn.getAttribute("data-activar") === "1");
     });
     // ---- Inventario central (stock + sync a ML) ----
+    // Pestañas: Lista de productos / Publicaciones y enlaces (delegado en el panel).
+    elements.invPanel?.addEventListener("click", (event) => {
+      const tab = event.target.closest("[data-inv-tab]");
+      if (tab) S.invTab(tab.getAttribute("data-inv-tab"), true);
+    });
     elements.invReload?.addEventListener("click", () => S.abrirInventario());
     elements.invAddProd?.addEventListener("click", () => S.invAddProduct());
     elements.invSaveProds?.addEventListener("click", () => S.invGuardarProductos());
