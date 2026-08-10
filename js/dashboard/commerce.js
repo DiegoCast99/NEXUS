@@ -2467,8 +2467,11 @@
       var cache = adsDatos(cuenta);
       if (!cache.advertiserId) return;
       var METRICS = "units_quantity,organic_units_quantity,cost,total_amount,roas,direct_items_quantity,indirect_items_quantity";
-      var url = adsAdvBase(cache) + "/campaigns?date_from=" + adsDesdeISO(29) + "&date_to=" + hoyISO() +
-        "&metrics=" + METRICS + "&aggregation_type=DAILY";
+      // Serie diaria: MISMO endpoint /campaigns/search que las métricas de arriba
+      // (el que ML soporta), pero con aggregation_type=DAILY para el desglose por
+      // día. El base de gestión (/advertising/.../campaigns) NO devuelve la serie.
+      var url = adsMktBase(cache) + "/campaigns/search?date_from=" + adsDesdeISO(29) + "&date_to=" + hoyISO() +
+        "&metrics=" + METRICS + "&aggregation_type=DAILY&limit=100";
       var res = await api.mlApi(url, "GET", null, cuenta);
       var p = res.payload || {};
       var raw = p.results || p.metrics || (Array.isArray(p) ? p : []);
@@ -2483,16 +2486,25 @@
   function adsSerieDiaria(raw) {
     if (!Array.isArray(raw)) return [];
     var porDia = {};
-    raw.forEach(function (r) {
-      var fecha = String(r.date || r.date_from || r.day || "").slice(0, 10);
+    function sumarDia(dObj) {
+      if (!dObj) return;
+      var fecha = String(dObj.date || dObj.date_from || dObj.day || "").slice(0, 10);
       if (!fecha) return;
-      var m = r.metrics || r;
+      // Los números pueden venir en el propio objeto o dentro de .metrics (objeto).
+      var m = (dObj.metrics && !Array.isArray(dObj.metrics)) ? dObj.metrics : dObj;
       var d = porDia[fecha] || { date: fecha, atribuidas: 0, otras: 0, ingresos: 0, gasto: 0 };
       d.atribuidas += adsNum(m, ["units_quantity"]) || (adsNum(m, ["direct_items_quantity"]) + adsNum(m, ["indirect_items_quantity"]));
       d.otras += adsNum(m, ["organic_units_quantity", "organic_items_quantity"]);
       d.ingresos += adsNum(m, ["total_amount"]);
       d.gasto += adsNum(m, ["cost"]);
       porDia[fecha] = d;
+    }
+    raw.forEach(function (r) {
+      // Dos formas posibles del DAILY: (1) el item YA es un día; (2) el item es una
+      // campaña que trae su serie por día en .metrics (array). Se suman todas las
+      // campañas por fecha para el total diario, como muestra ML.
+      if (r && Array.isArray(r.metrics)) r.metrics.forEach(sumarDia);
+      else sumarDia(r);
     });
     return Object.keys(porDia).sort().map(function (k) {
       var d = porDia[k];
