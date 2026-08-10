@@ -1224,11 +1224,19 @@
 .inv-hint { margin: 0 0 12px; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
 .inv-actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0 6px; }
 
-/* Tablas del inventario: números a la derecha, tabulares */
-.inv-prod-table .num, .inv-listing-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+/* Tabla de productos: números a la derecha, tabulares */
+.inv-prod-table .num { text-align: right; font-variant-numeric: tabular-nums; }
 .inv-prod-table { min-width: 640px; }
+
+/* Tabla de publicaciones: TODO centrado (encabezado y valor alineados en el
+   centro), salvo la 1ª columna "Publicación" que lleva foto + título a la
+   izquierda. vertical-align middle: alinea los valores con títulos de 2-3 líneas. */
 .inv-listing-table { min-width: 760px; }
-.inv-listing-table th:nth-child(1), .inv-listing-table td:nth-child(1) { width: 34%; }
+.inv-listing-table th,
+.inv-listing-table td { text-align: center; vertical-align: middle; }
+.inv-listing-table .num { text-align: center; font-variant-numeric: tabular-nums; }
+.inv-listing-table th:first-child,
+.inv-listing-table td:first-child { text-align: left; width: 34%; }
 
 /* Inputs inline dentro de la tabla de productos */
 .inv-in {
