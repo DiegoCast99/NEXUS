@@ -912,8 +912,59 @@
     });
   }
 
-  // Aterriza en la venta que disparo la notificacion: abre la cuenta, va a
-  // Pedidos, espera a que el sync la traiga y la resalta. Funciona para
+  // Trae UNA sola orden directo de ML (/orders/{id}) y la normaliza. Es lo que
+  // permite abrir el detalle al toque, sin esperar el sync completo del periodo.
+  async function fetchSingleOrder(accountId, orderId) {
+    var api = S.requireSecureApi();
+    var res = await api.mlApi("/orders/" + orderId, "GET", null, accountId);
+    var mlOrder = res && res.payload;
+    if (!mlOrder || !mlOrder.id) return null;
+    return normalizeMLOrder(mlOrder, 0);
+  }
+
+  // Foto de una publicacion (para llenarla despues de mostrar el detalle).
+  async function fetchOrderThumb(accountId, itemId) {
+    if (!itemId) return "";
+    try {
+      var res = await S.requireSecureApi().mlApi(
+        "/items/" + itemId + "?attributes=id,secure_thumbnail,thumbnail", "GET", null, accountId);
+      var b = res && res.payload;
+      return b ? (b.secure_thumbnail || b.thumbnail || "") : "";
+    } catch (e) { return ""; }
+  }
+
+  // Mete/actualiza una orden en el snapshot para que "volver" muestre la lista
+  // con ella y ventaPorId la encuentre. Best-effort: si no hay snapshot todavia,
+  // el refresh en segundo plano lo arma.
+  function mergeOrderIntoSnapshot(accountId, order) {
+    try {
+      var snap = getCommerceSnapshot(accountId);
+      if (!snap || !Array.isArray(snap.orders)) return;
+      var idx = -1;
+      for (var i = 0; i < snap.orders.length; i++) {
+        if (String(snap.orders[i].id) === String(order.id)) { idx = i; break; }
+      }
+      if (idx === -1) snap.orders.unshift(order); else snap.orders[idx] = order;
+    } catch (e) { /* best-effort */ }
+  }
+
+  // Abre el panel del detalle YA, con un esqueleto, mientras se trae la orden.
+  function mostrarVentaCargando(orderId) {
+    if (!elements.ventaDetail) return;
+    txtVenta(elements.ventaTitulo, "Cargando venta…");
+    txtVenta(elements.ventaId, "Venta #" + orderId);
+    txtVenta(elements.ventaFecha, "");
+    if (elements.ventaFoto) { elements.ventaFoto.removeAttribute("src"); elements.ventaFoto.style.display = "none"; }
+    txtVenta(elements.ventaProductoTitulo, "");
+    if (elements.ventaEnvioDatos) elements.ventaEnvioDatos.textContent = "";
+    elements.ventaLista?.classList.add("is-hidden");
+    elements.ventaDetail.classList.remove("is-hidden");
+    elements.ventaDetail.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  // Aterriza en la venta que disparo la notificacion. VELOCIDAD: no espera el
+  // sync completo del periodo; muestra el detalle al toque trayendo SOLO esa
+  // orden de ML, y llena la foto/direccion despues (progresivo). Funciona para
   // cualquier cuenta del modulo (ML 1, ML 2, Brasil y las que vengan).
   async function openSaleDeepLink(accountId, orderId, timeoutMs) {
     var app = getCommerceApp(accountId);
@@ -921,13 +972,24 @@
     selectCommerceApp(accountId);
     window.NexusPlatformNav?.setSection("pedidos");
 
+    // 1) Si el sync ya la trajo (app caliente), detalle instantaneo.
+    if (ventaPorId(orderId)) { renderVentaDetail(orderId); return; }
+
+    // 2) Camino rapido: abrir el detalle YA y traer SOLO esa orden directo de ML.
+    mostrarVentaCargando(orderId);
+    try {
+      var o = await fetchSingleOrder(accountId, orderId);
+      if (o) {
+        mergeOrderIntoSnapshot(accountId, o);
+        renderVentaDetail(orderId, o);
+        return;
+      }
+    } catch (e) { /* si /orders/{id} falla, cae al fallback por sync */ }
+
+    // 3) Fallback: esperar a que el sync la traiga (como antes).
     var row = await waitForOrderRow(orderId, timeoutMs || 12000);
-    if (!row) {
-      setMlMessage("La venta " + orderId + " todavia no aparece en el periodo actual.", "error");
-      return;
-    }
-    // Abrir directo el DETALLE de esa venta (antes solo se resaltaba la fila).
-    renderVentaDetail(orderId);
+    if (row) renderVentaDetail(orderId);
+    else setMlMessage("La venta " + orderId + " todavia no aparece en el periodo actual.", "error");
   }
 
   // ---- Detalle de una venta (vista estilo Mercado Libre) -----
@@ -945,9 +1007,9 @@
 
   function txtVenta(el, value) { if (el) el.textContent = value; }
 
-  function renderVentaDetail(orderId) {
+  function renderVentaDetail(orderId, preOrder) {
     if (!elements.ventaDetail) return;
-    var o = ventaPorId(orderId);
+    var o = preOrder || ventaPorId(orderId);
     if (!o) { setMlMessage("No se encontro esa venta en el periodo actual.", "error"); return; }
     ventaActual = o;
 
@@ -956,10 +1018,21 @@
     txtVenta(elements.ventaId, "Venta #" + o.id);
     txtVenta(elements.ventaFecha, S.formatDate(o.date));
 
-    // Izquierda: foto + producto + unidades
+    // Izquierda: foto + producto + unidades. Si vino sin foto (camino rapido de
+    // la notificacion), se trae aparte y se rellena sin bloquear el render.
     if (elements.ventaFoto) {
       if (o.thumbnail) { elements.ventaFoto.src = o.thumbnail; elements.ventaFoto.style.display = ""; }
-      else { elements.ventaFoto.removeAttribute("src"); elements.ventaFoto.style.display = "none"; }
+      else {
+        elements.ventaFoto.removeAttribute("src"); elements.ventaFoto.style.display = "none";
+        if (o.itemId) {
+          fetchOrderThumb(state.commerce.selectedApp, o.itemId).then(function (thumb) {
+            if (thumb && ventaActual && String(ventaActual.id) === String(o.id) && elements.ventaFoto) {
+              o.thumbnail = thumb;
+              elements.ventaFoto.src = thumb; elements.ventaFoto.style.display = "";
+            }
+          });
+        }
+      }
     }
     txtVenta(elements.ventaProductoTitulo, o.product || "");
     txtVenta(elements.ventaVariacion, o.variation || "");
