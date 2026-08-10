@@ -1481,6 +1481,9 @@
     var d = (event && event.detail) || {};
     if (d.module !== "ecommerce") return;
 
+    // Al salir de Inventario, cortar su auto-refresh (lo reinicia abrirInventario).
+    if (d.section !== "inventario" && S.detenerInvTiempoReal) S.detenerInvTiempoReal();
+
     if (d.section === "pedidos") {
       cerrarVentaDetail();   // al entrar a Ventas, siempre se ve la lista
       return;

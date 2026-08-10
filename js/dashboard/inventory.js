@@ -22,6 +22,9 @@
                           // (baseline para el merge 3-way al guardar).
   var currentTab = "productos"; // pestaña activa: "productos" | "publicaciones"
   var tabTocado = false;        // el usuario ya eligió pestaña (no forzar default)
+  var refreshTimer = null;      // intervalo de auto-actualización (mientras se ve la sección)
+  var refrescando = false;      // evita solapar refrescos si uno tarda
+  var REFRESH_MS = 90000;       // cada 90s: trae publicaciones nuevas + stock de ML
 
   // Cambia de pestaña dentro del panel de Inventario (Lista de productos /
   // Publicaciones y enlaces). Es lo que separa CREAR productos de ENLAZARLOS.
@@ -184,6 +187,41 @@
       await dormir(100);
     }
     catalogoCargado = true;
+  }
+
+  // Auto-carga del catálogo al entrar (sin tocar el botón). Silencioso: si falla,
+  // el botón "Cargar publicaciones de ML" sigue disponible como respaldo.
+  async function cargarCatalogoAuto() {
+    try {
+      if (!catalogoCargado) setInvMsg("Cargando publicaciones de Mercado Libre…");
+      await cargarCatalogo();
+      renderListings();
+      setInvMsg("");
+    } catch (e) { /* queda el estado vacío + botón manual */ }
+  }
+
+  // Auto-refresh mientras se ve la sección: trae publicaciones nuevas y el stock
+  // actual de ML. Reflejar ventas (recargar el blob) SOLO si el usuario no está
+  // editando productos ni una composición, para no pisar cambios en curso.
+  function iniciarInvTiempoReal() {
+    if (refreshTimer) return;
+    refreshTimer = setInterval(invRefreshTick, REFRESH_MS);
+  }
+  function detenerInvTiempoReal() {
+    if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null; }
+  }
+  async function invRefreshTick() {
+    if (refrescando) return;
+    if (typeof document !== "undefined" && document.hidden) return; // en segundo plano: no gastar API
+    refrescando = true;
+    var seguro = currentTab !== "productos" && !composeSel; // no hay edición en curso
+    try {
+      if (seguro) { try { await invLoad(); } catch (e) {} } // refleja ventas/descuentos
+      await cargarCatalogo();
+      renderListings();
+      if (seguro) { renderProductos(); renderLog(); }
+    } catch (e) { /* silencioso: es un refresco de fondo */ }
+    finally { refrescando = false; }
   }
 
   // ============================================================
@@ -411,11 +449,14 @@
       if (!tabTocado) invTab(Object.keys(inv.products).length ? "publicaciones" : "productos");
       else invTab(currentTab);
       setInvMsg("");
+      // Publicaciones automáticas: se cargan solas al entrar y se refrescan solas.
+      cargarCatalogoAuto();
+      iniciarInvTiempoReal();
     } catch (e) { setInvMsg("No se pudo cargar el inventario: " + ((e && e.message) || "error"), "error"); }
   }
 
   Object.assign(S, {
-    abrirInventario, renderInventory, invTab,
+    abrirInventario, renderInventory, invTab, detenerInvTiempoReal,
     invAddProduct, invGuardarProductos, invDeleteProduct,
     invCargarPublicaciones, invResyncAll, invReintentarUno,
     invConfigurar, invComposeCancelar, invComposeAgregar, invComposeQuitar, invComposeGuardar
