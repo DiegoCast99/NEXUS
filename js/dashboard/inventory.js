@@ -154,9 +154,15 @@
       if (!lote.length || offset >= total) break;
     }
     for (var i = 0; i < ids.length; i += 20) {
-      var det = await api.mlApi("/items?ids=" + ids.slice(i, i + 20).join(",") + "&attributes=id,title", "GET", null, cuenta);
+      var det = await api.mlApi("/items?ids=" + ids.slice(i, i + 20).join(",") + "&attributes=id,title,available_quantity,variations", "GET", null, cuenta);
       (det.payload || []).forEach(function (row) {
-        var b = row && row.body; if (b && b.id) catalogo[b.id] = { title: b.title || b.id };
+        var b = row && row.body; if (!b || !b.id) return;
+        // Stock real actual en ML: con variaciones, la suma; si no, el del item.
+        var vars = b.variations || [];
+        var stockML = vars.length
+          ? vars.reduce(function (s, v) { return s + (Number(v.available_quantity) || 0); }, 0)
+          : (Number(b.available_quantity) || 0);
+        catalogo[b.id] = { title: b.title || b.id, stock: stockML };
       });
       await dormir(100);
     }
@@ -195,11 +201,16 @@
       var computed = computeListing(mlbId);
       var st = inv.listingState[mlbId] || {};
       var resumen = resumenComposicion(mlbId);
+      // "Stock ML" = lo que hay AHORA en Mercado Libre. Si Nexus ya sincronizó (o
+      // una venta lo actualizó), ese valor es el más fresco; si no, el stock real
+      // que trajo la última carga de publicaciones.
+      var stockML = st.published != null ? st.published
+        : (catalogo[mlbId] && catalogo[mlbId].stock != null ? catalogo[mlbId].stock : null);
       return "<tr>" +
         "<td>" + escapeHtml(tituloListing(mlbId)) + " <small class='inv-mlb'>" + escapeHtml(mlbId) + "</small></td>" +
         "<td>" + (resumen ? escapeHtml(resumen) : "<span class='pub-quiet'>Sin configurar</span>") + "</td>" +
         "<td class='num'>" + (computed == null ? "—" : integerNumber.format(computed)) + "</td>" +
-        "<td class='num'>" + (st.published != null ? integerNumber.format(st.published) : "—") + "</td>" +
+        "<td class='num'>" + (stockML != null ? integerNumber.format(stockML) : "—") + "</td>" +
         "<td>" + estadoPill(st.status, resumen, st.error) + "</td>" +
         "<td>" + (st.status === "error"
           ? "<button class='table-action' type='button' data-inv-retry='" + escapeHtml(mlbId) + "'>Reintentar</button>"
