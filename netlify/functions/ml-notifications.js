@@ -14,7 +14,7 @@
 const { adminGetDoc, adminPatchDoc, adminPatchDocIf, adminQueryUsersByField } = require("./_fbadmin");
 const { sendPush } = require("./_webpush");
 const { ML_ACCOUNTS, mlAccountName, mlSellerField, decrypt, encrypt } = require("./_shared");
-const { normalizeInv, computeListing, listingsAfectadas, aplicarVenta } = require("./_inventory");
+const { normalizeInv, computeListing, computeVariation, listingsAfectadas, aplicarVenta } = require("./_inventory");
 
 const MAX_NOTIFIED = 60;
 const ML_API = "https://api.mercadolibre.com";
@@ -345,15 +345,17 @@ async function descontarStockPorVenta(accountId, uid, orderId, orden, accessToke
       const afectadas = listingsAfectadas(inv, changed);
       for (let i = 0; i < afectadas.length; i++) {
         const mlbId = afectadas[i];
-        const computed = computeListing(inv, mlbId);
-        if (computed == null) continue;
+        const computedApprox = computeListing(inv, mlbId); // total aprox para el skip
+        if (computedApprox == null) continue;
         const prev = inv.listingState[mlbId] || {};
-        if (prev.published === computed && prev.status === "synced") continue; // ya sincronizada
+        if (prev.published === computedApprox && prev.status === "synced") continue; // ya sincronizada
+        const antes = prev.published != null ? prev.published : null;
         try {
-          await putMLStockServer(accessToken, mlbId, computed);
-          pushed[mlbId] = { computed: computed, ok: true, antes: prev.published != null ? prev.published : null };
+          const publicado = await syncListingToML(accessToken, inv, mlbId);
+          if (publicado == null) continue; // nada gestionado (ni por variación)
+          pushed[mlbId] = { computed: publicado, ok: true, antes: antes };
         } catch (e) {
-          pushed[mlbId] = { computed: computed, ok: false, error: (e && e.message) || "error", antes: prev.published != null ? prev.published : null };
+          pushed[mlbId] = { computed: computedApprox, ok: false, error: (e && e.message) || "error", antes: antes };
         }
         await sleep(120);
       }
@@ -383,10 +385,13 @@ async function descontarStockPorVenta(accountId, uid, orderId, orden, accessToke
   console.error("ml-notifications inventario: no se pudo persistir el estado de sync de la orden " + orderId);
 }
 
-// PUT del stock de una publicación con el token de ML (server-side). Igual que
-// invPutMLStock del frontend: si la publicación tiene variaciones, setea el mismo
-// stock en todas; si no, setea available_quantity directo. (0 pausa, >0 reactiva.)
-async function putMLStockServer(accessToken, mlbId, qty) {
+// Sincroniza el stock de una publicación a ML con el token del server, calculando
+// POR VARIACIÓN (sabor): cada variación gestionada recibe su propio stock calculado;
+// las no gestionadas se dejan como están (PUT parcial). Sin variaciones, setea
+// available_quantity. Devuelve el TOTAL publicado (suma de las variaciones
+// gestionadas), o null si la publicación no tiene nada gestionado. (0 pausa la
+// variación/publicación; >0 la reactiva.)
+async function syncListingToML(accessToken, inv, mlbId) {
   const detRes = await fetch(ML_API + "/items/" + mlbId + "?attributes=id,variations", {
     headers: { Authorization: "Bearer " + accessToken, Accept: "application/json" },
     cache: "no-store"
@@ -394,9 +399,24 @@ async function putMLStockServer(accessToken, mlbId, qty) {
   if (!detRes.ok) throw new Error("GET item " + mlbId + " -> " + detRes.status);
   const det = await detRes.json().catch(() => ({}));
   const vars = (det && det.variations) || [];
-  const body = vars.length
-    ? { variations: vars.map(function (v) { return { id: v.id, available_quantity: qty }; }) }
-    : { available_quantity: qty };
+
+  let body, total;
+  if (vars.length) {
+    const varsBody = [];
+    total = 0;
+    vars.forEach(function (v) {
+      const c = computeVariation(inv, mlbId, v.id);
+      if (c != null) { varsBody.push({ id: v.id, available_quantity: c }); total += c; }
+    });
+    if (!varsBody.length) return null; // ninguna variación gestionada
+    body = { variations: varsBody };
+  } else {
+    const c = computeVariation(inv, mlbId, null);
+    if (c == null) return null;
+    body = { available_quantity: c };
+    total = c;
+  }
+
   const putRes = await fetch(ML_API + "/items/" + mlbId, {
     method: "PUT",
     headers: { Authorization: "Bearer " + accessToken, "Content-Type": "application/json", Accept: "application/json" },
@@ -406,7 +426,8 @@ async function putMLStockServer(accessToken, mlbId, qty) {
     const t = await putRes.text().catch(() => "");
     throw new Error("PUT item " + mlbId + " -> " + putRes.status + " " + t.slice(0, 120));
   }
+  return total;
 }
 
 // Export interno para tests unitarios (Netlify solo invoca `handler`).
-exports._test = { descontarStockPorVenta, putMLStockServer };
+exports._test = { descontarStockPorVenta, syncListingToML };

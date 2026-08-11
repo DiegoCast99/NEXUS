@@ -25,11 +25,15 @@ function normalizeInv(inv) {
   return inv;
 }
 
-// Stock que debería tener una publicación según su composición y el stock
-// físico actual. Devuelve null si la publicación NO tiene composición (no la
-// gestiona el inventario), o un entero >= 0.
-function computeListing(inv, mlbId) {
-  const comp = inv.compositions[mlbId];
+// Clave de composición. Publicación simple: "MLB123". Por variación (sabor):
+// "MLB123::456" (456 = variation_id). Retrocompatible: las simples ya guardadas
+// siguen como "MLB123".
+function compKey(mlbId, varId) {
+  return (varId != null && varId !== "") ? (mlbId + "::" + varId) : String(mlbId);
+}
+
+// MIN/floor sobre un array de componentes [{productId, qty}] → entero >= 0, o null.
+function computeComp(inv, comp) {
   if (!comp || !comp.length) return null;
   let min = Infinity;
   for (let i = 0; i < comp.length; i++) {
@@ -42,28 +46,69 @@ function computeListing(inv, mlbId) {
   return min === Infinity ? null : Math.max(0, min);
 }
 
-// Publicaciones cuya composición usa alguno de estos productos.
+// Composición aplicable a una venta de (mlbId, varId). Si hay composición de esa
+// variación, esa; si no, la de la publicación entera (fallback, aplica a todas las
+// variaciones). null = no gestionada.
+function compFor(inv, mlbId, varId) {
+  const comps = inv.compositions || {};
+  if (varId != null && varId !== "") {
+    const k = compKey(mlbId, varId);
+    if (Array.isArray(comps[k]) && comps[k].length) return comps[k];
+  }
+  return (Array.isArray(comps[mlbId]) && comps[mlbId].length) ? comps[mlbId] : null;
+}
+
+// Stock calculado de UNA variación (o de la publicación simple si varId null).
+function computeVariation(inv, mlbId, varId) {
+  return computeComp(inv, compFor(inv, mlbId, varId));
+}
+
+// Stock calculado de la publicación para MOSTRAR: si tiene composiciones por
+// variación, la SUMA de todas; si es simple, la de su composición; null si nada.
+function computeListing(inv, mlbId) {
+  const comps = inv.compositions || {};
+  const pref = mlbId + "::";
+  const varKeys = Object.keys(comps).filter(function (k) { return k.indexOf(pref) === 0; });
+  if (varKeys.length) {
+    let total = 0, algo = false;
+    varKeys.forEach(function (k) {
+      const c = computeComp(inv, comps[k]);
+      if (c != null) { total += c; algo = true; }
+    });
+    return algo ? total : null;
+  }
+  return Array.isArray(comps[mlbId]) ? computeComp(inv, comps[mlbId]) : null;
+}
+
+// Publicaciones (mlbId base) cuya composición —a nivel publicación o de cualquier
+// variación— usa alguno de estos productos.
 function listingsAfectadas(inv, productIds) {
   const set = {};
   productIds.forEach(function (pid) { set[pid] = true; });
-  return Object.keys(inv.compositions).filter(function (mlbId) {
-    return (inv.compositions[mlbId] || []).some(function (c) { return set[c.productId]; });
+  const out = {};
+  Object.keys(inv.compositions || {}).forEach(function (key) {
+    const comp = inv.compositions[key];
+    if (Array.isArray(comp) && comp.some(function (c) { return set[c.productId]; })) {
+      out[String(key).split("::")[0]] = true;
+    }
   });
+  return Object.keys(out);
 }
 
-// Aplica una venta: descuenta del stock físico de cada producto lo que la venta
-// consumió (unidades vendidas × cantidad por composición). MUTA inv.products.
-// Ignora publicaciones sin composición (no gestionadas). Nunca deja stock < 0.
-// items = order_items de ML: [ { item: { id }, quantity } ]
+// Aplica una venta: descuenta del stock físico lo que la venta consumió, usando la
+// composición del SABOR vendido (variation_id) si existe. MUTA inv.products. Ignora
+// lo no gestionado. Nunca deja stock < 0.
+// items = order_items de ML: [ { item: { id, variation_id }, quantity } ]
 function aplicarVenta(inv, items) {
   const changed = {};
   const detalle = [];
   (items || []).forEach(function (it) {
     const mlbId = it && it.item && it.item.id;
+    const varId = (it && it.item && it.item.variation_id != null) ? it.item.variation_id : null;
     const qtySold = Math.max(0, Math.floor(Number(it && it.quantity) || 0));
     if (!mlbId || !qtySold) return;
-    const comp = inv.compositions[mlbId];
-    if (!comp || !comp.length) return; // publicación no gestionada por inventario
+    const comp = compFor(inv, mlbId, varId);
+    if (!comp || !comp.length) return; // no gestionada por inventario
     comp.forEach(function (c) {
       const p = inv.products[c.productId];
       if (!p) return;
@@ -71,7 +116,7 @@ function aplicarVenta(inv, items) {
       p.stock = Math.max(0, (Number(p.stock) || 0) - consumo);
       changed[c.productId] = true;
     });
-    detalle.push({ mlbId: mlbId, qtySold: qtySold });
+    detalle.push({ mlbId: mlbId, varId: varId, qtySold: qtySold });
   });
   return { changedProducts: Object.keys(changed), detalle: detalle };
 }
@@ -124,4 +169,4 @@ function mergeSyncLog(a, b, cap) {
   return out;
 }
 
-module.exports = { normalizeInv, computeListing, listingsAfectadas, aplicarVenta, mergeProducts, mergeSyncLog };
+module.exports = { normalizeInv, compKey, computeComp, compFor, computeVariation, computeListing, listingsAfectadas, aplicarVenta, mergeProducts, mergeSyncLog };

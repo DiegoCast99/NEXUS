@@ -81,10 +81,11 @@
     if (res && res.inventory) adoptInv(res.inventory); // reflejar el estado real fusionado
   }
 
-  // ---- Motor de reglas ----
-  function computeListing(mlbId) {
-    var comp = inv.compositions[mlbId];
-    if (!comp || !comp.length) return null;               // sin composicion: no la gestiona el inventario
+  // ---- Motor de reglas (con soporte de sabores/variaciones) ----
+  // Composición simple: clave "MLB123". Por sabor: "MLB123::<varId>".
+  function compKey(mlbId, varId) { return (varId != null && varId !== "") ? (mlbId + "::" + varId) : String(mlbId); }
+  function computeComp(comp) {
+    if (!comp || !comp.length) return null;
     var min = Infinity;
     for (var i = 0; i < comp.length; i++) {
       var p = inv.products[comp[i].productId];
@@ -95,10 +96,38 @@
     }
     return min === Infinity ? null : Math.max(0, min);
   }
+  // Composición aplicable a un sabor (con fallback a la de la publicación entera).
+  function compFor(mlbId, varId) {
+    var c = inv.compositions;
+    if (varId != null && varId !== "") {
+      var k = compKey(mlbId, varId);
+      if (Array.isArray(c[k]) && c[k].length) return c[k];
+    }
+    return (Array.isArray(c[mlbId]) && c[mlbId].length) ? c[mlbId] : null;
+  }
+  function computeVariation(mlbId, varId) { return computeComp(compFor(mlbId, varId)); }
+  // Stock a MOSTRAR: suma de sabores configurados, o el de la composición simple.
+  function computeListing(mlbId) {
+    var c = inv.compositions, pref = mlbId + "::";
+    var varKeys = Object.keys(c).filter(function (k) { return k.indexOf(pref) === 0; });
+    if (varKeys.length) {
+      var total = 0, algo = false;
+      varKeys.forEach(function (k) { var v = computeComp(c[k]); if (v != null) { total += v; algo = true; } });
+      return algo ? total : null;
+    }
+    return Array.isArray(c[mlbId]) ? computeComp(c[mlbId]) : null;
+  }
+  // Claves de composición (simple + por sabor) de una publicación.
+  function compKeysDe(mlbId) {
+    var pref = mlbId + "::";
+    return Object.keys(inv.compositions).filter(function (k) { return k === mlbId || k.indexOf(pref) === 0; });
+  }
   function listingsDeProducto(productId) {
-    return Object.keys(inv.compositions).filter(function (mlbId) {
-      return (inv.compositions[mlbId] || []).some(function (c) { return c.productId === productId; });
+    var set = {};
+    Object.keys(inv.compositions).forEach(function (key) {
+      if ((inv.compositions[key] || []).some(function (c) { return c.productId === productId; })) set[String(key).split("::")[0]] = true;
     });
+    return Object.keys(set);
   }
   function nuevoProductId() {
     var n = 1;
@@ -106,46 +135,74 @@
     return "PROD-" + String(n).padStart(6, "0");
   }
   function tituloListing(mlbId) { return (catalogo[mlbId] && catalogo[mlbId].title) || mlbId; }
-  function resumenComposicion(mlbId) {
-    var comp = inv.compositions[mlbId] || [];
-    if (!comp.length) return "";
-    return comp.map(function (c) {
+  function variacionesDe(mlbId) { return (catalogo[mlbId] && catalogo[mlbId].variations) || []; }
+  function varLabel(mlbId, varId) {
+    var vs = variacionesDe(mlbId);
+    for (var i = 0; i < vs.length; i++) if (String(vs[i].id) === String(varId)) return vs[i].label;
+    return "Sabor " + varId;
+  }
+  function compArrTexto(comp) {
+    return (comp || []).map(function (c) {
       var p = inv.products[c.productId];
       return (p ? (p.name || p.sku || c.productId) : c.productId) + " ×" + (Number(c.qty) || 1);
     }).join(" · ");
+  }
+  function resumenComposicion(mlbId) {
+    var c = inv.compositions, pref = mlbId + "::";
+    var varKeys = Object.keys(c).filter(function (k) { return k.indexOf(pref) === 0; });
+    if (varKeys.length) {
+      return varKeys.map(function (k) {
+        return varLabel(mlbId, k.slice(pref.length)) + ": " + compArrTexto(c[k]);
+      }).join(" · ");
+    }
+    return (Array.isArray(c[mlbId]) && c[mlbId].length) ? compArrTexto(c[mlbId]) : "";
   }
   function logSync(entry) {
     inv.syncLog.unshift(Object.assign({ ts: new Date().toISOString() }, entry));
     if (inv.syncLog.length > 200) inv.syncLog.length = 200;
   }
 
-  // ---- Conector ML: PUT del stock de UNA publicacion ----
-  async function invPutMLStock(mlbId, qty) {
+  // ---- Conector ML: sincroniza UNA publicación (por variación si tiene sabores) ----
+  // Devuelve el total publicado (suma de sabores gestionados), o null si nada.
+  async function invSyncOne(mlbId) {
     var api = S.requireSecureApi(), cuenta = activeML();
-    var det = await api.mlApi("/items/" + mlbId + "?attributes=id,variations,available_quantity", "GET", null, cuenta);
+    var det = await api.mlApi("/items/" + mlbId + "?attributes=id,variations", "GET", null, cuenta);
     var vars = (det.payload || {}).variations || [];
-    var body = vars.length
-      ? { variations: vars.map(function (v) { return { id: v.id, available_quantity: qty }; }) }
-      : { available_quantity: qty };
+    var body, total;
+    if (vars.length) {
+      var varsBody = []; total = 0;
+      vars.forEach(function (v) {
+        var c = computeVariation(mlbId, v.id);
+        if (c != null) { varsBody.push({ id: v.id, available_quantity: c }); total += c; }
+      });
+      if (!varsBody.length) return null;   // ninguna variación gestionada
+      body = { variations: varsBody };
+    } else {
+      var cs = computeVariation(mlbId, null);
+      if (cs == null) return null;
+      body = { available_quantity: cs }; total = cs;
+    }
     await api.mlApi("/items/" + mlbId, "PUT", body, cuenta);
+    return total;
   }
 
   async function invSyncListings(mlbIds, motivo) {
     var cambiadas = 0, errores = 0;
     for (var i = 0; i < mlbIds.length; i++) {
       var mlbId = mlbIds[i];
-      var computed = computeListing(mlbId);
-      if (computed == null) continue;
+      var computedApprox = computeListing(mlbId);
+      if (computedApprox == null) continue;
       var st = inv.listingState[mlbId] || {};
-      if (st.published === computed && st.status === "synced") continue;
+      if (st.published === computedApprox && st.status === "synced") continue;
       try {
-        await invPutMLStock(mlbId, computed);
-        inv.listingState[mlbId] = { computed: computed, published: computed, status: "synced", lastSyncAt: new Date().toISOString(), error: null };
-        logSync({ listing: mlbId, antes: st.published != null ? st.published : "—", despues: computed, motivo: motivo, resultado: "ok" });
+        var publicado = await invSyncOne(mlbId);
+        if (publicado == null) continue;
+        inv.listingState[mlbId] = { computed: publicado, published: publicado, status: "synced", lastSyncAt: new Date().toISOString(), error: null };
+        logSync({ listing: mlbId, antes: st.published != null ? st.published : "—", despues: publicado, motivo: motivo, resultado: "ok" });
         cambiadas++;
       } catch (e) {
-        inv.listingState[mlbId] = Object.assign({}, st, { computed: computed, status: "error", lastSyncAt: new Date().toISOString(), error: (e && e.message) || "error" });
-        logSync({ listing: mlbId, antes: st.published != null ? st.published : "—", despues: computed, motivo: motivo, resultado: "error", error: (e && e.message) || "error" });
+        inv.listingState[mlbId] = Object.assign({}, st, { computed: computedApprox, status: "error", lastSyncAt: new Date().toISOString(), error: (e && e.message) || "error" });
+        logSync({ listing: mlbId, antes: st.published != null ? st.published : "—", despues: computedApprox, motivo: motivo, resultado: "error", error: (e && e.message) || "error" });
         errores++;
       }
       await dormir(120);
@@ -182,7 +239,13 @@
         var stockML = vars.length
           ? vars.reduce(function (s, v) { return s + (Number(v.available_quantity) || 0); }, 0)
           : (Number(b.available_quantity) || 0);
-        catalogo[b.id] = { title: b.title || b.id, stock: stockML, thumbnail: b.secure_thumbnail || b.thumbnail || "" };
+        // Guardar los sabores (id + etiqueta) para poder enlazar la composición
+        // sabor por sabor. La etiqueta sale de attribute_combinations (ej "Chocolate").
+        var variaciones = vars.map(function (v) {
+          var et = (v.attribute_combinations || []).map(function (a) { return a.value_name; }).filter(Boolean).join(" / ");
+          return { id: String(v.id), label: et || ("Sabor " + v.id), stock: Number(v.available_quantity) || 0 };
+        });
+        catalogo[b.id] = { title: b.title || b.id, stock: stockML, thumbnail: b.secure_thumbnail || b.thumbnail || "", variations: variaciones };
       });
       await dormir(100);
     }
@@ -247,9 +310,11 @@
 
   function renderListings() {
     if (!elements.invListingBody) return;
-    // Mostrar: las que ya tienen composicion + (si se cargo el catalogo) todas las del catalogo.
+    // Mostrar: las que ya tienen composicion + (si se cargo el catalogo) todas las
+    // del catalogo. Las claves de composición pueden ser por sabor ("MLB::var"):
+    // se colapsan al id base de la publicación.
     var set = {};
-    Object.keys(inv.compositions).forEach(function (m) { set[m] = true; });
+    Object.keys(inv.compositions).forEach(function (m) { set[String(m).split("::")[0]] = true; });
     Object.keys(catalogo).forEach(function (m) { set[m] = true; });
     var mlbIds = Object.keys(set);
     elements.invListingEmpty?.classList.toggle("is-visible", !mlbIds.length);
@@ -296,21 +361,41 @@
     elements.invCompose.classList.toggle("is-hidden", !composeSel);
     if (!composeSel) return;
     if (elements.invComposeTitle) elements.invComposeTitle.textContent = "Composición · " + tituloListing(composeSel);
-    var comp = inv.compositions[composeSel] || [];
-    if (elements.invComposeRows) {
-      var prodOpts = Object.keys(inv.products).map(function (id) {
-        return { id: id, name: inv.products[id].name || inv.products[id].sku || id };
-      });
-      elements.invComposeRows.innerHTML = comp.map(function (c, idx) {
-        var sel = prodOpts.map(function (o) {
-          return "<option value='" + escapeHtml(o.id) + "'" + (o.id === c.productId ? " selected" : "") + ">" + escapeHtml(o.name) + "</option>";
-        }).join("");
-        return "<div class='inv-comp-row' data-idx='" + idx + "'>" +
-          "<select class='inv-comp-prod'>" + sel + "</select>" +
-          "<input class='inv-comp-qty' type='text' inputmode='numeric' value='" + escapeHtml(String(Number(c.qty) || 1)) + "' />" +
-          "<button class='table-action delete-action' type='button' data-comp-del='" + idx + "'>Quitar</button>" +
-        "</div>";
-      }).join("") || "<p class='pub-quiet'>Sin componentes. Agregá uno.</p>";
+    // El botón global "+ Componente" se reemplaza por uno por bloque (cada sabor
+    // o la composición simple tiene el suyo).
+    if (elements.invComposeAdd) elements.invComposeAdd.style.display = "none";
+    if (!elements.invComposeRows) return;
+
+    var prodOpts = Object.keys(inv.products).map(function (id) {
+      return { id: id, name: inv.products[id].name || inv.products[id].sku || id };
+    });
+    function rowHtml(varId, c, idx) {
+      var sel = prodOpts.map(function (o) {
+        return "<option value='" + escapeHtml(o.id) + "'" + (o.id === c.productId ? " selected" : "") + ">" + escapeHtml(o.name) + "</option>";
+      }).join("");
+      return "<div class='inv-comp-row' data-var='" + escapeHtml(String(varId)) + "' data-idx='" + idx + "'>" +
+        "<select class='inv-comp-prod'>" + sel + "</select>" +
+        "<input class='inv-comp-qty' type='text' inputmode='numeric' value='" + escapeHtml(String(Number(c.qty) || 1)) + "' />" +
+        "<button class='table-action delete-action' type='button' data-comp-del='1' data-var='" + escapeHtml(String(varId)) + "' data-idx='" + idx + "'>Quitar</button>" +
+      "</div>";
+    }
+    function blockHtml(varId, titulo, stockML) {
+      var comp = inv.compositions[compKey(composeSel, varId)] || [];
+      var rows = comp.map(function (c, idx) { return rowHtml(varId, c, idx); }).join("") || "<p class='pub-quiet'>Sin componentes.</p>";
+      var head = titulo
+        ? "<div class='inv-comp-flavor'><b>" + escapeHtml(titulo) + "</b>" + (stockML != null ? "<small>Stock ML: " + integerNumber.format(stockML) + "</small>" : "") + "</div>"
+        : "";
+      return "<div class='inv-comp-block'>" + head + rows +
+        "<button class='ghost-button inv-comp-add' type='button' data-comp-add='" + escapeHtml(String(varId)) + "'>+ Componente</button></div>";
+    }
+
+    var vars = variacionesDe(composeSel);
+    if (vars.length) {
+      elements.invComposeRows.innerHTML =
+        "<p class='inv-hint'>Esta publicación tiene <b>sabores/variaciones</b>: enlazá cada uno con su producto. Al vender un sabor, se descuenta ese.</p>" +
+        vars.map(function (v) { return blockHtml(v.id, v.label, v.stock); }).join("");
+    } else {
+      elements.invComposeRows.innerHTML = blockHtml("", "", null);
     }
   }
 
@@ -385,7 +470,10 @@
   async function invResyncAll() {
     setInvMsg("Sincronizando todas las publicaciones con composición…");
     try {
-      var r = await invSyncListings(Object.keys(inv.compositions), "Sincronización manual (todas)");
+      // Colapsar claves por sabor ("MLB::var") al id base, sin repetir.
+      var bases = {};
+      Object.keys(inv.compositions).forEach(function (k) { bases[String(k).split("::")[0]] = true; });
+      var r = await invSyncListings(Object.keys(bases), "Sincronización manual (todas)");
       await invSave();
       setInvMsg(r.cambiadas + " sincronizada(s)" + (r.errores ? ", " + r.errores + " con error." : "."), r.errores ? "error" : "success");
       renderInventory();
@@ -406,32 +494,50 @@
 
   function invConfigurar(mlbId) { composeSel = mlbId; renderCompose(); elements.invCompose?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
   function invComposeCancelar() { composeSel = ""; renderCompose(); }
-  function invComposeAgregar() {
+  // Agrega un componente al bloque de un sabor (varId "" = composición simple).
+  function invComposeAddComponent(varId) {
     if (!composeSel) return;
     var firstProd = Object.keys(inv.products)[0];
     if (!firstProd) { if (elements.invComposeMsg) { elements.invComposeMsg.textContent = "Primero creá productos en la pestaña “Lista de productos”."; elements.invComposeMsg.className = "meta-message is-error"; } return; }
-    var comp = inv.compositions[composeSel] || [];
+    var k = compKey(composeSel, varId);
+    var comp = inv.compositions[k] || [];
     comp.push({ productId: firstProd, qty: 1 });
-    inv.compositions[composeSel] = comp;
+    inv.compositions[k] = comp;
     renderCompose();
   }
-  function invComposeQuitar(idx) {
+  function invComposeQuitar(varId, idx) {
     if (!composeSel) return;
-    var comp = inv.compositions[composeSel] || [];
+    var k = compKey(composeSel, varId);
+    var comp = inv.compositions[k] || [];
     comp.splice(idx, 1);
-    if (comp.length) inv.compositions[composeSel] = comp; else delete inv.compositions[composeSel];
+    if (comp.length) inv.compositions[k] = comp; else delete inv.compositions[k];
     renderCompose();
   }
   async function invComposeGuardar() {
     if (!composeSel || !elements.invComposeRows) return;
-    var rows = elements.invComposeRows.querySelectorAll(".inv-comp-row");
-    var comp = [];
-    rows.forEach(function (r) {
+    // Reconstruir la composición desde el DOM, agrupando las filas por sabor (data-var).
+    var porVar = {};
+    elements.invComposeRows.querySelectorAll(".inv-comp-row").forEach(function (r) {
+      var varId = r.getAttribute("data-var") || "";
       var pid = (r.querySelector(".inv-comp-prod") || {}).value;
       var qty = Math.max(1, Math.floor(Number((r.querySelector(".inv-comp-qty") || {}).value) || 1));
-      if (pid) comp.push({ productId: pid, qty: qty });
+      if (!pid) return;
+      (porVar[varId] = porVar[varId] || []).push({ productId: pid, qty: qty });
     });
-    if (comp.length) inv.compositions[composeSel] = comp; else delete inv.compositions[composeSel];
+    var vars = variacionesDe(composeSel);
+    if (vars.length) {
+      // Por sabor: escribir cada uno (o borrarlo si quedó vacío) y borrar la base
+      // legacy a nivel publicación para que no se aplique doble.
+      delete inv.compositions[composeSel];
+      vars.forEach(function (v) {
+        var k = compKey(composeSel, v.id);
+        if (porVar[v.id] && porVar[v.id].length) inv.compositions[k] = porVar[v.id];
+        else delete inv.compositions[k];
+      });
+    } else {
+      var comp = porVar[""] || [];
+      if (comp.length) inv.compositions[composeSel] = comp; else delete inv.compositions[composeSel];
+    }
     if (elements.invComposeMsg) { elements.invComposeMsg.textContent = "Guardando…"; elements.invComposeMsg.className = "meta-message"; }
     try {
       await invSave();
@@ -466,6 +572,6 @@
     abrirInventario, renderInventory, invTab, detenerInvTiempoReal,
     invAddProduct, invGuardarProductos, invDeleteProduct,
     invCargarPublicaciones, invResyncAll, invReintentarUno,
-    invConfigurar, invComposeCancelar, invComposeAgregar, invComposeQuitar, invComposeGuardar
+    invConfigurar, invComposeCancelar, invComposeAddComponent, invComposeQuitar, invComposeGuardar
   });
 })();

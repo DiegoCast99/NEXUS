@@ -261,13 +261,15 @@
       const retry = event.target.closest("button[data-inv-retry]");
       if (retry) S.invReintentarUno(retry.getAttribute("data-inv-retry"));
     });
-    elements.invComposeAdd?.addEventListener("click", () => S.invComposeAgregar());
+    elements.invComposeAdd?.addEventListener("click", () => S.invComposeAddComponent(""));
     elements.invComposeSave?.addEventListener("click", () => S.invComposeGuardar());
     elements.invComposeCancel?.addEventListener("click", () => S.invComposeCancelar());
-    // Quitar un componente de la composición (delegado).
+    // Agregar/quitar componentes por sabor (delegado en las filas de la composición).
     elements.invComposeRows?.addEventListener("click", (event) => {
-      const btn = event.target.closest("button[data-comp-del]");
-      if (btn) S.invComposeQuitar(parseInt(btn.getAttribute("data-comp-del"), 10));
+      const del = event.target.closest("button[data-comp-del]");
+      if (del) { S.invComposeQuitar(del.getAttribute("data-var") || "", parseInt(del.getAttribute("data-idx"), 10)); return; }
+      const add = event.target.closest("button[data-comp-add]");
+      if (add) S.invComposeAddComponent(add.getAttribute("data-comp-add") || "");
     });
     // Lo tipeado queda pendiente en memoria: recien se manda a ML al Guardar.
     elements.mlListingsTable?.addEventListener("input", (event) => {

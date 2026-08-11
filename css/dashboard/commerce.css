@@ -1338,3 +1338,22 @@
 .inv-tab:hover { color: var(--text); }
 .inv-tab.is-active { color: var(--text); border-bottom-color: var(--accent); }
 .inv-view.is-hidden { display: none; }
+
+/* Editor de composición por sabor (variaciones) */
+.inv-comp-block {
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.inv-comp-flavor {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+.inv-comp-flavor b { color: var(--text); font-size: 14px; }
+.inv-comp-flavor small { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.inv-comp-add { margin-top: 6px; }
