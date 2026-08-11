@@ -948,9 +948,15 @@
     } catch (e) { /* best-effort */ }
   }
 
+  // Saca el splash "Cargando tu venta…" del deep-link (si estaba puesto).
+  function ocultarSplashVenta() {
+    try { document.documentElement.classList.remove("booting-sale"); } catch (e) {}
+  }
+
   // Abre el panel del detalle YA, con un esqueleto, mientras se trae la orden.
   function mostrarVentaCargando(orderId) {
     if (!elements.ventaDetail) return;
+    ocultarSplashVenta();
     txtVenta(elements.ventaTitulo, "Cargando venta…");
     txtVenta(elements.ventaId, "Venta #" + orderId);
     txtVenta(elements.ventaFecha, "");
@@ -968,7 +974,7 @@
   // cualquier cuenta del modulo (ML 1, ML 2, Brasil y las que vengan).
   async function openSaleDeepLink(accountId, orderId, timeoutMs) {
     var app = getCommerceApp(accountId);
-    if (!app) return; // cuenta desconocida: quedo la portada de E-Commerce
+    if (!app) { ocultarSplashVenta(); return; } // cuenta desconocida: quedo la portada
     selectCommerceApp(accountId);
     window.NexusPlatformNav?.setSection("pedidos");
 
@@ -1009,6 +1015,7 @@
 
   function renderVentaDetail(orderId, preOrder) {
     if (!elements.ventaDetail) return;
+    ocultarSplashVenta();
     var o = preOrder || ventaPorId(orderId);
     if (!o) { setMlMessage("No se encontro esa venta en el periodo actual.", "error"); return; }
     ventaActual = o;

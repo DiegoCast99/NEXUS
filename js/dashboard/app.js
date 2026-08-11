@@ -299,6 +299,9 @@
         const hash = String(msg.url).split("#")[1] || "";
         const saleLink = hash.match(/^venta-([a-z0-9]+)-(.+)$/);
         if (saleLink) {
+          // App ya abierta (quizás en la portada): tapamos con el splash para ir
+          // directo al detalle, y openSaleDeepLink lo saca al mostrar la venta.
+          document.documentElement.classList.add("booting-sale");
           setView("ecommerce", false);
           S.openSaleDeepLink(saleLink[1], saleLink[2]);
         } else if (hash) {
@@ -429,7 +432,12 @@
       } else if (saleLink) {
         setView("ecommerce", false);
         S.openSaleDeepLink(saleLink[1], saleLink[2]);
+        // Red de seguridad: si algo falla y el detalle nunca aparece, sacar el
+        // splash igual (openSaleDeepLink normalmente lo saca al mostrar la venta).
+        setTimeout(function () { document.documentElement.classList.remove("booting-sale"); }, 10000);
       } else {
+        // Boot normal (no venta): por las dudas, nunca dejar el splash puesto.
+        document.documentElement.classList.remove("booting-sale");
         setView(initial || "welcome", false);
         // Mercado Libre "en vivo": al abrir Nexus con la cuenta conectada,
         // traer las ventas de entrada (sin apretar Sincronizar). El caso

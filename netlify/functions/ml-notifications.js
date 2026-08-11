@@ -109,41 +109,27 @@ async function handleNotification(body) {
   }
 
   // ---------- Push de la venta ----------
-  // Dedup: lista de últimas órdenes notificadas (JSON en un campo string).
-  let notified = [];
-  try {
-    const raw = fields.ml_notified_ids && fields.ml_notified_ids.stringValue;
-    if (raw) notified = JSON.parse(raw);
-    if (!Array.isArray(notified)) notified = [];
-  } catch (e) {
-    notified = [];
-  }
-  if (notified.indexOf(orderId) !== -1) return; // ya notificada
-
-  // Suscripciones push del usuario.
-  let subs = [];
-  try {
-    const raw = fields.push_subs && fields.push_subs.stringValue;
-    if (raw) subs = JSON.parse(raw);
-    if (!Array.isArray(subs)) subs = [];
-  } catch (e) {
-    subs = [];
-  }
-  if (subs.length === 0) return; // nada a donde notificar
-
-  // Si no se puede verificar (ML caido, token irrecuperable), se avisa igual:
-  // peor que un falso aviso es callarse una venta real.
+  // Solo se avisan ventas pagadas (o no verificables). Las NO pagadas no se
+  // marcan a proposito: si el pago se concreta despues, ML manda otro evento y
+  // AHI se avisa.
   if (chequeo.verificada && !chequeo.esVenta) {
     console.warn("ml-notifications: orden " + orderId + " con status '" + chequeo.status +
       "' — no es una venta paga, no se notifica");
-    // No se marca como notificada a proposito: si el pago se concreta mas
-    // tarde, ML manda otro evento y AHI se avisa.
     return;
   }
   if (!chequeo.verificada) {
     console.warn("ml-notifications: no se pudo verificar la orden " + orderId +
       " (" + (chequeo.motivo || "sin detalle") + ") — se notifica igual");
   }
+
+  // IDEMPOTENCIA ATÓMICA. ML manda VARIOS eventos por la misma orden y llegan en
+  // paralelo: sin serializar, cada invocación pasaba el chequeo y mandaba su push
+  // (salian 2-3 notificaciones iguales). Ahora se "reclama" la orden con
+  // precondición ANTES de enviar; solo UNA invocación gana el claim → un solo push.
+  const claim = await reclamarNotificacion(uid, orderId);
+  if (!claim.claimed) return;   // ya la reclamó/notificó otra invocación (o sin doc)
+  const subs = claim.subs;
+  if (!subs.length) return;     // nada a donde notificar
 
   // Enviar el push a cada dispositivo. Quitar las suscripciones caducadas.
   // El cuerpo dice de que cuenta fue la venta ("Mercado Libre 1" / "...2"),
@@ -157,37 +143,51 @@ async function handleNotification(body) {
     url: "/dashboard.html#venta-" + accountId + "-" + orderId
   };
   const alive = [];
-  let sentCount = 0;
   for (const sub of subs) {
     try {
       const result = await sendPush(sub, payload);
-      if (!result.gone) { alive.push(sub); sentCount += 1; }
+      if (!result.gone) alive.push(sub);
     } catch (e) {
       alive.push(sub);
       console.warn("ml-notifications push error:", e && e.message);
     }
   }
 
-  const updateFields = {};
-  const maskPaths = [];
-
+  // Podar suscripciones caducadas (best-effort). ml_notified_ids ya lo escribió el
+  // claim, así que acá solo se actualiza push_subs si algo caducó.
   if (alive.length !== subs.length) {
-    updateFields.push_subs = { stringValue: JSON.stringify(alive) };
-    maskPaths.push("push_subs");
+    await adminPatchDoc("users/" + uid, { push_subs: { stringValue: JSON.stringify(alive) } }, ["push_subs"]);
   }
+}
 
-  if (sentCount > 0) {
+// Reclama una orden para notificarla UNA sola vez, aunque ML mande varios eventos
+// en paralelo. Lee fresco, y si la orden no está en ml_notified_ids la agrega con
+// precondición sobre updateTime. Devuelve { claimed, subs }: claimed=true solo para
+// la invocación que ganó el claim (las demás ven la orden ya marcada, o pierden la
+// precondición y reintentan). subs = suscripciones frescas para enviar.
+async function reclamarNotificacion(uid, orderId) {
+  for (let intento = 0; intento < INV_MAX_RETRIES; intento++) {
+    const doc = await adminGetDoc("users/" + uid);
+    if (!doc) return { claimed: false, subs: [] };
+    const updateTime = doc.updateTime;
+
+    let notified = [];
+    try { const r = invFieldRaw(doc, "ml_notified_ids"); if (r) notified = JSON.parse(r); if (!Array.isArray(notified)) notified = []; } catch (e) { notified = []; }
+    if (notified.indexOf(orderId) !== -1) return { claimed: false, subs: [] }; // ya notificada
+
+    let subs = [];
+    try { const r = invFieldRaw(doc, "push_subs"); if (r) subs = JSON.parse(r); if (!Array.isArray(subs)) subs = []; } catch (e) { subs = []; }
+
     notified.unshift(orderId);
     if (notified.length > MAX_NOTIFIED) notified = notified.slice(0, MAX_NOTIFIED);
-    updateFields.ml_notified_ids = { stringValue: JSON.stringify(notified) };
-    maskPaths.push("ml_notified_ids");
-  } else {
-    console.warn("ml-notifications: 0 pushes enviados para orden " + orderId);
-  }
 
-  if (maskPaths.length > 0) {
-    await adminPatchDoc("users/" + uid, updateFields, maskPaths);
+    const ok = await adminPatchDocIf("users/" + uid,
+      { ml_notified_ids: { stringValue: JSON.stringify(notified) } }, ["ml_notified_ids"], updateTime);
+    if (ok) return { claimed: true, subs: subs };
+    // conflicto: otro proceso escribió el doc → reintentar (re-lee; si ya quedó
+    // notificada, la próxima vuelta sale con claimed:false).
   }
+  return { claimed: false, subs: [] };
 }
 
 /* ---------- verificacion de la orden contra ML ---------- */
@@ -430,4 +430,4 @@ async function syncListingToML(accessToken, inv, mlbId) {
 }
 
 // Export interno para tests unitarios (Netlify solo invoca `handler`).
-exports._test = { descontarStockPorVenta, syncListingToML };
+exports._test = { descontarStockPorVenta, syncListingToML, reclamarNotificacion };

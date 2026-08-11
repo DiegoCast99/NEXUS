@@ -23,9 +23,31 @@
           if (sessionStorage.getItem("nexus.dashboard.reveal.v1") === "soft") {
             document.documentElement.classList.add("nexus-dashboard-reveal-pending");
           }
+          // Deep-link de venta (#venta-...): tapar la portada con un splash para ir
+          // DIRECTO al detalle, sin que se vea el selector de módulos mientras carga.
+          if (/^#venta-/.test(location.hash || "")) {
+            document.documentElement.classList.add("booting-sale");
+          }
         } catch (error) {}
       })();
     </script>
+    <style>
+      /* Splash del deep-link de venta: se muestra al toque (antes que cualquier JS)
+         y lo saca commerce.js apenas aparece el detalle. Crítico → inline. */
+      #saleBootSplash { display: none; }
+      html.booting-sale #saleBootSplash {
+        display: flex; position: fixed; inset: 0; z-index: 9999;
+        flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+        background: #0b0b0d; color: #f3f3f8;
+      }
+      html.booting-sale .sale-boot-spinner {
+        width: 40px; height: 40px; border-radius: 50%;
+        border: 3px solid rgba(255, 255, 255, 0.14); border-top-color: #ff1a9d;
+        animation: saleBootSpin 0.8s linear infinite;
+      }
+      @keyframes saleBootSpin { to { transform: rotate(360deg); } }
+      html.booting-sale #saleBootSplash p { margin: 0; font-size: 14px; color: #9a9aa5; }
+    </style>
     <link rel="stylesheet" href="./css/dashboard/base.css?v=20260720-pub1" />
     <link rel="stylesheet" href="./css/dashboard/layout.css?v=20260716-nav2" />
     <link rel="stylesheet" href="./css/dashboard/controls.css?v=20260727-mob1" />
@@ -39,6 +61,11 @@
     <link rel="stylesheet" href="./css/dashboard/mobile.css?v=20260727-mob5" />
   </head>
   <body>
+    <!-- Splash del deep-link de venta: tapa la portada hasta que aparece el detalle. -->
+    <div id="saleBootSplash" aria-hidden="true">
+      <div class="sale-boot-spinner"></div>
+      <p>Cargando tu venta…</p>
+    </div>
     <div class="dashboard-shell" id="dashboardShell">
       <button class="sidebar-toggle" type="button" id="sidebarToggle" aria-label="Mostrar u ocultar el menu" aria-expanded="true">
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -1402,13 +1429,13 @@
     <script src="./js/dashboard/finance.js?v=20260727-rev2"></script>
     <script src="./js/dashboard/revolut.js?v=20260727-rev1"></script>
     <script src="./js/dashboard/meta.js?v=20260716-nav1"></script>
-    <script src="./js/dashboard/commerce.js?v=20260809-adschart1"></script>
+    <script src="./js/dashboard/commerce.js?v=20260810-notif1"></script>
     <script src="./js/dashboard/inventory.js?v=20260810-sabores1"></script>
     <script src="./js/dashboard/notifications.js?v=20260717-acct4"></script>
     <script src="./js/dashboard/tools.js?v=20260727-mob5"></script>
     <script src="./js/dashboard/platform-nav.js?v=20260804-ads1"></script>
     <script src="./js/dashboard/router.js?v=20260727-mob5"></script>
-    <script src="./js/dashboard/app.js?v=20260810-sabores1"></script>
+    <script src="./js/dashboard/app.js?v=20260810-notif1"></script>
     <script src="./js/dashboard/mobile-tables.js?v=20260727-mob3"></script>
     <script src="./js/pwa.js?v=20260711-push1" defer></script>
   </body>
