@@ -51,9 +51,21 @@
   function adoptInv(o) {
     inv = {
       products: (o && o.products) || {}, compositions: (o && o.compositions) || {},
+      listingAccounts: (o && o.listingAccounts) || {},
       listingState: (o && o.listingState) || {}, syncLog: (o && Array.isArray(o.syncLog)) ? o.syncLog : []
     };
     snapshotServerStock();
+  }
+
+  // Registra a qué cuenta pertenece cada publicación configurada (para el sync
+  // multi-cuenta), tomándolo del catálogo ya cargado. Se llama antes de guardar.
+  function tagearCuentas() {
+    Object.keys(inv.compositions).forEach(function (k) {
+      var mlbId = String(k).split("::")[0];
+      if (!inv.listingAccounts[mlbId] && catalogo[mlbId] && catalogo[mlbId].account) {
+        inv.listingAccounts[mlbId] = catalogo[mlbId].account;
+      }
+    });
   }
 
   // ---- Persistencia ----
@@ -66,6 +78,7 @@
   // (lo que valía al cargar) para que el servidor sepa cuáles tocó el usuario y
   // cuáles preservar (posible descuento por venta). Adopta el inv ya fusionado.
   async function invSave() {
+    tagearCuentas();
     var productos = {};
     Object.keys(inv.products).forEach(function (id) {
       var p = inv.products[id];
@@ -75,7 +88,7 @@
       };
     });
     var res = await S.requireSecureApi().inventory("save", {
-      products: productos, compositions: inv.compositions,
+      products: productos, compositions: inv.compositions, listingAccounts: inv.listingAccounts,
       listingState: inv.listingState, syncLog: inv.syncLog
     });
     if (res && res.inventory) adoptInv(res.inventory); // reflejar el estado real fusionado
@@ -164,8 +177,11 @@
 
   // ---- Conector ML: sincroniza UNA publicación (por variación si tiene sabores) ----
   // Devuelve el total publicado (suma de sabores gestionados), o null si nada.
+  function cuentaDe(mlbId) {
+    return inv.listingAccounts[mlbId] || (catalogo[mlbId] && catalogo[mlbId].account) || activeML();
+  }
   async function invSyncOne(mlbId) {
-    var api = S.requireSecureApi(), cuenta = activeML();
+    var api = S.requireSecureApi(), cuenta = cuentaDe(mlbId); // multi-cuenta: cada anuncio con SU token
     var det = await api.mlApi("/items/" + mlbId + "?attributes=id,variations", "GET", null, cuenta);
     var vars = (det.payload || {}).variations || [];
     var body, total;
@@ -216,9 +232,28 @@
     elements.invMessage.className = "meta-message" + (tipo ? " is-" + tipo : "");
   }
 
-  // ---- Catalogo de publicaciones de ML ----
+  // Cuentas de ML del inventario: todas las conectadas que comparten tarjeta con la
+  // activa (ML1 + ML2 de Uruguay). Comparten la MISMA tabla de stock.
+  function cuentasMLDelInventario() {
+    var activa = activeML();
+    var hermanas = (S.mlAccountsFor ? S.mlAccountsFor(activa) : null) || [{ id: activa }];
+    var ids = hermanas.map(function (a) { return a.id; }).filter(function (id) {
+      try { return S.getCommerceConfig(id).hasToken; } catch (e) { return id === activa; }
+    });
+    return ids.length ? ids : [activa];
+  }
+
+  // ---- Catalogo de publicaciones de ML (de TODAS las cuentas del inventario) ----
   async function cargarCatalogo() {
-    var api = S.requireSecureApi(), cuenta = activeML();
+    var api = S.requireSecureApi();
+    var cuentas = cuentasMLDelInventario();
+    for (var ci = 0; ci < cuentas.length; ci++) {
+      await cargarCatalogoCuenta(api, cuentas[ci]);
+    }
+    catalogoCargado = true;
+  }
+
+  async function cargarCatalogoCuenta(api, cuenta) {
     var me = await api.mlApi("/users/me", "GET", null, cuenta);
     var userId = (me.payload || {}).id;
     var ids = [], offset = 0;
@@ -245,7 +280,7 @@
           var et = (v.attribute_combinations || []).map(function (a) { return a.value_name; }).filter(Boolean).join(" / ");
           return { id: String(v.id), label: et || ("Sabor " + v.id), stock: Number(v.available_quantity) || 0 };
         });
-        catalogo[b.id] = { title: b.title || b.id, stock: stockML, thumbnail: b.secure_thumbnail || b.thumbnail || "", variations: variaciones };
+        catalogo[b.id] = { title: b.title || b.id, stock: stockML, thumbnail: b.secure_thumbnail || b.thumbnail || "", variations: variaciones, account: cuenta };
       });
       await dormir(100);
     }
@@ -332,10 +367,14 @@
       var foto = cat.thumbnail
         ? "<img class='order-thumb' src='" + escapeHtml(cat.thumbnail) + "' alt='' loading='lazy' onerror=\"this.style.display='none'\" />"
         : "<span class='order-thumb order-thumb-empty' aria-hidden='true'></span>";
+      // Etiqueta de cuenta (ML1 / ML2): a qué cuenta pertenece este anuncio.
+      var accId = inv.listingAccounts[mlbId] || cat.account || "";
+      var accName = accId && S.mlAccountById ? (S.mlAccountById(accId) || {}).name : "";
+      var accBadge = accName ? " <span class='inv-acct-badge'>" + escapeHtml(accName) + "</span>" : "";
       return "<tr>" +
         "<td class='order-product'><div class='order-product-cell'>" + foto +
           "<div class='order-product-info'><b>" + escapeHtml(tituloListing(mlbId)) + "</b>" +
-          "<small class='order-stock'>" + escapeHtml(mlbId) + "</small></div></div></td>" +
+          "<small class='order-stock'>" + escapeHtml(mlbId) + accBadge + "</small></div></div></td>" +
         "<td>" + (resumen ? escapeHtml(resumen) : "<span class='pub-quiet'>Sin configurar</span>") + "</td>" +
         "<td class='num'>" + (computed == null ? "—" : integerNumber.format(computed)) + "</td>" +
         "<td class='num'>" + (stockML != null ? integerNumber.format(stockML) : "—") + "</td>" +

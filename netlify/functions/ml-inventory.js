@@ -66,6 +66,7 @@ exports.handler = async (event) => {
       const products = body.products && typeof body.products === "object" ? body.products : {};
       const compositions = body.compositions && typeof body.compositions === "object" ? body.compositions : {};
       const listingState = body.listingState && typeof body.listingState === "object" ? body.listingState : {};
+      const listingAccounts = body.listingAccounts && typeof body.listingAccounts === "object" ? body.listingAccounts : {};
       const syncLog = Array.isArray(body.syncLog) ? body.syncLog : [];
 
       for (let intento = 0; intento < MAX_RETRIES; intento++) {
@@ -75,6 +76,9 @@ exports.handler = async (event) => {
         const merged = {
           products: mergeProducts(server.products, products),
           compositions: compositions,
+          // listingAccounts: merge por clave (el navegador aporta las cuentas que
+          // conoce; se preservan las que ya estaban).
+          listingAccounts: Object.assign({}, server.listingAccounts, listingAccounts),
           listingState: Object.assign({}, server.listingState, listingState),
           syncLog: mergeSyncLog(server.syncLog, syncLog, 200),
           updatedAt: new Date().toISOString()

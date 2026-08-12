@@ -21,6 +21,10 @@ function normalizeInv(inv) {
   if (!inv.products || typeof inv.products !== "object") inv.products = {};
   if (!inv.compositions || typeof inv.compositions !== "object") inv.compositions = {};
   if (!inv.listingState || typeof inv.listingState !== "object") inv.listingState = {};
+  // Multi-cuenta: a qué cuenta de ML pertenece cada publicación (mlbId base ->
+  // "mercadolibre" | "mercadolibre2" | ...). Lo usa el sync para empujar cada
+  // anuncio con el token de SU cuenta, aunque la venta caiga en otra.
+  if (!inv.listingAccounts || typeof inv.listingAccounts !== "object") inv.listingAccounts = {};
   if (!Array.isArray(inv.syncLog)) inv.syncLog = [];
   return inv;
 }

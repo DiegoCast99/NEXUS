@@ -102,7 +102,7 @@ async function handleNotification(body) {
   // ml_inventory_processed) para no descontar dos veces si ML reenvia el webhook.
   if (chequeo.verificada && chequeo.esVenta && chequeo.orden && chequeo.accessToken) {
     try {
-      await descontarStockPorVenta(accountId, uid, orderId, chequeo.orden, chequeo.accessToken);
+      await descontarStockPorVenta(accountId, uid, orderId, chequeo.orden, chequeo.accessToken, fields);
     } catch (e) {
       console.error("ml-notifications inventario: descuento fallo para orden " + orderId + ":", e && e.message);
     }
@@ -227,6 +227,20 @@ async function verificarOrden(accountId, fields, uid, orderId) {
   }
 }
 
+// Access token de CUALQUIER cuenta conectada (para el sync multi-cuenta). Descifra
+// secret_<cuenta> desde el doc y lo refresca si está vencido, re-persistiendo. Lanza
+// si esa cuenta no tiene tokens guardados.
+async function tokenParaCuenta(uid, fields, account) {
+  const campo = "secret_" + account;
+  const enc = fields && fields[campo] && fields[campo].stringValue;
+  if (!enc) throw new Error("sin tokens de " + account);
+  let tokens = JSON.parse(decrypt(enc));
+  const ahora = Math.floor(Date.now() / 1000);
+  const vence = (tokens.obtained_at || 0) + (tokens.expires_in || 0) - REFRESH_BUFFER_SECS;
+  if (ahora >= vence && tokens.refresh_token) tokens = await refrescarToken(tokens, uid, campo);
+  return tokens.access_token;
+}
+
 // El webhook llega a cualquier hora y el access_token de ML dura 3 h: casi
 // siempre va a estar vencido. Se refresca con la cuenta de servicio y se
 // re-persiste cifrado, igual que hace el proxy.
@@ -294,7 +308,7 @@ function parseLedger(doc) {
 //   Fase B) Recalcula las publicaciones afectadas, hace el PUT a ML UNA sola vez,
 //           y persiste listingState + log. La ESCRITURA reintenta ante conflicto;
 //           los PUT (ya hechos) no se repiten.
-async function descontarStockPorVenta(accountId, uid, orderId, orden, accessToken) {
+async function descontarStockPorVenta(accountId, uid, orderId, orden, accessToken, fields) {
   const items = Array.isArray(orden.order_items) ? orden.order_items : [];
   if (!items.length) return;
   const orderKey = accountId + ":" + orderId;
@@ -342,6 +356,10 @@ async function descontarStockPorVenta(accountId, uid, orderId, orden, accessToke
 
     if (pushed === null) {
       pushed = {};
+      // Token por cuenta: la de la venta ya viene fresca; las demás se resuelven
+      // bajo demanda (multi-cuenta). Así una venta en ML1 puede empujar el stock a
+      // publicaciones de ML2 con el token de ML2.
+      const tokenCache = { [accountId]: accessToken };
       const afectadas = listingsAfectadas(inv, changed);
       for (let i = 0; i < afectadas.length; i++) {
         const mlbId = afectadas[i];
@@ -350,8 +368,18 @@ async function descontarStockPorVenta(accountId, uid, orderId, orden, accessToke
         const prev = inv.listingState[mlbId] || {};
         if (prev.published === computedApprox && prev.status === "synced") continue; // ya sincronizada
         const antes = prev.published != null ? prev.published : null;
+
+        // Cuenta dueña de ESTA publicación. Si no está registrada, cae en la de la venta.
+        const acc = (inv.listingAccounts && inv.listingAccounts[mlbId]) || accountId;
+        if (!(acc in tokenCache)) {
+          try { tokenCache[acc] = await tokenParaCuenta(uid, fields, acc); }
+          catch (e) { tokenCache[acc] = null; }
+        }
+        const tok = tokenCache[acc];
+        if (!tok) { pushed[mlbId] = { computed: computedApprox, ok: false, error: "sin token de " + acc, antes: antes }; continue; }
+
         try {
-          const publicado = await syncListingToML(accessToken, inv, mlbId);
+          const publicado = await syncListingToML(tok, inv, mlbId);
           if (publicado == null) continue; // nada gestionado (ni por variación)
           pushed[mlbId] = { computed: publicado, ok: true, antes: antes };
         } catch (e) {

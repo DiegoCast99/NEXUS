@@ -1357,3 +1357,16 @@
 .inv-comp-flavor b { color: var(--text); font-size: 14px; }
 .inv-comp-flavor small { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .inv-comp-add { margin-top: 6px; }
+
+/* Etiqueta de cuenta (ML1/ML2) en la tabla de publicaciones del inventario */
+.inv-acct-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 10px;
+  vertical-align: middle;
+}
