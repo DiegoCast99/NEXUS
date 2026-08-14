@@ -2911,7 +2911,35 @@
     } catch (e) { setAdsDetailMsg("No se pudo agregar: " + adsErr(e), "error"); }
   }
 
+  // ---- Agente publicitario: gasto del MES EN CURSO (para el techo mensual) ----
+  // Requiere que cargarAds haya corrido antes (necesita site+advertiser).
+  function primerDiaMesISO() {
+    var d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-01";
+  }
+  async function cargarAdsMTD(cuenta) {
+    cuenta = cuenta || activeMLId();
+    var cache = adsDatos(cuenta);
+    if (!cache.advertiserId || !cache.siteId) return null;
+    try {
+      var api = S.requireSecureApi();
+      var qs = "/marketplace/advertising/" + cache.siteId + "/advertisers/" + cache.advertiserId +
+        "/product_ads/campaigns/search?limit=100&date_from=" + primerDiaMesISO() + "&date_to=" + hoyISO() + "&metrics=cost";
+      var res = await api.mlApi(qs, "GET", null, cuenta);
+      var results = (res.payload && (res.payload.results || res.payload)) || [];
+      var spent = 0;
+      (Array.isArray(results) ? results : []).forEach(function (c) {
+        var m = c.metrics || c.metrics_summary || {};
+        spent += Number(m.cost != null ? m.cost : (c.cost || 0)) || 0;
+      });
+      cache.spentMTD = spent;
+      cache.spentMTDAt = Date.now();
+      return spent;
+    } catch (e) { return null; }
+  }
+
   Object.assign(S, {
+    adsDatos, activeMLId, adsUpdateCampaign, cargarAdsMTD,
     aggregateCommerceProducts, aggregateCommerceTrend, buildDemoCommerceSnapshot, buildMLAuthUrl,
     clearSelectedCommerceApp, clearSelectedCommerceGroup, createCommerceSnapshot, disconnectML, ensureMLLiveDefaults, fetchCommerceData, fetchMLOrders,
     handleMlOAuthReturn, normalizeCommerceOrder, normalizeMLOrder,

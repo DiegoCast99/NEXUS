@@ -760,3 +760,115 @@
 
 /* Ocultar los elementos "solo-mobile" en desktop. */
 .m-only { display: none; }
+
+/* ============================================================
+   AGENTE PUBLICITARIO (Publicidad > Agente) · 2026-08-14
+   ============================================================ */
+/* Tabs Campañas | Agente */
+.ads-tabs { display: inline-flex; gap: 4px; padding: 4px; margin: 0 0 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--panel); }
+.ads-tab { padding: 8px 16px; border: 0; border-radius: 9px; background: none; color: var(--muted); font-size: 13.5px; font-weight: 600; cursor: pointer; transition: background .15s ease, color .15s ease; }
+.ads-tab.is-active { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; }
+.ads-pane.is-hidden { display: none; }
+/* En el tab Agente, las acciones de Campañas (Actualizar/Crear) no aplican. */
+.ads-on-agente .ads-head-actions { display: none; }
+
+.agent-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  padding: 18px 20px;
+  margin-bottom: 15px;
+}
+.agent-eyebrow { display: block; color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+.agent-card h3 { margin: 0; font-size: 17px; font-weight: 650; }
+.agent-empty { padding: 22px; text-align: center; color: var(--muted); font-size: 13.5px; line-height: 1.6; border: 1px dashed var(--border); border-radius: var(--radius); }
+
+/* Setup: objetivo + techo */
+.agent-setup { display: grid; grid-template-columns: 1.4fr 1fr auto; gap: 16px; align-items: end; }
+.agent-setup-obj b { display: block; font-size: 18px; font-weight: 750; }
+.agent-setup-obj small { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.agent-cap-field { min-width: 0; }
+
+/* Badge de estado del pacing */
+.agent-badge { padding: 5px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.agent-badge.on { color: var(--good); background: rgba(52,211,153,0.14); }
+.agent-badge.under { color: var(--warn); background: rgba(245,166,35,0.14); }
+.agent-badge.over { color: var(--danger); background: rgba(255,90,90,0.14); }
+.agent-badge.capped { color: #fff; background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.agent-badge.sincap { color: var(--muted); background: rgba(255,255,255,0.06); }
+
+/* Pacing */
+.agent-pacing-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.agent-pacing-bar { height: 8px; border-radius: 999px; background: rgba(255,255,255,0.07); overflow: hidden; margin-bottom: 16px; }
+.agent-pacing-bar > i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+.agent-pacing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.agent-pi { padding: 11px 13px; border: 1px solid var(--border); border-radius: 11px; background: rgba(255,255,255,0.02); }
+.agent-pi span { display: block; color: var(--muted); font-size: 11.5px; margin-bottom: 4px; }
+.agent-pi b { font-size: 18px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.agent-pi.hi { border-color: rgba(255,118,66,0.3); background: radial-gradient(120% 130% at 50% -20%, rgba(255,98,46,0.16), transparent 60%), var(--panel); }
+.agent-pi.hi b { color: var(--accent); }
+.agent-pacing-note { margin: 14px 0 0; color: rgba(244,244,246,0.72); font-size: 13px; line-height: 1.55; }
+
+/* Recomendaciones */
+.agent-recs-head, .agent-auto-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.agent-rec-list { display: flex; flex-direction: column; gap: 9px; }
+.agent-rec { display: flex; align-items: center; gap: 13px; padding: 13px 14px; border: 1px solid var(--border); border-radius: 12px; background: rgba(255,255,255,0.02); }
+.agent-rec-ic { width: 8px; align-self: stretch; border-radius: 999px; flex: none; }
+.agent-rec.sev-danger .agent-rec-ic { background: var(--danger); box-shadow: 0 0 10px rgba(255,90,90,0.5); }
+.agent-rec.sev-warn .agent-rec-ic { background: var(--warn); box-shadow: 0 0 10px rgba(245,166,35,0.5); }
+.agent-rec.sev-good .agent-rec-ic { background: var(--good); box-shadow: 0 0 10px rgba(52,211,153,0.5); }
+.agent-rec.sev-info .agent-rec-ic { background: var(--accent); }
+.agent-rec-main { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.agent-rec-main b { font-size: 14px; }
+.agent-rec-camp { font-size: 12.5px; color: var(--accent); font-weight: 600; }
+.agent-rec-main small { color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+.agent-rec-delta { font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 3px; }
+.agent-rec-delta em { color: var(--muted); font-style: normal; }
+.agent-rec-apply { flex: none; }
+.agent-ok { display: flex; align-items: center; gap: 12px; padding: 16px; border-radius: 12px; background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.2); }
+.agent-ok-dot { width: 11px; height: 11px; border-radius: 50%; background: var(--good); box-shadow: 0 0 12px rgba(52,211,153,0.6); flex: none; }
+.agent-ok b { font-size: 14px; } .agent-ok small { display: block; color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+
+/* Piloto automatico (Nivel 3, apagado) */
+.agent-auto { opacity: 0.9; }
+.agent-auto-head small { display: block; margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 1.5; max-width: 520px; }
+.agent-toggle { width: 46px; height: 26px; border-radius: 999px; background: rgba(255,255,255,0.1); flex: none; position: relative; cursor: not-allowed; }
+.agent-toggle > i { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #6a6a72; transition: left .16s ease; }
+.agent-auto-rules { margin-top: 12px; padding: 11px 13px; border-radius: 10px; background: rgba(255,255,255,0.02); border: 1px dashed var(--border); color: var(--muted); font-size: 12.5px; }
+
+/* Historial */
+.agent-log-list { display: grid; gap: 7px; margin-top: 8px; }
+.agent-log-item { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 9px 11px; border-radius: 9px; background: rgba(255,255,255,0.02); }
+.agent-log-item b { font-size: 13px; } .agent-log-item small { color: var(--muted); font-size: 11.5px; }
+
+@media (max-width: 760px) {
+  .agent-setup { grid-template-columns: 1fr; }
+  .agent-pacing-grid { grid-template-columns: repeat(2, 1fr); }
+  .agent-rec { flex-wrap: wrap; }
+  .agent-rec-apply { width: 100%; margin-top: 8px; }
+}
+
+/* --- Nivel 3 · piloto automatico --- */
+.agent-toggle.is-on { background: linear-gradient(135deg, var(--accent), var(--accent-2)); cursor: pointer; }
+.agent-toggle.is-on > i { left: 23px; background: #fff; }
+.agent-toggle.is-off { cursor: pointer; }
+.agent-auto-body { margin-top: 14px; display: flex; flex-direction: column; gap: 14px; }
+.agent-auto-row { display: flex; align-items: center; gap: 14px; }
+.agent-auto-lbl { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+.agent-seg { display: inline-flex; padding: 3px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); }
+.agent-seg button { padding: 7px 14px; border: 0; border-radius: 7px; background: none; color: var(--muted); font-size: 13px; font-weight: 600; cursor: pointer; }
+.agent-seg button.is-active { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; }
+.agent-auto-modenote { margin: 0; color: rgba(244,244,246,0.72); font-size: 12.5px; line-height: 1.55; }
+.agent-auto-modenote b { color: var(--text); }
+.agent-auto-guards { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; }
+.agent-auto-actions { display: flex; gap: 10px; }
+.agent-sim-head { margin: 12px 0 8px; font-size: 13px; font-weight: 650; }
+.agent-sim-ok { margin-top: 12px; padding: 12px 14px; border-radius: 11px; background: rgba(52,211,153,0.08); border: 1px solid rgba(52,211,153,0.2); color: var(--good); font-size: 13px; }
+.agent-sim-list { display: grid; gap: 7px; }
+.agent-sim-item { padding: 9px 12px; border-radius: 9px; background: rgba(255,255,255,0.02); border-left: 3px solid var(--border); font-size: 13px; }
+.agent-sim-item.sev-danger { border-left-color: var(--danger); }
+.agent-sim-item.sev-warn { border-left-color: var(--warn); }
+.agent-sim-item.sev-good { border-left-color: var(--good); }
+.agent-sim-item.sev-info { border-left-color: var(--accent); }
+.agent-sim-item b { font-weight: 650; }
+@media (max-width: 760px) { .agent-auto-guards { grid-template-columns: 1fr; } }

@@ -22,6 +22,14 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
+# Piloto automatico del agente publicitario (Nivel 3): corre TODOS LOS DIAS
+# a las 12:00 UTC (~9:00 en Uruguay). SEGURO POR DISEÑO: es un no-op salvo
+# que el titular haya ARMADO una cuenta (campo ads_autopilot="1"), y arranca
+# en modo SIMULACION (registra lo que haria, sin escribir en Mercado Libre)
+# hasta que el titular pase a modo "real".
+[functions."ml-ads-autopilot"]
+  schedule = "0 12 * * *"
+
 # === Cabeceras de seguridad (Ola 0 de la auditoría) ===
 # Aplicadas a todas las rutas.
 [[headers]]

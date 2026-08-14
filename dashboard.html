@@ -57,7 +57,7 @@
     <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260813-redesign2" />
     <link rel="stylesheet" href="./css/dashboard/tools.css?v=20260813-redesign1" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260813-redesign1" />
-    <link rel="stylesheet" href="./css/dashboard/redesign.css?v=20260813-logos1" />
+    <link rel="stylesheet" href="./css/dashboard/redesign.css?v=20260814-agente2" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260724-adapt1" />
     <link rel="stylesheet" href="./css/dashboard/mobile.css?v=20260813-logos1" />
   </head>
@@ -1254,6 +1254,13 @@
                 </div>
               </div>
 
+              <!-- Subsecciones de Publicidad: Campañas (gestion manual) | Agente -->
+              <div class="ads-tabs" role="tablist">
+                <button class="ads-tab is-active" type="button" data-ads-tab="campanas">Campañas</button>
+                <button class="ads-tab" type="button" data-ads-tab="agente">Agente</button>
+              </div>
+
+              <div class="ads-pane" data-ads-pane="campanas">
               <p class="meta-message" id="adsMessage"></p>
 
               <!-- Crear campaña (se abre con "Crear campaña") -->
@@ -1361,6 +1368,12 @@
                 <ul class="ads-item-list" id="adsItemList"></ul>
 
                 <p class="meta-message" id="adsDetailMsg"></p>
+              </div>
+              </div><!-- /ads-pane campanas -->
+
+              <!-- Subseccion AGENTE: cockpit del agente publicitario -->
+              <div class="ads-pane is-hidden" data-ads-pane="agente">
+                <div id="adsAgente"></div>
               </div>
             </section>
           </div>
@@ -1646,7 +1659,7 @@
     <script src="./js/firebase/config.js?v=20260709-ola1c"></script>
     <script src="./js/firebase/auth.js?v=20260709-ola1"></script>
     <script src="./js/firebase/db.js?v=20260727-mob6"></script>
-    <script src="./js/firebase/secure-api.js?v=20260803-mp2"></script>
+    <script src="./js/firebase/secure-api.js?v=20260814-agente2"></script>
     <!-- Dashboard modules -->
     <script src="./js/core/auth.js?v=20260709-ola0mod"></script>
     <script src="./js/dashboard/store.js?v=20260813-logos1"></script>
@@ -1655,7 +1668,8 @@
     <script src="./js/dashboard/finance.js?v=20260727-rev2"></script>
     <script src="./js/dashboard/revolut.js?v=20260727-rev1"></script>
     <script src="./js/dashboard/meta.js?v=20260716-nav1"></script>
-    <script src="./js/dashboard/commerce.js?v=20260813-redesign2"></script>
+    <script src="./js/dashboard/commerce.js?v=20260814-agente1"></script>
+    <script src="./js/dashboard/ads-agent.js?v=20260814-agente2"></script>
     <script src="./js/dashboard/inventory.js?v=20260810-mcuenta1"></script>
     <script src="./js/dashboard/notifications.js?v=20260717-acct4"></script>
     <script src="./js/dashboard/tools.js?v=20260727-mob5"></script>

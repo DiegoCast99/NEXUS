@@ -119,6 +119,10 @@
     // Inventario central de Mercado Libre. action: get | save.
     inventory: function (action, extra) {
       return call("ml-inventory", Object.assign({ action: action }, extra || {}));
+    },
+    // Agente publicitario · piloto automatico (Nivel 3). action: status | arm | disarm.
+    adsAgent: function (action, extra) {
+      return call("ml-ads-agent", Object.assign({ action: action }, extra || {}));
     }
   };
 })();
