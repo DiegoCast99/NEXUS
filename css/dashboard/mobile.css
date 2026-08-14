@@ -237,9 +237,22 @@
     line-height: 1;
     white-space: nowrap;
   }
+  /* Rediseño 2026-08: el nav pasó de 5 a 7 modulos (+ "Mas") en la tab bar.
+     Que las etiquetas mas largas no se solapen entre si en pantallas angostas. */
+  .module-link {
+    padding-left: 1px;
+    padding-right: 1px;
+  }
+  .module-link::after {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 9.5px;
+    letter-spacing: -0.02em;
+  }
   .module-link.is-active {
     color: var(--accent);
-    background: rgba(255, 26, 157, 0.1);
+    background: rgba(255, 106, 61, 0.1);
   }
   .module-more {
     display: flex;
@@ -305,8 +318,8 @@
   }
   .platform-nav-link.is-active {
     color: var(--text);
-    background: rgba(255, 26, 157, 0.16);
-    border-color: rgba(255, 26, 157, 0.44);
+    background: rgba(255, 106, 61, 0.16);
+    border-color: rgba(255, 106, 61, 0.44);
   }
 
   /* ---- Contenido: aire para no quedar bajo la tab bar (+ strip) ---- */
@@ -500,5 +513,54 @@
   .commerce-app-button:hover,
   .metric-card:hover {
     transform: none !important;
+  }
+}
+
+/* ============================================================
+   Rediseño 2026-08 · Tab bar mobile = mockup
+   Muestra Inicio / Finanzas / Ads / Tienda / Tools / Mas (6),
+   en ese orden. Productos y Configuracion viven en la hoja "Mas"
+   y en las subsecciones; no van en la barra inferior.
+   ============================================================ */
+@media (max-width: 760px) {
+  #moduleNav .module-link[data-view="productos"],
+  #moduleNav .module-link[data-view="settings"] { display: none; }
+  #moduleNav .module-link[data-view="welcome"]   { order: 0; }
+  #moduleNav .module-link[data-view="finance"]   { order: 1; }
+  #moduleNav .module-link[data-view="marketing"] { order: 2; }
+  #moduleNav .module-link[data-view="ventas"]    { order: 3; }
+  #moduleNav .module-link[data-view="tools"]     { order: 4; }
+  #moduleNav .module-more                        { order: 5; }
+}
+
+/* ============================================================
+   Rediseño 2026-08 · Topbar mobile como el mockup
+   Solo la barra (marca / campana / perfil) queda fija arriba;
+   el saludo "Hola, Diego" + subtitulo scrollean con el contenido
+   (antes toda la topbar era sticky y tapaba el contenido).
+   ============================================================ */
+@media (max-width: 760px) {
+  .topbar {
+    position: static;
+    background: transparent;
+    backdrop-filter: none;
+    padding: 0 0 12px;
+  }
+  .topbar-bar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: var(--panel-strong, #0d0d10);
+    margin: 0 -16px 14px;
+    padding: calc(8px + env(safe-area-inset-top)) 16px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .topbar-head { padding: 0; }
+  /* El subtitulo SI se muestra en el home mobile (el mockup lo tiene). */
+  .topbar .topbar-lead p {
+    display: block;
+    color: var(--muted);
+    font-size: 13px;
+    margin: 2px 0 0;
   }
 }

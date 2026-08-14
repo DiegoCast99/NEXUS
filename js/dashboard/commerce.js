@@ -142,11 +142,9 @@
     return serie;
   }
 
-  // `extra` trae lo que no sale de las ordenes: visitas (API aparte) y el
-  // rango del periodo consultado.
-  function createCommerceSnapshot(orders, source, extra) {
-    const info = extra || {};
-    const normalizedOrders = orders.map(normalizeCommerceOrder);
+  // Totales del periodo (mismo cálculo de siempre, extraído para poder recomputar
+  // la vista al cambiar de periodo sin volver a pedir a ML).
+  function computeCommerceTotals(normalizedOrders, visits) {
     const totals = normalizedOrders.reduce((total, order) => ({
       revenue: total.revenue + order.total,
       margin: total.margin + order.margin,
@@ -164,31 +162,58 @@
       commission: 0, shipping: 0,
       cancelledCount: 0, cancelledValue: 0, refundedCount: 0, refundedValue: 0
     });
-
     // Visitas reales de ML si vinieron; si no, lo que traigan las ordenes.
-    if (typeof info.visits === "number" && info.visits > 0) totals.sessions = info.visits;
-
+    if (typeof visits === "number" && visits > 0) totals.sessions = visits;
     // Costos al estilo del panel de ML: cargos+envio es lo que te descuentan,
     // "recibiste" es lo que queda. Publicidad NO sale de la API de ordenes.
     totals.costs = totals.commission + totals.shipping;
     totals.received = totals.revenue - totals.costs;
     totals.costsPct = totals.revenue ? (totals.costs / totals.revenue) * 100 : 0;
     totals.receivedPct = totals.revenue ? (totals.received / totals.revenue) * 100 : 0;
-
     totals.aov = totals.orders ? totals.revenue / totals.orders : 0;
     totals.unitPrice = totals.units ? totals.revenue / totals.units : 0;
     totals.conversion = totals.sessions ? (totals.orders / totals.sessions) * 100 : 0;
+    return totals;
+  }
 
-    return {
+  function ordenEnRango(o, range) {
+    if (!range || !range.from || !range.to) return true;
+    var d = String(o.date || o.createdAt || "").slice(0, 10);
+    return d >= range.from && d <= range.to;
+  }
+
+  // Recalcula la "vista" (periodo seleccionado) filtrando el superset ya traído.
+  // Esto es lo que hace INSTANTÁNEO el cambio de periodo: no vuelve a pedir a ML,
+  // solo re-filtra y re-calcula totales/tendencia/productos en el navegador.
+  function aplicarVistaComercio(snap, range) {
+    var all = snap.allOrders || snap.orders || [];
+    var orders = all.filter(function (o) { return ordenEnRango(o, range); });
+    snap.range = range || null;
+    snap.orders = orders;
+    snap.totals = computeCommerceTotals(orders, snap.visits);
+    snap.products = aggregateCommerceProducts(orders);
+    snap.trend = aggregateCommerceTrend(orders, range);
+    return snap;
+  }
+
+  // `extra` trae: visitas (API aparte), `range` (ventana amplia traída) y
+  // `viewRange` (periodo a mostrar). El snapshot guarda TODAS las órdenes de la
+  // ventana (allOrders) y la vista del periodo se deriva con aplicarVistaComercio.
+  function createCommerceSnapshot(orders, source, extra) {
+    const info = extra || {};
+    const normalizedOrders = orders.map(normalizeCommerceOrder)
+      .sort((a, b) => String(b.createdAt || b.date).localeCompare(String(a.createdAt || a.date)));
+    const snap = {
       source,
       fetchedAt: new Date().toISOString(),
       appId: state.commerce.activeApp,
-      range: info.range || null,
-      totals,
-      orders: normalizedOrders.sort((a, b) => String(b.createdAt || b.date).localeCompare(String(a.createdAt || a.date))),
-      products: aggregateCommerceProducts(normalizedOrders),
-      trend: aggregateCommerceTrend(normalizedOrders, info.range)
+      allOrders: normalizedOrders,                                   // superset traído
+      fetchedRange: info.range || null,                             // rango de allOrders
+      visits: (typeof info.visits === "number") ? info.visits : 0,
+      range: null, orders: [], totals: {}, products: [], trend: []
     };
+    aplicarVistaComercio(snap, info.viewRange || info.range || null);
+    return snap;
   }
 
   // ---- Fetch genérico (commerce proxy) -----------------------
@@ -513,6 +538,21 @@
     return { from: from, to: to };
   }
 
+  // Rango a TRAER de ML: una ventana amplia (≥30 días, o el custom si es más
+  // grande) para poder cambiar entre 7/15/30 filtrando en el navegador, sin volver
+  // a pedir. Así el cambio de periodo es instantáneo.
+  function getFetchRange() {
+    var cfg = getCommerceConfig(activeMLId());
+    var selected = getPeriodRange(cfg);
+    var hoy = new Date();
+    var desde = new Date(hoy); desde.setDate(desde.getDate() - 29); // 30 días incluido hoy
+    var wideFrom = toDateInput(desde), wideTo = toDateInput(hoy);
+    return {
+      from: selected.from < wideFrom ? selected.from : wideFrom,
+      to: selected.to > wideTo ? selected.to : wideTo
+    };
+  }
+
   function periodLabel(range) {
     var f = range.from.split("-"), t = range.to.split("-");
     return f[2] + "/" + f[1] + " al " + t[2] + "/" + t[1];
@@ -568,9 +608,12 @@
     if (elements.commercePeriodLabel) elements.commercePeriodLabel.textContent = periodLabel(range);
   }
 
-  // Guarda el periodo elegido y vuelve a traer los datos de ese rango.
+  // Cambia el periodo. Si el rango pedido ya está dentro de lo traído, recalcula
+  // la vista al INSTANTE (sin red) y anima la gráfica. Solo pide a ML si el rango
+  // se sale de la ventana ya cacheada (ej. un custom más viejo).
   function applyPeriodChange() {
-    var cfg = getCommerceConfig(activeMLId());
+    var mlId = activeMLId();
+    var cfg = getCommerceConfig(mlId);
     var preset = elements.commercePeriod?.value || "30";
     var next = { ...cfg, period: preset };
 
@@ -578,16 +621,30 @@
       next.periodFrom = elements.commercePeriodFrom?.value || getPeriodRange(cfg).from;
       next.periodTo = elements.commercePeriodTo?.value || toDateInput();
     }
-    state.commerce.configs[activeMLId()] = next;
+    state.commerce.configs[mlId] = next;
     saveCommerceConfigs();
-    renderCommerceDashboard();
 
-    // Sin fechas completas todavia (custom recien elegido): no dispares el sync.
+    var selected = getPeriodRange(next);
+    var snap = state.commerce.snapshots[mlId];
+    // Camino RÁPIDO: el rango pedido cae dentro de lo ya traído → re-filtrar y listo.
+    if (snap && snap.allOrders && snap.fetchedRange && snap.fetchedRange.from && snap.fetchedRange.to &&
+        selected.from >= snap.fetchedRange.from && selected.to <= snap.fetchedRange.to) {
+      aplicarVistaComercio(snap, selected);
+      animarProximoTrend();
+      renderCommerceDashboard();
+      return;
+    }
+
+    // Fuera de la ventana cacheada: hay que traer de ML.
+    renderCommerceDashboard();
     if (preset === "custom" && (!next.periodFrom || !next.periodTo)) return;
     if (!next.hasToken) return;
     state.commerce.failCount = 0;
+    animarProximoTrend();
     syncMercadoLibre({ silent: false });
   }
+
+  function animarProximoTrend() { if (S.animarProximoTrend) S.animarProximoTrend(); }
 
   // ML espera ISO con zona; el dia "hasta" va completo (hasta las 23:59:59).
   // Uruguay es UTC-3: con "-00:00" (UTC) una venta hecha hoy despues de las ~21h
@@ -1521,6 +1578,8 @@
     }
 
     if (d.section === "resumen") {
+      // Al ENTRAR a Métricas, animar la gráfica desde 0 (barras suben + línea traza).
+      animarProximoTrend();
       dibujarCuandoSeVea(elements.commerceTrendChart, drawCommerceTrendChart);
       if (isMLApp(state.commerce.selectedApp)) {
         dibujarCuandoSeVea(elements.commerceCostsChart, S.drawCommerceCostsChart);
@@ -2176,31 +2235,47 @@
       errorFallback: "No se pudo sincronizar Mercado Libre.",
       after: () => scheduleMLRefresh(),
       run: async () => {
-        var range = getPeriodRange();
+        // Ventana AMPLIA (30 días) para poder cambiar de periodo sin re-pedir.
+        var fetchRange = getFetchRange();
         // Las visitas van en paralelo: es otra API y no debe demorar las ventas.
         var [orders, visits] = await Promise.all([
-          fetchMLOrders(range),
-          fetchMLVisits(range)
+          fetchMLOrders(fetchRange),
+          fetchMLVisits(fetchRange)
         ]);
-        // Foto/stock (de /items, batcheado) para las ventas recientes, y el
-        // costo de envio real (de /shipments/{id}/costs, 1 llamada c/u) para las
-        // mas nuevas — con eso el lucro coincide con lo que muestra ML.
-        await enrichMLOrdersWithItems(orders.slice(0, 60));
-        await enrichMLOrdersWithShipping(orders.slice(0, 30));
-        var next = createCommerceSnapshot(orders, "live", { visits: visits, range: range });
+        // Snapshot + primer render YA, con los datos crudos (facturación, cantidad,
+        // gráfica). El enriquecido (fotos + costo de envío real) va DESPUÉS en
+        // segundo plano, para no demorar el render — corrige margen/envío al llegar.
+        var next = createCommerceSnapshot(orders, "live", { visits: visits, range: fetchRange, viewRange: getPeriodRange() });
         var mlId = activeMLId();
         var prev = state.commerce.snapshots[mlId];
         state.commerce.snapshots[mlId] = next;
         // Con el modo "en vivo" esto corre cada minuto: si no hay ventas
         // nuevas, no reescribir (evita subir lo mismo a Firestore sin parar).
-        if (!prev || ordersSignature(prev.orders) !== ordersSignature(next.orders)) {
+        if (!prev || ordersSignature(prev.allOrders || prev.orders) !== ordersSignature(next.allOrders)) {
           saveCommerceSnapshots();
         }
+        enriquecerVentasEnFondo(next, mlId); // no se await: enriquece en paralelo
         return orders.length
           ? orders.length + " ordenes sincronizadas desde Mercado Libre."
           : "No se encontraron ordenes en el periodo elegido.";
       }
     });
+  }
+
+  // Enriquecimiento en segundo plano: fotos (de /items) + costo de envío real (de
+  // /shipments/{id}/costs). NO bloquea el primer render; al terminar recalcula la
+  // vista y repinta (corrige margen/envío/fotos) sin animar.
+  async function enriquecerVentasEnFondo(snapshot, mlId) {
+    try {
+      await enrichMLOrdersWithItems((snapshot.allOrders || []).slice(0, 60));
+      await enrichMLOrdersWithShipping((snapshot.allOrders || []).slice(0, 30));
+      // Puede haber cambiado el periodo mientras tanto: recomputar con el actual.
+      if (state.commerce.snapshots[mlId] === snapshot) {
+        aplicarVistaComercio(snapshot, getPeriodRange());
+        saveCommerceSnapshots();
+        renderCommerceDashboard();
+      }
+    } catch (e) { /* best-effort: el primer render ya se mostró */ }
   }
 
   // Huella estable de las ventas: cambia solo si hay una orden nueva o si
@@ -2534,7 +2609,7 @@
     var maxU = 1, maxR = 1;
     serie.forEach(function (d) { maxU = Math.max(maxU, d.atribuidas + d.otras); maxR = Math.max(maxR, d.roas); });
     var slot = plotW / n, barW = Math.max(2, slot * 0.55);
-    var azul = "#3b82f6", azulClaro = "rgba(96,165,250,0.45)", roasCol = "#b06cf0";
+    var azul = "#ff6a3d", azulClaro = "rgba(245,166,35,0.5)", roasCol = "#34d399";
     serie.forEach(function (d, i) {
       var x = padL + i * slot + (slot - barW) / 2;
       var hAtr = (d.atribuidas / maxU) * plotH;

@@ -89,9 +89,9 @@ th {
 
 .module-link:hover,
 .module-link.is-active {
-  border-color: rgba(255, 26, 157, 0.35);
+  border-color: rgba(255, 106, 61, 0.35);
   background:
-    linear-gradient(135deg, rgba(255, 26, 157, 0.13), transparent 58%),
+    linear-gradient(135deg, rgba(255, 106, 61, 0.13), transparent 58%),
     rgba(255, 255, 255, 0.045);
 }
 
@@ -118,7 +118,7 @@ th {
 
 .module-link.is-active svg {
   color: var(--accent);
-  filter: drop-shadow(0 0 12px rgba(255, 26, 157, 0.46));
+  filter: drop-shadow(0 0 12px rgba(255, 106, 61, 0.46));
 }
 
 .module-link b {
@@ -212,8 +212,8 @@ th {
 
 .data-tool-button:hover {
   color: var(--text);
-  border-color: rgba(255, 26, 157, 0.35);
-  background: rgba(255, 26, 157, 0.08);
+  border-color: rgba(255, 106, 61, 0.35);
+  background: rgba(255, 106, 61, 0.08);
 }
 
 /* ============================================================
@@ -332,7 +332,7 @@ th {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   background:
-    linear-gradient(135deg, rgba(255, 26, 157, 0.16), rgba(82, 225, 255, 0.05)),
+    linear-gradient(135deg, rgba(255, 106, 61, 0.16), rgba(82, 225, 255, 0.05)),
     rgba(255, 255, 255, 0.03);
 }
 
@@ -383,8 +383,8 @@ th {
 }
 
 .platform-nav-link.is-active {
-  border-color: rgba(255, 26, 157, 0.4);
-  background: linear-gradient(135deg, rgba(255, 26, 157, 0.16), rgba(255, 26, 157, 0.04));
+  border-color: rgba(255, 106, 61, 0.4);
+  background: linear-gradient(135deg, rgba(255, 106, 61, 0.16), rgba(255, 106, 61, 0.04));
   color: var(--text);
 }
 

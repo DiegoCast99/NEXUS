@@ -38,7 +38,7 @@
   function drawNoData(ctx, width, height, label) {
     ctx.save();
     ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = "rgba(243,243,248,0.12)";
+    ctx.fillStyle = "rgba(244,244,246,0.12)";
     ctx.strokeStyle = "rgba(255,255,255,0.08)";
     ctx.lineWidth = 1;
     for (let i = 0; i < 4; i += 1) {
@@ -48,7 +48,7 @@
       ctx.lineTo(width, y);
       ctx.stroke();
     }
-    ctx.fillStyle = "rgba(243,243,248,0.5)";
+    ctx.fillStyle = "rgba(244,244,246,0.5)";
     ctx.font = "12px ui-monospace, SFMono-Regular, Menlo, monospace";
     ctx.textAlign = "center";
     ctx.fillText(label, width / 2, height / 2);
@@ -186,19 +186,19 @@
       const baseY = padding.top + chartH;
 
       if (use3D) {
-        draw3DBar(ctx, x - barW - 3, baseY - incomeH, barW, incomeH, 5, "rgba(49,230,173,0.95)", "rgba(49,230,173,0.12)", 8);
-        draw3DBar(ctx, x + 3, baseY - expenseH, barW, expenseH, 5, "rgba(255,26,157,0.95)", "rgba(255,26,157,0.12)", 8);
+        draw3DBar(ctx, x - barW - 3, baseY - incomeH, barW, incomeH, 5, "rgba(52,211,153,0.95)", "rgba(52,211,153,0.12)", 8);
+        draw3DBar(ctx, x + 3, baseY - expenseH, barW, expenseH, 5, "rgba(255,106,61,0.95)", "rgba(255,106,61,0.12)", 8);
       } else {
         const incomeGradient = ctx.createLinearGradient(0, baseY - incomeH, 0, baseY);
-        incomeGradient.addColorStop(0, "rgba(49,230,173,0.95)");
-        incomeGradient.addColorStop(1, "rgba(49,230,173,0.12)");
+        incomeGradient.addColorStop(0, "rgba(52,211,153,0.95)");
+        incomeGradient.addColorStop(1, "rgba(52,211,153,0.12)");
         ctx.fillStyle = incomeGradient;
         roundedRect(ctx, x - barW - 3, baseY - incomeH, barW, incomeH, 5);
         ctx.fill();
 
         const expenseGradient = ctx.createLinearGradient(0, baseY - expenseH, 0, baseY);
-        expenseGradient.addColorStop(0, "rgba(255,26,157,0.95)");
-        expenseGradient.addColorStop(1, "rgba(255,26,157,0.12)");
+        expenseGradient.addColorStop(0, "rgba(255,106,61,0.95)");
+        expenseGradient.addColorStop(1, "rgba(255,106,61,0.12)");
         ctx.fillStyle = expenseGradient;
         roundedRect(ctx, x + 3, baseY - expenseH, barW, expenseH, 5);
         ctx.fill();
@@ -213,7 +213,7 @@
         html: `<b>${escapeHtml(labelMonth(item.month))}</b><span>Ingresos: ${financeMoney(item.income, true)}</span><span>Gastos: ${financeMoney(item.expense, true)}</span>`
       });
 
-      ctx.fillStyle = "rgba(243,243,248,0.5)";
+      ctx.fillStyle = "rgba(244,244,246,0.5)";
       ctx.font = "10px ui-monospace, SFMono-Regular, Menlo, monospace";
       ctx.textAlign = "center";
       ctx.fillText(labelMonth(item.month).slice(0, 3), x, height - 14);
@@ -224,9 +224,9 @@
       if (index === 0) ctx.moveTo(point.x, point.y);
       else ctx.lineTo(point.x, point.y);
     });
-    ctx.strokeStyle = "rgba(255,170,221,0.88)";
+    ctx.strokeStyle = "rgba(255,138,90,0.88)";
     ctx.lineWidth = 2;
-    ctx.shadowColor = "rgba(255,26,157,0.45)";
+    ctx.shadowColor = "rgba(255,106,61,0.45)";
     ctx.shadowBlur = 12;
     ctx.stroke();
     ctx.restore();
@@ -284,11 +284,11 @@
     });
 
     ctx.shadowBlur = 0;
-    ctx.fillStyle = "rgba(243,243,248,0.94)";
+    ctx.fillStyle = "rgba(244,244,246,0.94)";
     ctx.font = "700 22px ui-monospace, SFMono-Regular, Menlo, monospace";
     ctx.textAlign = "center";
     ctx.fillText(financeMoney(total), cx, cy - 2);
-    ctx.fillStyle = "rgba(243,243,248,0.52)";
+    ctx.fillStyle = "rgba(244,244,246,0.52)";
     ctx.font = "11px ui-monospace, SFMono-Regular, Menlo, monospace";
     ctx.fillText("gastos", cx, cy + 18);
 
@@ -338,11 +338,11 @@
     });
 
     ctx.shadowBlur = 0;
-    ctx.fillStyle = "rgba(243,243,248,0.94)";
+    ctx.fillStyle = "rgba(244,244,246,0.94)";
     ctx.font = "700 22px ui-monospace, SFMono-Regular, Menlo, monospace";
     ctx.textAlign = "center";
     ctx.fillText(currency.format(total), cx, cy - 2);
-    ctx.fillStyle = "rgba(243,243,248,0.52)";
+    ctx.fillStyle = "rgba(244,244,246,0.52)";
     ctx.font = "11px ui-monospace, SFMono-Regular, Menlo, monospace";
     ctx.fillText("costos", cx, cy + 18);
 
@@ -395,11 +395,11 @@
       const h = (item.spend / maxSpend) * chartH;
       const y = padding.top + chartH - h;
       if (use3D) {
-        draw3DBar(ctx, x, y, barW, h, 5, "rgba(82,225,255,0.72)", "rgba(82,225,255,0.07)", 9);
+        draw3DBar(ctx, x, y, barW, h, 5, "rgba(245,166,35,0.72)", "rgba(245,166,35,0.07)", 9);
       } else {
         const gradient = ctx.createLinearGradient(0, y, 0, padding.top + chartH);
-        gradient.addColorStop(0, "rgba(82,225,255,0.58)");
-        gradient.addColorStop(1, "rgba(82,225,255,0.06)");
+        gradient.addColorStop(0, "rgba(245,166,35,0.58)");
+        gradient.addColorStop(1, "rgba(245,166,35,0.06)");
         ctx.fillStyle = gradient;
         roundedRect(ctx, x, y, barW, h, 5);
         ctx.fill();
@@ -423,15 +423,15 @@
       if (index === 0) ctx.moveTo(point.x, point.y);
       else ctx.lineTo(point.x, point.y);
     });
-    ctx.strokeStyle = "rgba(255,120,205,0.96)";
+    ctx.strokeStyle = "rgba(255,138,90,0.96)";
     ctx.lineWidth = 3;
-    ctx.shadowColor = "rgba(255,26,157,0.58)";
+    ctx.shadowColor = "rgba(255,106,61,0.58)";
     ctx.shadowBlur = 16;
     ctx.stroke();
     ctx.shadowBlur = 0;
 
     points.forEach((point) => {
-      ctx.fillStyle = "#ff1a9d";
+      ctx.fillStyle = "#ff6a3d";
       ctx.beginPath();
       ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
       ctx.fill();
@@ -440,19 +440,26 @@
     trend.forEach((item, index) => {
       const x = trend.length > 1 ? padding.left + index * step : padding.left + chartW / 2;
       const label = item.date === "Periodo" ? "Periodo" : item.date.slice(5).replace("-", "/");
-      ctx.fillStyle = "rgba(243,243,248,0.48)";
+      ctx.fillStyle = "rgba(244,244,246,0.48)";
       ctx.font = "10px ui-monospace, SFMono-Regular, Menlo, monospace";
       ctx.textAlign = "center";
       ctx.fillText(label, x, height - 14);
     });
 
-    ctx.fillStyle = "rgba(243,243,248,0.72)";
+    ctx.fillStyle = "rgba(244,244,246,0.72)";
     ctx.font = "11px ui-monospace, SFMono-Regular, Menlo, monospace";
     ctx.textAlign = "left";
     ctx.fillText("Barras: inversión · Línea: ROAS", padding.left, height - 12);
     ctx.restore();
     setChartTargets(elements.metaTrendChart, targets);
   }
+
+  // Animación de la gráfica de e-commerce: barras que suben desde abajo y línea que
+  // se traza junto con ellas. Solo se activa cuando se pide con animarProximoTrend()
+  // (al entrar a Métricas o al cambiar el periodo), no en cada repintado.
+  var trendRaf = null;
+  var animarTrendProxima = false;
+  function animarProximoTrend() { animarTrendProxima = true; }
 
   function drawCommerceTrendChart() {
     if (!elements.commerceTrendChart) return;
@@ -466,94 +473,102 @@
     const chartW = width - padding.left - padding.right;
     const chartH = height - padding.top - padding.bottom;
     const step = trend.length > 1 ? chartW / (trend.length - 1) : chartW;
+    const baseline = padding.top + chartH;
+    const use3D = is3DMode();
 
-    ctx.clearRect(0, 0, width, height);
+    if (trendRaf) { cancelAnimationFrame(trendRaf); trendRaf = null; }
+
     if (!trend.length || trend.every((item) => item.revenue === 0 && item.orders === 0)) {
+      ctx.clearRect(0, 0, width, height);
       drawNoData(ctx, width, height, "Sin datos de E-Commerce para graficar");
       setChartTargets(elements.commerceTrendChart, []);
+      animarTrendProxima = false;
       return;
     }
 
-    ctx.save();
-    ctx.strokeStyle = "rgba(255,255,255,0.075)";
-    for (let i = 0; i <= 4; i += 1) {
-      const y = padding.top + (chartH / 4) * i;
-      ctx.beginPath();
-      ctx.moveTo(padding.left, y);
-      ctx.lineTo(width - padding.right, y);
-      ctx.stroke();
-    }
-
-    const targets = [];
-    const use3D = is3DMode();
-
+    // Posiciones finales + zonas de hover (se calculan una sola vez).
+    const barX = [], barW = [], barFullH = [], lineX = [], lineFullY = [], targets = [];
     trend.forEach((item, index) => {
-      const barW = Math.min(28, step * 0.36);
-      const x = trend.length > 1 ? padding.left + index * step - barW / 2 : padding.left + chartW / 2 - barW / 2;
-      const h = (item.revenue / maxRevenue) * chartH;
-      const y = padding.top + chartH - h;
-      if (use3D) {
-        draw3DBar(ctx, x, y, barW, h, 5, "rgba(49,230,173,0.9)", "rgba(49,230,173,0.08)", 9);
-      } else {
-        const gradient = ctx.createLinearGradient(0, y, 0, padding.top + chartH);
-        gradient.addColorStop(0, "rgba(49,230,173,0.82)");
-        gradient.addColorStop(1, "rgba(49,230,173,0.08)");
-        ctx.fillStyle = gradient;
-        roundedRect(ctx, x, y, barW, h, 5);
-        ctx.fill();
-      }
+      const bw = Math.min(28, step * 0.36);
+      const x = trend.length > 1 ? padding.left + index * step - bw / 2 : padding.left + chartW / 2 - bw / 2;
+      barX.push(x); barW.push(bw); barFullH.push((item.revenue / maxRevenue) * chartH);
+      const lx = trend.length > 1 ? padding.left + index * step : padding.left + chartW / 2;
+      lineX.push(lx); lineFullY.push(baseline - (item.orders / maxOrders) * chartH);
       targets.push({
-        x: x - step * 0.2,
-        y: padding.top,
-        width: Math.max(barW + step * 0.4, 34),
-        height: chartH,
+        x: x - step * 0.2, y: padding.top,
+        width: Math.max(bw + step * 0.4, 34), height: chartH,
         html: `<b>${escapeHtml(item.date)}</b><span>Ventas: ${moneyWithCents.format(item.revenue)}</span><span>Pedidos: ${integerNumber.format(item.orders)}</span>`
       });
     });
-
-    const points = trend.map((item, index) => ({
-      x: trend.length > 1 ? padding.left + index * step : padding.left + chartW / 2,
-      y: padding.top + chartH - (item.orders / maxOrders) * chartH
-    }));
-
-    ctx.beginPath();
-    points.forEach((point, index) => {
-      if (index === 0) ctx.moveTo(point.x, point.y);
-      else ctx.lineTo(point.x, point.y);
-    });
-    ctx.strokeStyle = "rgba(82,225,255,0.94)";
-    ctx.lineWidth = 3;
-    ctx.shadowColor = "rgba(82,225,255,0.42)";
-    ctx.shadowBlur = 14;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-
-    points.forEach((point) => {
-      ctx.fillStyle = "#52e1ff";
-      ctx.beginPath();
-      ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-    // Etiquetas de fecha ADELGAZADAS: con periodos largos (30+ dias) dibujar
-    // una por dia las encimaba. Se muestran ~10 repartidas + siempre la ultima.
-    const labelStep = Math.max(1, Math.ceil(trend.length / 10));
-    ctx.fillStyle = "rgba(243,243,248,0.48)";
-    ctx.font = "10px ui-monospace, SFMono-Regular, Menlo, monospace";
-    ctx.textAlign = "center";
-    trend.forEach((item, index) => {
-      if (index % labelStep !== 0 && index !== trend.length - 1) return;
-      const x = trend.length > 1 ? padding.left + index * step : padding.left + chartW / 2;
-      ctx.fillText(item.date.slice(5).replace("-", "/"), x, height - 12);
-    });
-    // La leyenda ya vive en HTML (encabezado del panel): no se re-dibuja en el
-    // canvas para no encimarse con las fechas.
-    ctx.restore();
     setChartTargets(elements.commerceTrendChart, targets);
+
+    const labelStep = Math.max(1, Math.ceil(trend.length / 10));
+
+    function pintar(progress) {
+      ctx.clearRect(0, 0, width, height);
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.075)";
+      for (let i = 0; i <= 4; i += 1) {
+        const y = padding.top + (chartH / 4) * i;
+        ctx.beginPath(); ctx.moveTo(padding.left, y); ctx.lineTo(width - padding.right, y); ctx.stroke();
+      }
+      // Barras: suben desde la base.
+      trend.forEach((item, index) => {
+        const h = barFullH[index] * progress;
+        const x = barX[index], bw = barW[index], y = baseline - h;
+        if (use3D) {
+          draw3DBar(ctx, x, y, bw, h, 5, "rgba(52,211,153,0.9)", "rgba(52,211,153,0.08)", 9);
+        } else {
+          const gradient = ctx.createLinearGradient(0, y, 0, baseline);
+          gradient.addColorStop(0, "rgba(52,211,153,0.82)");
+          gradient.addColorStop(1, "rgba(52,211,153,0.08)");
+          ctx.fillStyle = gradient;
+          roundedRect(ctx, x, y, bw, Math.max(0, h), 5);
+          ctx.fill();
+        }
+      });
+      // Línea: se traza subiendo desde la base junto con las barras.
+      const points = trend.map((item, index) => ({ x: lineX[index], y: baseline - (baseline - lineFullY[index]) * progress }));
+      ctx.beginPath();
+      points.forEach((point, index) => { if (index === 0) ctx.moveTo(point.x, point.y); else ctx.lineTo(point.x, point.y); });
+      ctx.strokeStyle = "rgba(245,166,35,0.94)";
+      ctx.lineWidth = 3;
+      ctx.shadowColor = "rgba(245,166,35,0.42)";
+      ctx.shadowBlur = 14;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      points.forEach((point) => { ctx.fillStyle = "#f5a623"; ctx.beginPath(); ctx.arc(point.x, point.y, 4, 0, Math.PI * 2); ctx.fill(); });
+      // Etiquetas de fecha (~10 repartidas + la última).
+      ctx.fillStyle = "rgba(244,244,246,0.48)";
+      ctx.font = "10px ui-monospace, SFMono-Regular, Menlo, monospace";
+      ctx.textAlign = "center";
+      trend.forEach((item, index) => {
+        if (index % labelStep !== 0 && index !== trend.length - 1) return;
+        ctx.fillText(item.date.slice(5).replace("-", "/"), lineX[index], height - 12);
+      });
+      ctx.restore();
+    }
+
+    // Respeta "reducir movimiento" del sistema: si está activo, no anima.
+    const animar = animarTrendProxima && !(typeof prefersReducedMotion === "function" && prefersReducedMotion());
+    animarTrendProxima = false;
+    if (animar && typeof requestAnimationFrame === "function") {
+      let t0 = null; const dur = 720;
+      const frame = (ts) => {
+        if (t0 == null) t0 = ts;
+        const p = Math.min(1, (ts - t0) / dur);
+        pintar(1 - Math.pow(1 - p, 3)); // easeOutCubic
+        if (p < 1) trendRaf = requestAnimationFrame(frame); else trendRaf = null;
+      };
+      trendRaf = requestAnimationFrame(frame);
+    } else {
+      pintar(1);
+    }
   }
 
 
   Object.assign(S, {
+    animarProximoTrend,
     applyChartMode, draw3DBar, drawCashflowChart, drawCategoryChart, drawCommerceCostsChart, drawCommerceTrendChart, drawMetaTrendChart,
     drawNoData, getMonthlySeries, hideChartTooltip, is3DMode, prefersReducedMotion, resizeCanvas,
     roundedRect, setChartTargets, showChartTooltip,

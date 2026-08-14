@@ -7,22 +7,28 @@
   const { META_ACTIVE_PLATFORM_KEY, animateActivePanel, applyChartMode, defaultMetaConfig, drawCashflowChart, drawCategoryChart } = S;
   const { elements, loadActiveMetaPlatform, renderCommerceDashboard, renderMetaDashboard, safeSetItem, scheduleMetaRefresh } = S;
   const { state, updateTopbarForView } = S;
+  // `nav` = qué item del sidebar se resalta (el rediseño promueve Ventas/
+  // Productos/Marketing a items propios que caen sobre modulos existentes).
   function normalizeView(rawView = "") {
     const view = String(rawView || "").toLowerCase();
     const metaMatch = view.match(/^meta(?:-ads)?-(kairos|billion|kiwifi)$/);
-    if (metaMatch) return { view: "meta", metaPlatform: metaMatch[1] };
-    if (view === "meta" || view === "meta-ads") return { view: "meta", metaPlatform: null };
+    if (metaMatch) return { view: "meta", metaPlatform: metaMatch[1], nav: "marketing" };
+    if (view === "meta" || view === "meta-ads" || view === "marketing") return { view: "meta", metaPlatform: null, nav: "marketing" };
     // Deep-link a una cuenta/negocio de e-commerce: #ecommerce-<id> (ej:
     // #ecommerce-mercadolibre). Permite que el gesto atras vuelva al selector y
     // que reabrir la PWA recuerde el negocio abierto. Los ids son slugs lowercase.
     const ecomMatch = view.match(/^(?:ecommerce|e-commerce)-([a-z0-9]+)$/);
-    if (ecomMatch) return { view: "ecommerce", metaPlatform: null, commerceApp: ecomMatch[1] };
-    if (view === "ecommerce" || view === "e-commerce") return { view: "ecommerce", metaPlatform: null };
+    if (ecomMatch) return { view: "ecommerce", metaPlatform: null, commerceApp: ecomMatch[1], nav: "ventas" };
+    if (view === "ecommerce" || view === "e-commerce") return { view: "ecommerce", metaPlatform: null, nav: "ventas" };
+    // Accesos directos del sidebar: abren el negocio ML directo a su seccion.
+    if (view === "ventas") return { view: "ecommerce", metaPlatform: null, commerceApp: "mercadolibre", section: "resumen", nav: "ventas" };
+    if (view === "productos") return { view: "ecommerce", metaPlatform: null, commerceApp: "mercadolibre", section: "inventario", nav: "productos" };
     if (view === "finance" || view === "finanzas" || view === "finanzas-personales") return { view: "finance", metaPlatform: null };
     // Deep-link a una herramienta: #herramientas-<tool> (ej: #herramientas-publicador).
     const toolMatch = view.match(/^(?:tools|herramientas)-([a-z0-9]+)$/);
     if (toolMatch) return { view: "tools", metaPlatform: null, tool: toolMatch[1] };
     if (view === "tools" || view === "herramientas") return { view: "tools", metaPlatform: null };
+    if (view === "settings" || view === "config" || view === "configuracion" || view === "ajustes") return { view: "settings", metaPlatform: null, nav: "settings" };
     return { view: "welcome", metaPlatform: null };
   }
 
@@ -64,7 +70,10 @@
       state.commerce.refreshTimer = 0;
     }
 
-    elements.navButtons.forEach((button) => button.classList.toggle("is-active", button.dataset.view === nextView));
+    // El item resaltado usa la clave `nav` (para Ventas/Productos/Marketing que
+    // caen sobre ecommerce/meta); si no hay, el propio modulo (welcome/finance/...).
+    const navKey = normalized.nav || nextView;
+    elements.navButtons.forEach((button) => button.classList.toggle("is-active", button.dataset.view === navKey));
     elements.panels.forEach((panel) => panel.classList.toggle("is-active", panel.dataset.panel === nextView));
     updateTopbarForView(nextView);
     applyChartMode();
@@ -106,6 +115,8 @@
         window.setTimeout(() => {
           renderCommerceDashboard();
           S.selectCommerceApp(wantApp, { fromHash: true });
+          // Accesos directos Ventas/Productos: saltar a la seccion pedida.
+          if (normalized.section) window.NexusPlatformNav?.setSection(normalized.section);
         }, 30);
         animateActivePanel();
         return;
@@ -153,7 +164,16 @@
       return;
     }
 
+    if (nextView === "settings") {
+      if (shouldPushHash) applyViewHash("#configuracion");
+      window.setTimeout(() => S.renderSettings?.(), 30);
+      animateActivePanel();
+      return;
+    }
+
+    // welcome (default): el nuevo home "Resumen general".
     if (shouldPushHash) applyViewHash("#welcome");
+    window.setTimeout(() => S.renderHome?.(), 30);
     animateActivePanel();
   }
 

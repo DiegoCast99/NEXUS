@@ -279,15 +279,17 @@
     expense: ["Vivienda", "Alimentación", "Transporte", "Marketing", "Suscripciones", "Salud", "Educación", "Ocio", "Impuestos", "Otros gastos"]
   };
 
+  // Paleta cálida (rediseño 2026-08): naranja/ambar al frente, con variedad
+  // suficiente para segmentos de dona sin volver al rosa/cyan viejos.
   const categoryColors = [
-    "#ff1a9d",
-    "#b24dff",
-    "#52e1ff",
-    "#31e6ad",
-    "#ffc85a",
-    "#ff6b93",
-    "#7aa8ff",
-    "#ffffff",
+    "#ff6a3d",
+    "#f5a623",
+    "#ff3d2e",
+    "#34d399",
+    "#ffd166",
+    "#ff8f6b",
+    "#c9822e",
+    "#e2574c",
     "#8b8b94",
     "#6df2d1"
   ];
@@ -1141,13 +1143,21 @@
 
   function updateTopbarForView(view) {
     const platform = state.meta.selectedPlatform ? getMetaPlatform() : null;
-    elements.topbarActions?.classList.toggle("is-hidden", view === "welcome" || (view === "meta" && !platform));
+    elements.topbarActions?.classList.toggle("is-hidden", view === "welcome" || view === "settings" || (view === "meta" && !platform));
     elements.financeTools?.classList.toggle("is-hidden", view !== "finance");
 
     if (view === "welcome") {
-      elements.viewTitle.textContent = "Hola, Diego!";
-      document.title = "Nexus Dashboard - Centro de Control";
-      elements.viewDescription.textContent = "¿Con qué quieres trabajar hoy?";
+      const nombre = S.profileName ? S.profileName() : "Diego";
+      elements.viewTitle.textContent = "Hola, " + nombre + "! 👋";
+      document.title = "Nexus Dashboard - Resumen general";
+      elements.viewDescription.textContent = "Aquí tienes el control de todos tus negocios.";
+      return;
+    }
+
+    if (view === "settings") {
+      elements.viewTitle.textContent = "Configuracion";
+      document.title = "Nexus Dashboard - Configuracion";
+      elements.viewDescription.textContent = "Tu perfil, las conexiones de tus plataformas y el respaldo de datos.";
       return;
     }
 

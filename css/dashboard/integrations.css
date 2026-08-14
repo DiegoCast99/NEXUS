@@ -12,12 +12,12 @@
 .api-card > span {
   width: 64px;
   height: 64px;
-  border: 1px solid rgba(255, 26, 157, 0.38);
+  border: 1px solid rgba(255, 106, 61, 0.38);
   border-radius: 8px;
   background:
-    linear-gradient(135deg, rgba(255, 26, 157, 0.22), transparent),
+    linear-gradient(135deg, rgba(255, 106, 61, 0.22), transparent),
     rgba(255, 255, 255, 0.04);
-  box-shadow: 0 0 34px rgba(255, 26, 157, 0.16);
+  box-shadow: 0 0 34px rgba(255, 106, 61, 0.16);
 }
 
 .api-card p {

@@ -64,17 +64,18 @@
 
 .income-dot {
   background: var(--green);
-  box-shadow: 0 0 12px rgba(49, 230, 173, 0.55);
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.55);
 }
 
 .expense-dot {
   background: var(--accent);
-  box-shadow: 0 0 12px rgba(255, 26, 157, 0.55);
+  box-shadow: 0 0 12px rgba(255, 106, 61, 0.55);
 }
 
+/* "Cantidad" / "Inversion": serie secundaria, ambar cálido (antes cyan). */
 .cyan-dot {
-  background: var(--cyan);
-  box-shadow: 0 0 12px rgba(82, 225, 255, 0.5);
+  background: var(--warning);
+  box-shadow: 0 0 12px rgba(245, 166, 35, 0.5);
 }
 
 canvas {
@@ -202,7 +203,7 @@ td:nth-child(2) {
 }
 
 .type-pill.expense {
-  border-color: rgba(255, 26, 157, 0.36);
+  border-color: rgba(255, 106, 61, 0.36);
   color: var(--accent);
 }
 
@@ -247,11 +248,11 @@ td:nth-child(2) {
 .empty-state span {
   width: 42px;
   height: 42px;
-  border: 1px solid rgba(255, 26, 157, 0.42);
+  border: 1px solid rgba(255, 106, 61, 0.42);
   border-radius: 999px;
   box-shadow:
-    inset 0 0 22px rgba(255, 26, 157, 0.16),
-    0 0 32px rgba(255, 26, 157, 0.16);
+    inset 0 0 22px rgba(255, 106, 61, 0.16),
+    0 0 32px rgba(255, 106, 61, 0.16);
 }
 
 .empty-state h3 {

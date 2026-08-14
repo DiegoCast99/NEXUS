@@ -417,6 +417,10 @@
       renderMetaDashboard();
       renderCommerceDashboard();
       S.renderToolsDashboard();
+      // Rediseño: identidad del perfil (email real de Firebase) + campana.
+      S.initShell?.();
+      S.renderProfileChrome?.();
+      S.updateNotifDot?.();
       if (S.revolutInit) S.revolutInit();   // conexion Revolut (Open Banking)
       scheduleMetaRefresh();
       S.ensureMLLiveDefaults();

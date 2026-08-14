@@ -72,10 +72,10 @@
   transition: color 180ms ease;
 }
 .nx-step.is-active i {
-  border-color: rgba(255, 26, 157, 0.55);
-  background: linear-gradient(135deg, rgba(255, 26, 157, 0.85), rgba(178, 77, 255, 0.4));
+  border-color: rgba(255, 106, 61, 0.55);
+  background: linear-gradient(135deg, rgba(255, 106, 61, 0.85), rgba(255, 61, 46, 0.45));
   color: #fff;
-  box-shadow: 0 0 18px rgba(255, 26, 157, 0.28);
+  box-shadow: 0 0 18px rgba(255, 106, 61, 0.28);
 }
 .nx-step.is-active b { color: var(--text); }
 .nx-step.is-done i {
@@ -98,10 +98,10 @@
   cursor: pointer;
   transition: background 160ms ease, border-color 160ms ease;
 }
-.bulk-check:hover { border-color: rgba(255, 26, 157, 0.5); }
+.bulk-check:hover { border-color: rgba(255, 106, 61, 0.5); }
 .bulk-check.is-on {
-  border-color: rgba(255, 26, 157, 0.75);
-  background: rgba(255, 26, 157, 0.28);
+  border-color: rgba(255, 106, 61, 0.75);
+  background: rgba(255, 106, 61, 0.28);
 }
 .bulk-check.is-on::after {
   content: "";
@@ -115,8 +115,8 @@
   transform: rotate(45deg);
 }
 .bulk-check.is-partial {
-  border-color: rgba(255, 26, 157, 0.6);
-  background: rgba(255, 26, 157, 0.16);
+  border-color: rgba(255, 106, 61, 0.6);
+  background: rgba(255, 106, 61, 0.16);
 }
 .bulk-check.is-partial::after {
   content: "";
@@ -234,8 +234,8 @@
   height: 100%;
   width: 0%;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--accent), var(--violet));
-  box-shadow: 0 0 16px rgba(255, 26, 157, 0.36);
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  box-shadow: 0 0 16px rgba(255, 106, 61, 0.36);
   transition: width 280ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .nx-progress.is-done .nx-progress-fill {

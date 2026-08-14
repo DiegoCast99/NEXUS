@@ -91,7 +91,7 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   background:
-    radial-gradient(circle at 76% 10%, rgba(255, 26, 157, 0.18), transparent 34%),
+    radial-gradient(circle at 76% 10%, rgba(255, 106, 61, 0.18), transparent 34%),
     radial-gradient(circle at 18% 100%, rgba(82, 225, 255, 0.09), transparent 38%),
     linear-gradient(135deg, rgba(255, 255, 255, 0.065), transparent 58%),
     var(--panel-strong);
@@ -154,7 +154,7 @@
   inset: -1px;
   opacity: 0;
   background:
-    radial-gradient(circle at 22% 0%, rgba(255, 26, 157, 0.22), transparent 34%),
+    radial-gradient(circle at 22% 0%, rgba(255, 106, 61, 0.22), transparent 34%),
     radial-gradient(circle at 92% 100%, rgba(82, 225, 255, 0.1), transparent 32%);
   transition: opacity 220ms ease;
 }
@@ -162,10 +162,10 @@
 .welcome-card:hover,
 .meta-platform-card:hover {
   transform: perspective(900px) translateY(-4px) rotateX(2deg) rotateY(-2deg);
-  border-color: rgba(255, 26, 157, 0.44);
+  border-color: rgba(255, 106, 61, 0.44);
   box-shadow:
     0 28px 80px rgba(0, 0, 0, 0.34),
-    0 0 34px rgba(255, 26, 157, 0.1);
+    0 0 34px rgba(255, 106, 61, 0.1);
 }
 
 .welcome-card:hover::before,
@@ -289,11 +289,11 @@
 
 body.chart-mode-3d .metric-card:hover {
   transform: perspective(850px) translateY(-4px) rotateX(3deg) rotateY(-2deg);
-  border-color: rgba(255, 26, 157, 0.38);
+  border-color: rgba(255, 106, 61, 0.38);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 32px 88px rgba(0, 0, 0, 0.32),
-    0 0 34px rgba(255, 26, 157, 0.08);
+    0 0 34px rgba(255, 106, 61, 0.08);
 }
 
 .metric-card::after {
@@ -303,14 +303,14 @@ body.chart-mode-3d .metric-card:hover {
   width: 70px;
   height: 2px;
   border-radius: 99px;
-  background: linear-gradient(90deg, transparent, rgba(255, 26, 157, 0.9));
+  background: linear-gradient(90deg, transparent, rgba(255, 106, 61, 0.9));
   opacity: 0.42;
 }
 
 .metric-card.featured {
-  border-color: rgba(255, 26, 157, 0.32);
+  border-color: rgba(255, 106, 61, 0.32);
   background:
-    linear-gradient(135deg, rgba(255, 26, 157, 0.22), rgba(82, 225, 255, 0.055) 42%, transparent 68%),
+    linear-gradient(135deg, rgba(255, 106, 61, 0.22), rgba(82, 225, 255, 0.055) 42%, transparent 68%),
     var(--panel-strong);
 }
 

@@ -48,17 +48,18 @@
       @keyframes saleBootSpin { to { transform: rotate(360deg); } }
       html.booting-sale #saleBootSplash p { margin: 0; font-size: 14px; color: #9a9aa5; }
     </style>
-    <link rel="stylesheet" href="./css/dashboard/base.css?v=20260720-pub1" />
-    <link rel="stylesheet" href="./css/dashboard/layout.css?v=20260716-nav2" />
-    <link rel="stylesheet" href="./css/dashboard/controls.css?v=20260727-mob1" />
-    <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260724-adapt1" />
-    <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260727-rev1" />
-    <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260712-dedup1" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260810-mcuenta1" />
-    <link rel="stylesheet" href="./css/dashboard/tools.css?v=20260804-hub1" />
-    <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260709-ola0css" />
+    <link rel="stylesheet" href="./css/dashboard/base.css?v=20260813-redesign1" />
+    <link rel="stylesheet" href="./css/dashboard/layout.css?v=20260813-redesign1" />
+    <link rel="stylesheet" href="./css/dashboard/controls.css?v=20260813-redesign1" />
+    <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260813-redesign1" />
+    <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260813-redesign2" />
+    <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260813-redesign1" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260813-redesign2" />
+    <link rel="stylesheet" href="./css/dashboard/tools.css?v=20260813-redesign1" />
+    <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260813-redesign1" />
+    <link rel="stylesheet" href="./css/dashboard/redesign.css?v=20260813-logos1" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260724-adapt1" />
-    <link rel="stylesheet" href="./css/dashboard/mobile.css?v=20260727-mob5" />
+    <link rel="stylesheet" href="./css/dashboard/mobile.css?v=20260813-logos1" />
   </head>
   <body>
     <!-- Splash del deep-link de venta: tapa la portada hasta que aparece el detalle. -->
@@ -76,8 +77,10 @@
       </button>
       <aside class="sidebar" id="sidebar" aria-label="Navegacion de Nexus">
         <a class="app-brand" href="./index.html" aria-label="Volver a la landing de Nexus">
-          <span>NEXUS</span>
-          <small>centro de control</small>
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 2.6l9.4 5.4v10.8L12 24.2 2.6 18.8V8L12 2.6Z" /><path d="M12 8.4l4.9 2.8v5.6L12 19.6l-4.9-2.8v-5.6L12 8.4Z" /></svg>
+          </span>
+          <span class="brand-name">NEXUS</span>
         </a>
 
         <!-- Navegacion contextual: al entrar a una plataforma reemplaza al
@@ -97,13 +100,45 @@
         <nav class="module-nav" id="moduleNav" aria-label="Modulos principales">
           <button class="module-link is-active" type="button" data-view="welcome" data-tab-label="Inicio">
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 12h16" />
-              <path d="M12 4v16" />
-              <path d="M7 7h10v10H7z" />
+              <path d="M4 11.5 12 4l8 7.5" />
+              <path d="M6 10v9h12v-9" />
+              <path d="M10 19v-5h4v5" />
             </svg>
             <span>
-              <b>Centro de Control</b>
-              <small>Inicio operativo</small>
+              <b>Inicio</b>
+              <small>Resumen general</small>
+            </span>
+          </button>
+          <button class="module-link" type="button" data-view="ventas" data-tab-label="Tienda">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 7h14l-1.2 11.2a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 7Z" />
+              <path d="M9 7a3 3 0 0 1 6 0" />
+              <path d="M9 12h6" />
+            </svg>
+            <span>
+              <b>Ventas</b>
+              <small>Pedidos y facturacion</small>
+            </span>
+          </button>
+          <button class="module-link" type="button" data-view="productos" data-tab-label="Productos">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3 4 7v10l8 4 8-4V7l-8-4Z" />
+              <path d="M4 7l8 4 8-4" />
+              <path d="M12 11v10" />
+            </svg>
+            <span>
+              <b>Productos</b>
+              <small>Stock e inventario</small>
+            </span>
+          </button>
+          <button class="module-link" type="button" data-view="marketing" data-tab-label="Ads">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 10v4h3l6 4V6l-6 4H4Z" />
+              <path d="M17 9a4 4 0 0 1 0 6" />
+            </svg>
+            <span>
+              <b>Marketing</b>
+              <small>Meta Ads y ROAS</small>
             </span>
           </button>
           <button class="module-link" type="button" data-view="finance" data-tab-label="Finanzas">
@@ -115,30 +150,8 @@
               <path d="M16 16v-4" />
             </svg>
             <span>
-              <b>Finanzas Personales</b>
+              <b>Finanzas</b>
               <small>Balance, gastos y ahorro</small>
-            </span>
-          </button>
-          <button class="module-link" type="button" data-view="meta" data-tab-label="Ads">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 14c3.5-7 6.5-7 10 0" />
-              <path d="M10 14c3.5 7 6.5 7 10 0" />
-              <path d="M5 14h14" />
-            </svg>
-            <span>
-              <b>Meta Ads</b>
-              <small>API, pixel y ROAS</small>
-            </span>
-          </button>
-          <button class="module-link" type="button" data-view="ecommerce" data-tab-label="Tienda">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M6 8h12l-1 11H7L6 8Z" />
-              <path d="M9 8a3 3 0 0 1 6 0" />
-              <path d="M9 13h6" />
-            </svg>
-            <span>
-              <b>E-Commerce</b>
-              <small>Negocios y ventas</small>
             </span>
           </button>
           <button class="module-link" type="button" data-view="tools" data-tab-label="Tools">
@@ -150,7 +163,17 @@
               <small>Utilidades de operacion</small>
             </span>
           </button>
-          <!-- Solo visible en mobile (ver mobile.css): 6ta pestana de la tab bar
+          <button class="module-link" type="button" data-view="settings" data-tab-label="Config">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8" />
+            </svg>
+            <span>
+              <b>Configuracion</b>
+              <small>Perfil y conexiones</small>
+            </span>
+          </button>
+          <!-- Solo visible en mobile (ver mobile.css): pestana de la tab bar
                inferior que abre la hoja "Mas" con respaldo y cierre de sesion. -->
           <button class="module-link module-more" type="button" data-more aria-haspopup="dialog" aria-expanded="false" data-tab-label="Mas">
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -165,18 +188,18 @@
           </button>
         </nav>
 
-        <div class="sidebar-status">
-          <span></span>
-          <p>Centro operativo activo</p>
-          <b>Datos locales seguros</b>
-        </div>
+        <div class="side-spacer"></div>
 
-        <a class="landing-link" href="./index.html?landing=1">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-          Volver a la landing
-        </a>
+        <!-- Perfil del titular (mockup): avatar + nombre + rol. Abre Configuracion. -->
+        <button class="side-user" type="button" id="sideUser" aria-label="Tu perfil y configuracion">
+          <span class="avatar" id="sidebarAvatar" aria-hidden="true">DC</span>
+          <span class="side-user-info">
+            <b id="sidebarName">Diego Castillo</b>
+            <small id="sidebarEmail">Cuenta</small>
+          </span>
+          <svg class="u-more" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9l4-4 4 4" /><path d="M8 15l4 4 4-4" /></svg>
+        </button>
+
         <div class="data-tools" role="group" aria-label="Respaldo de datos">
           <button class="data-tool-button" type="button" data-export title="Descargar un respaldo JSON de todos tus datos">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12" /><path d="M8 11l4 4 4-4" /><path d="M5 21h14" /></svg>
@@ -188,6 +211,12 @@
           </button>
           <input type="file" accept="application/json,.json" data-import-input hidden />
         </div>
+        <a class="landing-link" href="./index.html?landing=1">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          Volver a la landing
+        </a>
         <button class="logout-button" type="button" data-logout>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M10 6H6v12h4" />
@@ -203,54 +232,191 @@
 
       <main class="dashboard-main">
         <header class="topbar">
-          <div>
-            <span class="eyebrow">Nexus / centro de control</span>
-            <h1 id="viewTitle">Hola, Diego!</h1>
-            <p id="viewDescription">
-              ¿Con qué quieres trabajar hoy?
-            </p>
-          </div>
-          <div class="topbar-actions is-hidden">
-            <div class="finance-tools" id="financeTools">
-              <label class="field compact-field">
-                <span>Desde</span>
-                <select id="monthFrom"></select>
-              </label>
-              <label class="field compact-field">
-                <span>Hasta</span>
-                <select id="monthTo"></select>
-              </label>
+          <div class="topbar-bar">
+            <!-- Solo mobile: hamburguesa (abre la hoja "Mas") + marca NEXUS -->
+            <button class="icon-btn m-only" type="button" id="mMenuBtn" aria-label="Menu">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16" /><path d="M4 12h16" /><path d="M4 17h16" /></svg>
+            </button>
+            <a class="m-brand m-only" href="./index.html" aria-label="Nexus">
+              <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 2.6l9.4 5.4v10.8L12 24.2 2.6 18.8V8L12 2.6Z" /><path d="M12 8.4l4.9 2.8v5.6L12 19.6l-4.9-2.8v-5.6L12 8.4Z" /></svg></span>
+              NEXUS
+            </a>
+            <label class="topbar-search">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4.3-4.3" /></svg>
+              <input id="globalSearch" type="search" placeholder="Buscar seccion o producto..." aria-label="Buscar en Nexus" autocomplete="off" />
+              <div class="search-results" id="globalSearchResults" role="listbox" hidden></div>
+            </label>
+            <div class="topbar-tools">
+              <button class="icon-btn" type="button" id="notifBell" aria-label="Notificaciones" aria-haspopup="dialog" aria-expanded="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16l-2-2Z" /><path d="M10 20a2 2 0 0 0 4 0" /></svg>
+                <span class="bell-dot" id="notifDot" hidden></span>
+              </button>
+              <button class="icon-btn" type="button" id="helpBtn" aria-label="Ayuda">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M9.6 9.4a2.4 2.4 0 1 1 3.3 2.2c-.7.4-1 .8-1 1.6" /><path d="M12 16.7h.01" /></svg>
+              </button>
+              <button class="profile-chip" type="button" id="profileChip" aria-label="Tu perfil" aria-haspopup="menu" aria-expanded="false">
+                <span class="avatar" id="topbarAvatar" aria-hidden="true">DC</span>
+                <span class="profile-chip-name" id="topbarName">Diego</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+              </button>
             </div>
           </div>
+
+          <div class="topbar-head">
+            <div class="topbar-lead">
+              <span class="eyebrow">Nexus / centro de control</span>
+              <h1 id="viewTitle">Resumen general</h1>
+              <p id="viewDescription">¿Con qué quieres trabajar hoy?</p>
+            </div>
+            <div class="topbar-actions is-hidden">
+              <div class="finance-tools" id="financeTools">
+                <label class="field compact-field">
+                  <span>Desde</span>
+                  <select id="monthFrom"></select>
+                </label>
+                <label class="field compact-field">
+                  <span>Hasta</span>
+                  <select id="monthTo"></select>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Popover de notificaciones (campana). Lo puebla home.js. -->
+          <div class="topbar-pop notif-pop" id="notifPop" role="dialog" aria-label="Notificaciones" hidden>
+            <div class="topbar-pop-head">
+              <b>Notificaciones</b>
+              <button class="topbar-pop-x" type="button" data-pop-close aria-label="Cerrar">&#10005;</button>
+            </div>
+            <div class="notif-pop-body" id="notifPopBody"></div>
+          </div>
+
+          <!-- Menu del perfil (foto, configuracion, sesion). -->
+          <div class="topbar-pop profile-pop" id="profilePop" role="menu" aria-label="Perfil" hidden>
+            <div class="profile-pop-id">
+              <span class="avatar" id="profilePopAvatar" aria-hidden="true">DC</span>
+              <span>
+                <b id="profilePopName">Diego Castillo</b>
+                <small id="profilePopEmail">Cuenta</small>
+              </span>
+            </div>
+            <button class="profile-pop-item" type="button" data-avatar-pick role="menuitem">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4V8Z" /><circle cx="12" cy="13" r="3" /></svg>
+              Cambiar foto de perfil
+            </button>
+            <button class="profile-pop-item" type="button" data-view="settings" role="menuitem">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8" /></svg>
+              Configuracion
+            </button>
+            <button class="profile-pop-item is-danger" type="button" data-logout role="menuitem">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6H6v12h4" /><path d="M14 8l4 4-4 4" /><path d="M8 12h10" /></svg>
+              Cerrar sesion
+            </button>
+          </div>
+
+          <!-- Entrada de archivo para la foto de perfil (oculta). -->
+          <input type="file" accept="image/*" id="avatarInput" hidden />
         </header>
 
-        <section class="view-panel is-active" data-panel="welcome" aria-label="Bienvenida de Nexus">
-          <div class="welcome-grid">
-            <article class="welcome-card" data-welcome-view="finance">
-              <span>01</span>
-              <h3>Finanzas Personales</h3>
-              <p>Balance, gastos, ingresos y ahorro disponible.</p>
-              <button class="primary-button" type="button">Entrar</button>
-            </article>
-            <article class="welcome-card" data-welcome-view="meta">
-              <span>02</span>
-              <h3>Meta Ads</h3>
-              <p>Campañas, pixel, inversión, conversiones y ROAS por plataforma.</p>
-              <button class="primary-button" type="button">Entrar</button>
-            </article>
-            <article class="welcome-card" data-welcome-view="ecommerce">
-              <span>03</span>
-              <h3>E-Commerce</h3>
-              <p>Ventas, pedidos y facturación por negocio.</p>
-              <button class="primary-button" type="button">Entrar</button>
-            </article>
-          </div>
-          <div class="welcome-status panel">
-            <div>
-              <span></span>
-              <b>Centro operativo activo</b>
+        <section class="view-panel is-active" data-panel="welcome" aria-label="Resumen general de Nexus">
+          <div class="home" data-home>
+            <!-- Selector de periodo -->
+            <div class="home-toolbar">
+              <div class="home-period" id="homePeriodTabs" role="tablist" aria-label="Periodo">
+                <button class="home-per is-active" type="button" data-home-period="hoy" role="tab">Hoy</button>
+                <button class="home-per" type="button" data-home-period="7" role="tab">7 dias</button>
+                <button class="home-per" type="button" data-home-period="30" role="tab">30 dias</button>
+              </div>
             </div>
-            <p>Datos locales seguros, módulos independientes y estructura preparada para nuevas integraciones.</p>
+
+            <!-- KPIs (los puebla home.js con datos reales) -->
+            <div class="home-kpis" id="homeKpis" aria-live="polite"></div>
+
+            <!-- Fila 2: ventas por dia + ventas por canal -->
+            <div class="home-row2">
+              <section class="panel home-panel">
+                <div class="panel-heading">
+                  <div>
+                    <span>Ventas</span>
+                    <h2>Ingresos por dia</h2>
+                  </div>
+                  <span class="home-chip" id="homeSalesTotal"></span>
+                </div>
+                <div class="home-linechart" id="homeSalesChart"></div>
+              </section>
+              <section class="panel home-panel">
+                <div class="panel-heading">
+                  <div>
+                    <span>Canales</span>
+                    <h2>Ventas por canal</h2>
+                  </div>
+                </div>
+                <div class="home-channels" id="homeChannels"></div>
+              </section>
+            </div>
+
+            <!-- Negocios -->
+            <section class="home-block">
+              <div class="home-sec-head">
+                <h2>Tus negocios</h2>
+                <button class="home-sec-link" type="button" data-view="ventas">Ver ventas</button>
+              </div>
+              <div class="home-biz" id="homeBiz"></div>
+            </section>
+
+            <!-- Fila 4: top productos + alertas + rendimiento de campañas -->
+            <!-- Fila: productos mas vendidos + alertas -->
+            <div class="home-row2b">
+              <section class="panel home-panel">
+                <div class="panel-heading">
+                  <div>
+                    <span>Productos</span>
+                    <h2>Mas vendidos</h2>
+                  </div>
+                  <button class="home-sec-link" type="button" data-view="productos">Inventario</button>
+                </div>
+                <div class="home-list" id="homeTopProducts"></div>
+              </section>
+              <section class="panel home-panel">
+                <div class="panel-heading">
+                  <div>
+                    <span>Alertas</span>
+                    <h2>Stock y campañas</h2>
+                  </div>
+                </div>
+                <div class="home-list" id="homeAlerts"></div>
+              </section>
+            </div>
+
+            <!-- Fila: gastos del mes + rendimiento de campañas -->
+            <div class="home-row2b">
+              <section class="panel home-panel">
+                <div class="panel-heading">
+                  <div>
+                    <span>Finanzas</span>
+                    <h2>Gastos del mes</h2>
+                  </div>
+                  <button class="home-sec-link" type="button" data-view="finance">Ver finanzas</button>
+                </div>
+                <div class="home-gastos">
+                  <div class="home-gastos-head">
+                    <strong id="homeGastosTotal">$0</strong>
+                    <span class="home-kpi-delta" id="homeGastosDelta"></span>
+                  </div>
+                  <div class="home-gastos-chart" id="homeGastosChart"></div>
+                </div>
+              </section>
+              <section class="panel home-panel">
+                <div class="panel-heading">
+                  <div>
+                    <span>Marketing</span>
+                    <h2>Rendimiento de campañas</h2>
+                  </div>
+                  <button class="home-sec-link" type="button" data-view="marketing">Ver Ads</button>
+                </div>
+                <div class="home-list" id="homeCampaigns"></div>
+              </section>
+            </div>
           </div>
         </section>
 
@@ -1407,6 +1573,66 @@
             </section>
           </div>
         </section>
+
+        <!-- ============ CONFIGURACION ============ -->
+        <section class="view-panel" data-panel="settings" aria-label="Configuracion de la cuenta">
+          <div class="settings-grid">
+            <section class="panel settings-profile">
+              <div class="panel-heading">
+                <div>
+                  <span>Cuenta</span>
+                  <h2>Tu perfil</h2>
+                </div>
+              </div>
+              <div class="settings-profile-body">
+                <div class="settings-avatar-col">
+                  <span class="avatar avatar-lg" id="settingsAvatar" aria-hidden="true">DC</span>
+                  <button class="ghost-button" type="button" data-avatar-pick>Cambiar foto</button>
+                  <button class="ghost-button danger-button" type="button" id="settingsAvatarClear">Quitar foto</button>
+                </div>
+                <div class="settings-fields">
+                  <label class="field">
+                    <span>Nombre</span>
+                    <input id="settingsName" type="text" maxlength="40" placeholder="Tu nombre" autocomplete="off" />
+                  </label>
+                  <label class="field">
+                    <span>Correo de la cuenta</span>
+                    <input id="settingsEmail" type="text" readonly />
+                  </label>
+                  <div class="form-actions">
+                    <button class="primary-button" type="button" id="settingsSaveProfile">Guardar perfil</button>
+                  </div>
+                  <p class="meta-message" id="settingsProfileMsg"></p>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <div>
+                  <span>Integraciones</span>
+                  <h2>Conexiones</h2>
+                </div>
+              </div>
+              <div class="settings-conn" id="settingsConnections"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <div>
+                  <span>Datos</span>
+                  <h2>Respaldo y sesion</h2>
+                </div>
+              </div>
+              <p class="settings-hint">Descargá o restaurá un respaldo completo (finanzas, configuraciones y snapshots) en formato JSON. Se guarda en tu equipo.</p>
+              <div class="settings-actions">
+                <button class="ghost-button" type="button" id="settingsExport">Exportar datos</button>
+                <button class="ghost-button" type="button" id="settingsImport">Importar datos</button>
+                <button class="ghost-button danger-button" type="button" id="settingsLogout">Cerrar sesion</button>
+              </div>
+            </section>
+          </div>
+        </section>
       </main>
     </div>
 
@@ -1423,19 +1649,22 @@
     <script src="./js/firebase/secure-api.js?v=20260803-mp2"></script>
     <!-- Dashboard modules -->
     <script src="./js/core/auth.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/store.js?v=20260809-prodtab1"></script>
+    <script src="./js/dashboard/store.js?v=20260813-logos1"></script>
     <script src="./js/dashboard/integration-core.js?v=20260716-live1"></script>
-    <script src="./js/dashboard/charts.js?v=20260727-rev2"></script>
+    <script src="./js/dashboard/charts.js?v=20260813-redesign2"></script>
     <script src="./js/dashboard/finance.js?v=20260727-rev2"></script>
     <script src="./js/dashboard/revolut.js?v=20260727-rev1"></script>
     <script src="./js/dashboard/meta.js?v=20260716-nav1"></script>
-    <script src="./js/dashboard/commerce.js?v=20260810-notif1"></script>
+    <script src="./js/dashboard/commerce.js?v=20260813-redesign2"></script>
     <script src="./js/dashboard/inventory.js?v=20260810-mcuenta1"></script>
     <script src="./js/dashboard/notifications.js?v=20260717-acct4"></script>
     <script src="./js/dashboard/tools.js?v=20260727-mob5"></script>
     <script src="./js/dashboard/platform-nav.js?v=20260804-ads1"></script>
-    <script src="./js/dashboard/router.js?v=20260727-mob5"></script>
-    <script src="./js/dashboard/app.js?v=20260810-notif1"></script>
+    <script src="./js/dashboard/router.js?v=20260813-redesign1"></script>
+    <script src="./js/dashboard/logos.js?v=20260813-logos1"></script>
+    <script src="./js/dashboard/home.js?v=20260813-logos1"></script>
+    <script src="./js/dashboard/shell.js?v=20260813-logos1"></script>
+    <script src="./js/dashboard/app.js?v=20260813-redesign1"></script>
     <script src="./js/dashboard/mobile-tables.js?v=20260727-mob3"></script>
     <script src="./js/pwa.js?v=20260711-push1" defer></script>
   </body>
