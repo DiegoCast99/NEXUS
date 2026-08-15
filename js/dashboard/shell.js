@@ -130,7 +130,7 @@
     accounts.forEach(function (acc) {
       var snap = S.getCommerceSnapshot && S.getCommerceSnapshot(acc.id);
       (snap && snap.allOrders ? snap.allOrders : []).forEach(function (o) {
-        all.push({ acc: acc.id, accName: acc.name, product: o.product, total: o.total, createdAt: o.createdAt || o.date, id: o.id });
+        all.push({ acc: acc.id, accName: acc.name, product: o.product, total: o.total, createdAt: o.createdAt || o.date, id: o.id, thumbnail: o.thumbnail || "" });
       });
     });
     all.sort(function (a, b) { return new Date(b.createdAt || 0) - new Date(a.createdAt || 0); });
@@ -152,8 +152,12 @@
       try { fecha = new Date(s.createdAt).toLocaleDateString("es-UY", { day: "2-digit", month: "short" }); } catch (e) {}
       var monto = "";
       try { monto = S.currency(Number(s.total) || 0); } catch (e) { monto = "$" + (s.total || 0); }
-      return '<button class="notif-item" type="button" data-notif-sale="ventas">' +
-        '<span class="notif-ic">' + SALE_IC + '</span>' +
+      // Foto del producto vendido montada sobre el tile naranja; si no hay/falla,
+      // queda el icono de bolsa por detrás.
+      var media = '<span class="notif-ic">' + SALE_IC +
+        (s.thumbnail ? '<img class="notif-ic-img" src="' + esc(s.thumbnail) + '" alt="" loading="lazy" onerror="this.remove()"/>' : "") +
+        '</span>';
+      return '<button class="notif-item" type="button" data-notif-sale="ventas">' + media +
         '<span class="notif-main"><b>' + esc(s.product || "Venta") + " · " + monto + '</b>' +
         '<small>' + esc(s.accName) + (fecha ? " · " + esc(fecha) : "") + '</small></span></button>';
     }).join("");

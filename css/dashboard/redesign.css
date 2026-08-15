@@ -324,7 +324,7 @@
 .notif-pop-body { display: grid; gap: 5px; max-height: 380px; overflow-y: auto; padding-top: 4px; }
 .notif-item {
   display: grid;
-  grid-template-columns: 30px 1fr;
+  grid-template-columns: 38px 1fr;
   align-items: center;
   gap: 11px;
   padding: 9px 10px;
@@ -337,16 +337,20 @@
 }
 .notif-item:hover { background: rgba(245, 98, 58, 0.12); border-color: rgba(245, 98, 58, 0.28); }
 .notif-ic {
-  width: 30px;
-  height: 30px;
+  position: relative;
+  overflow: hidden;
+  width: 38px;
+  height: 38px;
   flex: none;
   display: grid;
   place-items: center;
-  border-radius: 9px;
+  border-radius: 10px;
   background: linear-gradient(135deg, rgba(245, 98, 58, 0.95), rgba(224, 71, 42, 0.75));
   box-shadow: 0 3px 9px rgba(224, 71, 42, 0.3);
 }
-.notif-ic svg { width: 15px; height: 15px; fill: none; stroke: #fff; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.notif-ic svg { width: 17px; height: 17px; fill: none; stroke: #fff; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+/* Foto del producto vendido (cubre el tile naranja). */
+.notif-ic-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; background: #fff; }
 .notif-main { display: grid; gap: 2px; min-width: 0; }
 .notif-item b { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .notif-item small { font-size: 11px; color: var(--muted); }

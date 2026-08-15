@@ -2594,6 +2594,7 @@
       var raw = p.results || p.metrics || (Array.isArray(p) ? p : []);
       var serie = adsSerieDiaria(raw);
       cache.serie = serie;
+      cache.serieRaw = raw;   // crudo por-campaña, para la gráfica del detalle
       drawAdsChart(serie);
     } catch (e) { adsDatos(cuenta).serie = null; drawAdsChart([]); }
   }
@@ -2630,8 +2631,37 @@
     });
   }
 
-  function drawAdsChart(serie) {
-    var canvas = elements.adsChart;
+  // Serie diaria de UNA campaña (para la gráfica del detalle). La respuesta DAILY
+  // trae, por campaña, su array .metrics por día; se filtra por id. Si ML devolvió
+  // el DAILY ya agregado (sin id de campaña), no se puede aislar → [] (fallback).
+  function serieDeCampaign(raw, campId) {
+    if (!Array.isArray(raw) || !campId) return [];
+    var id = String(campId), porDia = {};
+    raw.forEach(function (r) {
+      if (!r) return;
+      var rid = String(r.id || r.campaign_id || (r.campaign && r.campaign.id) || "");
+      if (rid !== id) return;
+      var dias = Array.isArray(r.metrics) ? r.metrics : [r];
+      dias.forEach(function (dObj) {
+        var fecha = String(dObj.date || dObj.date_from || dObj.day || "").slice(0, 10);
+        if (!fecha) return;
+        var m = (dObj.metrics && !Array.isArray(dObj.metrics)) ? dObj.metrics : dObj;
+        var d = porDia[fecha] || { date: fecha, atribuidas: 0, otras: 0, ingresos: 0, gasto: 0 };
+        d.atribuidas += adsNum(m, ["units_quantity"]) || (adsNum(m, ["direct_items_quantity"]) + adsNum(m, ["indirect_items_quantity"]));
+        d.otras += adsNum(m, ["organic_units_quantity", "organic_items_quantity"]);
+        d.ingresos += adsNum(m, ["total_amount"]);
+        d.gasto += adsNum(m, ["cost"]);
+        porDia[fecha] = d;
+      });
+    });
+    return Object.keys(porDia).sort().map(function (k) {
+      var d = porDia[k]; d.roas = d.gasto ? d.ingresos / d.gasto : 0; return d;
+    });
+  }
+
+  function drawAdsChart(serie, canvas, key) {
+    canvas = canvas || elements.adsChart;
+    key = key || "adschart";
     if (!canvas) return;
     var ctx = canvas.getContext("2d");
     var W = canvas.width = canvas.clientWidth || 900;
@@ -2667,7 +2697,7 @@
       ctx.stroke();
     }
     var sig = serie.map(function (d) { return (d.atribuidas + d.otras) + "/" + d.roas; }).join(",");
-    if (S.paintChart) S.paintChart("adschart", paint, 1300, sig); else paint(1);
+    if (S.paintChart) S.paintChart(key, paint, 1300, sig); else paint(1);
   }
 
   // Tiempo real: mientras la seccion Publicidad esta visible, refresca sola cada
@@ -2796,7 +2826,22 @@
     elements.adsLista?.classList.add("is-hidden");
     elements.adsDetail.classList.remove("is-hidden");
     elements.adsDetail.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Gráfica independiente de ESTA campaña (delay para que el canvas ya tenga ancho).
+    window.setTimeout(function () { dibujarAdsDetailChart(campaignId); }, 40);
     cargarAdsItems(campaignId);
+  }
+  // Dibuja la serie diaria de una campaña puntual en el canvas del detalle.
+  function dibujarAdsDetailChart(campaignId) {
+    if (!elements.adsDetailChart) return;
+    var cache = adsDatos(activeMLId());
+    var serie = serieDeCampaign(cache && cache.serieRaw, campaignId);
+    if (serie && serie.length) {
+      drawAdsChart(serie, elements.adsDetailChart, "adsdetail");
+      if (elements.adsDetailChartMsg) elements.adsDetailChartMsg.textContent = "";
+    } else {
+      drawAdsChart([], elements.adsDetailChart, "adsdetail");
+      if (elements.adsDetailChartMsg) elements.adsDetailChartMsg.textContent = "Todavía no hay serie diaria para esta campaña. Aparece cuando Mercado Libre reporta métricas por día.";
+    }
   }
   function adsCerrarDetail() {
     adsCampActual = null;

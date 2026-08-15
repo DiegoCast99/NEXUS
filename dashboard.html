@@ -54,10 +54,10 @@
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260813-redesign1" />
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260813-redesign2" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260813-redesign1" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260813-redesign2" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260815-fix2" />
     <link rel="stylesheet" href="./css/dashboard/tools.css?v=20260813-redesign1" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260813-redesign1" />
-    <link rel="stylesheet" href="./css/dashboard/redesign.css?v=20260815-fix1" />
+    <link rel="stylesheet" href="./css/dashboard/redesign.css?v=20260815-fix2" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260724-adapt1" />
     <link rel="stylesheet" href="./css/dashboard/mobile.css?v=20260813-logos1" />
   </head>
@@ -1345,6 +1345,18 @@
                   <button class="ghost-button danger-button" type="button" id="adsDeleteBtn">Eliminar campaña</button>
                 </div>
 
+                <!-- Gráfica independiente de ESTA campaña (ventas atribuidas + ROAS por día) -->
+                <div class="ads-detail-chart panel">
+                  <div class="panel-heading">
+                    <div>
+                      <span>Rendimiento de la campaña</span>
+                      <h4 id="adsDetailChartTitle">Últimos 30 días</h4>
+                    </div>
+                  </div>
+                  <canvas id="adsDetailChart" height="200"></canvas>
+                  <p class="meta-message" id="adsDetailChartMsg"></p>
+                </div>
+
                 <h4 class="ads-subtitle">Anuncios de la campaña</h4>
                 <div class="ads-additem">
                   <label class="field compact-field">
@@ -1650,13 +1662,13 @@
     <script src="./js/firebase/secure-api.js?v=20260814-agente2"></script>
     <!-- Dashboard modules -->
     <script src="./js/core/auth.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/store.js?v=20260813-logos1"></script>
+    <script src="./js/dashboard/store.js?v=20260815-fix2"></script>
     <script src="./js/dashboard/integration-core.js?v=20260716-live1"></script>
     <script src="./js/dashboard/charts.js?v=20260814b-anim1"></script>
     <script src="./js/dashboard/finance.js?v=20260727-rev2"></script>
     <script src="./js/dashboard/revolut.js?v=20260727-rev1"></script>
     <script src="./js/dashboard/meta.js?v=20260716-nav1"></script>
-    <script src="./js/dashboard/commerce.js?v=20260815-fix1"></script>
+    <script src="./js/dashboard/commerce.js?v=20260815-fix2"></script>
     <script src="./js/dashboard/ads-agent.js?v=20260815-fix1"></script>
     <script src="./js/dashboard/inventory.js?v=20260810-mcuenta1"></script>
     <script src="./js/dashboard/notifications.js?v=20260717-acct4"></script>
@@ -1665,7 +1677,7 @@
     <script src="./js/dashboard/router.js?v=20260815-fix1"></script>
     <script src="./js/dashboard/logos.js?v=20260815-fix1"></script>
     <script src="./js/dashboard/home.js?v=20260815-fix1"></script>
-    <script src="./js/dashboard/shell.js?v=20260815-fix1"></script>
+    <script src="./js/dashboard/shell.js?v=20260815-fix2"></script>
     <script src="./js/dashboard/app.js?v=20260813-redesign1"></script>
     <script src="./js/dashboard/mobile-tables.js?v=20260727-mob3"></script>
     <script src="./js/pwa.js?v=20260711-push1" defer></script>
