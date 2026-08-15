@@ -215,17 +215,18 @@
     var dots = pts.map(function (p, i) { var last = i === pts.length - 1; return '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(p.revenue).toFixed(1) + '" r="' + (last ? 5.6 : 4.6) + '" fill="url(#homeDotCore)"/>'; }).join("");
     var grid = "";
     for (var g = 1; g <= 3; g++) { var gy = padTop + ((H - padTop - padBottom) / 3) * g; grid += '<line x1="' + padX + '" y1="' + gy.toFixed(1) + '" x2="' + (W - padX) + '" y2="' + gy.toFixed(1) + '" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>'; }
+    var anim = S.shouldAnimateChart ? S.shouldAnimateChart("home-sales", pts.map(function (p) { return Number(p.revenue) || 0; }).join(",")) : false;
     box.innerHTML =
-      '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Ingresos por dia">' +
+      '<svg class="' + (anim ? "hn-anim" : "") + '" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Ingresos por dia">' +
       '<defs>' +
       '<radialGradient id="homeDotCore" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#fff1e6"/><stop offset="45%" stop-color="#ff9457"/><stop offset="100%" stop-color="#ff5a2e"/></radialGradient>' +
       '<linearGradient id="homeArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="rgba(255,106,61,0.28)"/><stop offset="100%" stop-color="rgba(255,106,61,0)"/></linearGradient>' +
       '<filter id="homeGlow" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="3.4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>' +
       '<filter id="homeLineGlow" x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>' +
       '</defs>' + grid +
-      '<path d="' + area + '" fill="url(#homeArea)"/>' +
-      '<path d="' + line + '" fill="none" stroke="#ff7a45" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" filter="url(#homeLineGlow)"/>' +
-      '<g filter="url(#homeGlow)">' + dots + '</g></svg>';
+      '<path class="hn-area" d="' + area + '" fill="url(#homeArea)"/>' +
+      '<path class="hn-line" pathLength="1" d="' + line + '" fill="none" stroke="#ff7a45" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" filter="url(#homeLineGlow)"/>' +
+      '<g class="hn-dots" filter="url(#homeGlow)">' + dots + '</g></svg>';
   }
 
   // ---- Ventas por canal (dona SVG + leyenda con logos) ----
@@ -245,14 +246,19 @@
 
     // Dona
     var donut;
+    var animD = S.shouldAnimateChart ? S.shouldAnimateChart("home-donut", channels.map(function (c) { return c.value; }).join(",")) : false;
+    var svgCls = animD ? ' class="hn-anim-donut"' : "";
     if (total > 0) {
       var C = 2 * Math.PI * 15.9155, off = 0, segs = "";
       real.forEach(function (c, i) {
-        var frac = c.value / total, len = frac * C;
-        segs += '<circle cx="21" cy="21" r="15.9155" fill="none" stroke="' + CH_COLORS[i % CH_COLORS.length] + '" stroke-width="5" stroke-dasharray="' + len.toFixed(2) + ' ' + (C - len).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" stroke-linecap="butt" transform="rotate(-90 21 21)"/>';
+        var frac = c.value / total, len = frac * C, gap = C - len;
+        // Barrido: cada arco "se dibuja" (dasharray 0→len) en su tramo del giro.
+        var cls = animD ? ' class="hn-arc"' : "";
+        var av = animD ? ' style="--dlen:' + len.toFixed(2) + ';--dgap:' + gap.toFixed(2) + ';--ddur:' + Math.max(300, Math.round((len / C) * 1200)) + 'ms;--ddelay:' + Math.round((off / C) * 1200) + 'ms"' : "";
+        segs += '<circle' + cls + av + ' cx="21" cy="21" r="15.9155" fill="none" stroke="' + CH_COLORS[i % CH_COLORS.length] + '" stroke-width="5" stroke-dasharray="' + len.toFixed(2) + ' ' + gap.toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" stroke-linecap="butt" transform="rotate(-90 21 21)"/>';
         off += len;
       });
-      donut = '<div class="home-donut"><svg viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="15.9155" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5"/>' + segs + '</svg><div class="home-donut-c"><b>' + curK(total) + '</b><small>Total</small></div></div>';
+      donut = '<div class="home-donut"><svg' + svgCls + ' viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="15.9155" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5"/>' + segs + '</svg><div class="home-donut-c"><b>' + curK(total) + '</b><small>Total</small></div></div>';
     } else {
       donut = '<div class="home-donut"><svg viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="15.9155" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5"/></svg><div class="home-donut-c"><b>$0</b><small>Total</small></div></div>';
     }
@@ -346,8 +352,13 @@
     var vals = days.map(function (d) { return finance.byDay[d]; });
     var max = Math.max.apply(null, vals) || 1;
     var W = 320, H = 90, n = vals.length, gap = 3, bw = Math.max(4, (W - gap * (n - 1)) / n);
-    var bars = vals.map(function (v, i) { var h = Math.max(2, (v / max) * (H - 6)); var x = i * (bw + gap); return '<rect x="' + x.toFixed(1) + '" y="' + (H - h).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="2" fill="url(#gastosBar)"/>'; }).join("");
-    chartEl.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="gastosBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ff8f4a"/><stop offset="100%" stop-color="#ff3d2e"/></linearGradient></defs>' + bars + '</svg>';
+    var animG = S.shouldAnimateChart ? S.shouldAnimateChart("home-gastos", vals.join(",")) : false;
+    var bars = vals.map(function (v, i) {
+      var h = Math.max(2, (v / max) * (H - 6)); var x = i * (bw + gap);
+      var delay = animG ? ' style="animation-delay:' + (i * 45) + 'ms"' : "";
+      return '<rect class="hn-bar" x="' + x.toFixed(1) + '" y="' + (H - h).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="2" fill="url(#gastosBar)"' + delay + "/>";
+    }).join("");
+    chartEl.innerHTML = '<svg class="' + (animG ? "hn-anim-bars" : "") + '" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="gastosBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ff8f4a"/><stop offset="100%" stop-color="#ff3d2e"/></linearGradient></defs>' + bars + '</svg>';
   }
 
   // ---- Rendimiento de campañas (Meta real + placeholders con logo) ----

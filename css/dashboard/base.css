@@ -15,9 +15,9 @@
 
   /* Acento · naranja/rojo cálido. Antes rosa (#ff1a9d / 255,26,157).
      --accent-rgb permite reusar el mismo tono en rgba() con alfa. */
-  --accent: #ff6a3d;
-  --accent-2: #ff3d2e;
-  --accent-rgb: 255, 106, 61;
+  --accent: #f5623a;
+  --accent-2: #e0472a;
+  --accent-rgb: 245, 98, 58;
 
   /* Series de gráficos + semánticos (se mantienen los nombres para no romper). */
   --violet: #b24dff;

@@ -46,6 +46,8 @@
     const normalized = normalizeView(rawView);
     const nextView = normalized.view;
     state.activeView = nextView;
+    // Entrar a una vista dispara la animación de entrada de sus gráficas (una vez).
+    if (S.bumpChartGen) S.bumpChartGen();
 
     if (nextView !== "meta") {
       state.meta.selectedPlatform = null;

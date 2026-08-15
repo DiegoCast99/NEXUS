@@ -2610,23 +2610,29 @@
     serie.forEach(function (d) { maxU = Math.max(maxU, d.atribuidas + d.otras); maxR = Math.max(maxR, d.roas); });
     var slot = plotW / n, barW = Math.max(2, slot * 0.55);
     var azul = "#ff6a3d", azulClaro = "rgba(245,166,35,0.5)", roasCol = "#34d399";
-    serie.forEach(function (d, i) {
-      var x = padL + i * slot + (slot - barW) / 2;
-      var hAtr = (d.atribuidas / maxU) * plotH;
-      var hOtr = (d.otras / maxU) * plotH;
-      ctx.fillStyle = azulClaro;
-      ctx.fillRect(x, padT + plotH - hAtr - hOtr, barW, hOtr);
-      ctx.fillStyle = azul;
-      ctx.fillRect(x, padT + plotH - hAtr, barW, hAtr);
-    });
-    ctx.beginPath();
-    ctx.strokeStyle = roasCol; ctx.lineWidth = 2; ctx.lineJoin = "round";
-    serie.forEach(function (d, i) {
-      var x = padL + i * slot + slot / 2;
-      var y = padT + plotH - (d.roas / maxR) * plotH;
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
+    var baseY = padT + plotH;
+    // Barras (ventas) suben desde la base y la línea de ROAS se traza subiendo.
+    function paint(p) {
+      ctx.clearRect(0, 0, W, H);
+      serie.forEach(function (d, i) {
+        var x = padL + i * slot + (slot - barW) / 2;
+        var hAtr = (d.atribuidas / maxU) * plotH * p;
+        var hOtr = (d.otras / maxU) * plotH * p;
+        ctx.fillStyle = azulClaro; ctx.fillRect(x, baseY - hAtr - hOtr, barW, hOtr);
+        ctx.fillStyle = azul; ctx.fillRect(x, baseY - hAtr, barW, hAtr);
+      });
+      ctx.beginPath();
+      ctx.strokeStyle = roasCol; ctx.lineWidth = 2; ctx.lineJoin = "round";
+      serie.forEach(function (d, i) {
+        var x = padL + i * slot + slot / 2;
+        var fy = baseY - (d.roas / maxR) * plotH;
+        var y = baseY - (baseY - fy) * p;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+    var sig = serie.map(function (d) { return (d.atribuidas + d.otras) + "/" + d.roas; }).join(",");
+    if (S.paintChart) S.paintChart("adschart", paint, 1300, sig); else paint(1);
   }
 
   // Tiempo real: mientras la seccion Publicidad esta visible, refresca sola cada
