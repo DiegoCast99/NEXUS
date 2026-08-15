@@ -1,16 +1,36 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 360" role="img" aria-label="Mercado Libre">
-  <ellipse cx="256" cy="180" rx="250" ry="168" fill="#FFE600"/>
-  <g fill="#ffffff">
-    <!-- Antebrazo izquierdo (horizontal, entra por la izquierda) -->
-    <path d="M34 198 L214 198 Q242 198 256 224 L262 236 Q250 262 220 262 L34 262 Q24 262 24 252 L24 208 Q24 198 34 198 Z"/>
-    <!-- Antebrazo derecho (horizontal, entra por la derecha) -->
-    <path d="M478 98 L298 98 Q270 98 256 124 L250 136 Q262 162 292 162 L478 162 Q488 162 488 152 L488 108 Q488 98 478 98 Z"/>
-    <!-- Manos entrelazadas en el centro -->
-    <path d="M246 146 Q222 170 244 202 Q264 226 296 216 Q322 208 326 180 Q328 156 308 142 Q286 128 262 138 Q252 142 246 146 Z"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 420" role="img" aria-label="Mercado Libre">
+  <!-- Óvalo amarillo con borde azul marino (con leve profundidad abajo) -->
+  <ellipse cx="300" cy="218" rx="270" ry="176" fill="#2D3277"/>
+  <ellipse cx="300" cy="200" rx="270" ry="176" fill="#FFE600" stroke="#2D3277" stroke-width="17"/>
+  <!-- Apretón de manos: blanco con contorno azul marino -->
+  <g fill="#ffffff" stroke="#2D3277" stroke-width="13" stroke-linejoin="round" stroke-linecap="round">
+    <!-- Brazo/mano izquierda: entra por la izquierda, la mano baja al centro -->
+    <path d="M40 168
+             C 150 150 235 152 300 196
+             C 320 210 326 232 315 250
+             L 250 210
+             C 210 232 176 232 150 226
+             L 40 210 Z"/>
+    <!-- Brazo/mano derecha: entra por la derecha, arriba, y baja a estrechar -->
+    <path d="M560 150
+             C 470 138 400 148 344 182
+             L 300 152
+             C 300 152 300 150 300 150
+             C 355 128 470 122 560 150 Z"/>
+    <!-- Mano derecha estrechando (dedos que envuelven, hacia abajo-derecha) -->
+    <path d="M300 152
+             C 340 176 388 214 430 250
+             C 452 268 448 296 424 306
+             C 402 314 380 305 366 288
+             C 336 252 300 214 276 196
+             C 262 186 268 162 288 156
+             C 292 154 296 152 300 152 Z"/>
   </g>
-  <!-- Surcos de dedos -->
-  <g stroke="#FFE600" stroke-width="8" stroke-linecap="round" fill="none">
-    <path d="M256 170 L300 200"/>
-    <path d="M272 158 L312 186"/>
+  <!-- Nudillos como bultos (dedos de la mano izquierda) -->
+  <g fill="#ffffff" stroke="#2D3277" stroke-width="11" stroke-linejoin="round">
+    <circle cx="230" cy="250" r="20"/>
+    <circle cx="262" cy="262" r="20"/>
+    <circle cx="296" cy="270" r="20"/>
+    <circle cx="330" cy="272" r="20"/>
   </g>
 </svg>
