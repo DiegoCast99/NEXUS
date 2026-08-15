@@ -260,7 +260,7 @@
       ctx.lineWidth = 2; ctx.shadowColor = "rgba(255,106,61,0.45)"; ctx.shadowBlur = p >= 1 ? 12 : 0; ctx.stroke();
       ctx.restore();
     }
-    paintChart("cashflow", paint, 1400, series.map(function (s) { return s.income + "/" + s.expense; }).join(","));
+    paintChart("cashflow", paint, 1800, series.map(function (s) { return s.income + "/" + s.expense; }).join(","));
   }
 
   function roundedRect(ctx, x, y, width, height, radius) {
@@ -334,7 +334,7 @@
       ctx.fillText("gastos", cx, cy + 18);
       ctx.globalAlpha = 1;
     }
-    paintChart("category", paint, 1300, entries.map(function (e) { return e[0] + ":" + e[1]; }).join(","));
+    paintChart("category", paint, 1700, entries.map(function (e) { return e[0] + ":" + e[1]; }).join(","));
   }
 
   // Dona de costos de e-commerce, con el MISMO estilo que la de gastos de
@@ -398,7 +398,7 @@
       ctx.fillText("costos", cx, cy + 18);
       ctx.globalAlpha = 1;
     }
-    paintChart("commercecosts", paint, 1300, entries.map(function (e) { return e[0] + ":" + e[1]; }).join(","));
+    paintChart("commercecosts", paint, 1700, entries.map(function (e) { return e[0] + ":" + e[1]; }).join(","));
     setChartTargets(elements.commerceCostsChart, []);
   }
 
@@ -474,7 +474,7 @@
       ctx.fillText("Barras: inversión · Línea: ROAS", padding.left, height - 12);
       ctx.restore();
     }
-    paintChart("metatrend", paint, 1400, trend.map(function (t) { return (t.spend || 0) + "/" + (t.roas || 0); }).join(","));
+    paintChart("metatrend", paint, 1800, trend.map(function (t) { return (t.spend || 0) + "/" + (t.roas || 0); }).join(","));
   }
 
   // Animación de la gráfica de e-commerce: barras que suben desde abajo y línea que
@@ -582,7 +582,7 @@
     const animar = !hidden && (animarTrendProxima || dataChanged) && !(typeof prefersReducedMotion === "function" && prefersReducedMotion());
     animarTrendProxima = false;
     if (animar && typeof requestAnimationFrame === "function") {
-      let t0 = null; const dur = 1400;
+      let t0 = null; const dur = 1800;
       const frame = (ts) => {
         if (t0 == null) t0 = ts;
         const p = Math.min(1, (ts - t0) / dur);

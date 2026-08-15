@@ -57,7 +57,7 @@
     <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260815-fix2" />
     <link rel="stylesheet" href="./css/dashboard/tools.css?v=20260813-redesign1" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260813-redesign1" />
-    <link rel="stylesheet" href="./css/dashboard/redesign.css?v=20260815-fix2" />
+    <link rel="stylesheet" href="./css/dashboard/redesign.css?v=20260815-fix3" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260724-adapt1" />
     <link rel="stylesheet" href="./css/dashboard/mobile.css?v=20260813-logos1" />
   </head>
@@ -324,6 +324,11 @@
                 <button class="home-per" type="button" data-home-period="hoy" role="tab">Hoy</button>
                 <button class="home-per" type="button" data-home-period="7" role="tab">7 dias</button>
                 <button class="home-per is-active" type="button" data-home-period="30" role="tab">30 dias</button>
+                <button class="home-per" type="button" data-home-period="custom" role="tab">Personalizado</button>
+              </div>
+              <div class="home-daterange is-hidden" id="homeDateRange">
+                <label class="home-date-field"><span>Desde</span><input type="date" id="homeDateFrom" /></label>
+                <label class="home-date-field"><span>Hasta</span><input type="date" id="homeDateTo" /></label>
               </div>
             </div>
 
@@ -884,6 +889,25 @@
             </div>
             <p class="meta-message" id="commerceMessage"></p>
           </form>
+
+          <!-- Foto propia del negocio: se muestra en el dashboard principal -->
+          <section class="panel mkt-photo-panel" data-section="config">
+            <div class="panel-heading">
+              <div>
+                <span>Identidad</span>
+                <h2>Foto del negocio</h2>
+              </div>
+            </div>
+            <p class="meta-message">Subí la imagen de este negocio (logo o foto). Es la que se muestra en el dashboard principal, en "Tus negocios".</p>
+            <div class="mkt-photo-row">
+              <span class="mkt-photo-preview" id="marketplacePhotoPreview"><span class="mkt-photo-empty">Sin foto</span></span>
+              <div class="mkt-photo-actions">
+                <button class="primary-button" type="button" id="marketplacePhotoUpload">Subir foto</button>
+                <button class="ghost-button danger-button" type="button" id="marketplacePhotoClear" style="display:none">Quitar</button>
+              </div>
+              <input type="file" id="marketplacePhotoInput" accept="image/*" hidden />
+            </div>
+          </section>
 
           <section class="panel" data-section="config">
             <div class="panel-heading">
@@ -1664,11 +1688,11 @@
     <script src="./js/core/auth.js?v=20260709-ola0mod"></script>
     <script src="./js/dashboard/store.js?v=20260815-fix2"></script>
     <script src="./js/dashboard/integration-core.js?v=20260716-live1"></script>
-    <script src="./js/dashboard/charts.js?v=20260814b-anim1"></script>
+    <script src="./js/dashboard/charts.js?v=20260815-fix3"></script>
     <script src="./js/dashboard/finance.js?v=20260727-rev2"></script>
     <script src="./js/dashboard/revolut.js?v=20260727-rev1"></script>
     <script src="./js/dashboard/meta.js?v=20260716-nav1"></script>
-    <script src="./js/dashboard/commerce.js?v=20260815-fix2"></script>
+    <script src="./js/dashboard/commerce.js?v=20260815-fix3"></script>
     <script src="./js/dashboard/ads-agent.js?v=20260815-fix1"></script>
     <script src="./js/dashboard/inventory.js?v=20260810-mcuenta1"></script>
     <script src="./js/dashboard/notifications.js?v=20260717-acct4"></script>
@@ -1676,8 +1700,8 @@
     <script src="./js/dashboard/platform-nav.js?v=20260815-fix1"></script>
     <script src="./js/dashboard/router.js?v=20260815-fix1"></script>
     <script src="./js/dashboard/logos.js?v=20260815-fix1"></script>
-    <script src="./js/dashboard/home.js?v=20260815-fix1"></script>
-    <script src="./js/dashboard/shell.js?v=20260815-fix2"></script>
+    <script src="./js/dashboard/home.js?v=20260815-fix3"></script>
+    <script src="./js/dashboard/shell.js?v=20260815-fix3"></script>
     <script src="./js/dashboard/app.js?v=20260813-redesign1"></script>
     <script src="./js/dashboard/mobile-tables.js?v=20260727-mob3"></script>
     <script src="./js/pwa.js?v=20260711-push1" defer></script>

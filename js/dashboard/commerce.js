@@ -823,6 +823,8 @@
     elements.mlConnectPanel?.classList.toggle("is-hidden", !(hasApp && ml));
     elements.shopeeConnectPanel?.classList.toggle("is-hidden", !(hasApp && shopee));
     elements.commerceConfigForm?.classList.toggle("is-hidden", !hasApp || ml || shopee);
+    // Refresca el preview de la foto propia del negocio para el marketplace activo.
+    if (S.renderMarketplacePhotoConfig) S.renderMarketplacePhotoConfig();
 
     // Fuera de updateMLPanel a proposito: tiene que correr SIEMPRE, porque es
     // quien oculta el selector de cuentas al entrar a una plataforma que no es
@@ -995,6 +997,33 @@
       if (url) { var im = new Image(); im.decoding = "async"; im.src = url; }  // precarga
       return url;
     } catch (e) { return ""; }
+  }
+
+  // Fotos (cacheadas) de varios itemIds de UNA cuenta, con multiget. La usan las
+  // notificaciones para mostrar la foto del producto aunque el pedido no se haya
+  // enriquecido todavía. Devuelve { itemId: url }. Best-effort.
+  async function thumbsForItems(accountId, itemIds) {
+    var out = {}, faltan = [];
+    (itemIds || []).forEach(function (id) {
+      if (!id) return; id = String(id);
+      if (_thumbCache[id] != null) out[id] = _thumbCache[id];
+      else if (faltan.indexOf(id) === -1) faltan.push(id);
+    });
+    if (!faltan.length || !accountId) return out;
+    try {
+      var api = S.requireSecureApi();
+      for (var i = 0; i < faltan.length; i += 20) {
+        var lote = faltan.slice(i, i + 20);
+        var res = await api.mlApi("/items?ids=" + lote.join(",") + "&attributes=id,secure_thumbnail,thumbnail", "GET", null, accountId);
+        (res.payload || []).forEach(function (row) {
+          var b = row && row.body; if (!b || !b.id) return;
+          var url = b.secure_thumbnail || b.thumbnail || "";
+          _thumbCache[String(b.id)] = url; out[String(b.id)] = url;
+          if (url) { var im = new Image(); im.decoding = "async"; im.src = url; }
+        });
+      }
+    } catch (e) { /* best-effort */ }
+    return out;
   }
 
   // Mete/actualiza una orden en el snapshot para que "volver" muestre la lista
@@ -2697,7 +2726,7 @@
       ctx.stroke();
     }
     var sig = serie.map(function (d) { return (d.atribuidas + d.otras) + "/" + d.roas; }).join(",");
-    if (S.paintChart) S.paintChart(key, paint, 1300, sig); else paint(1);
+    if (S.paintChart) S.paintChart(key, paint, 1700, sig); else paint(1);
   }
 
   // Tiempo real: mientras la seccion Publicidad esta visible, refresca sola cada
@@ -3025,7 +3054,7 @@
   }
 
   Object.assign(S, {
-    adsDatos, activeMLId, adsUpdateCampaign, cargarAdsMTD,
+    adsDatos, activeMLId, adsUpdateCampaign, cargarAdsMTD, thumbsForItems,
     aggregateCommerceProducts, aggregateCommerceTrend, buildDemoCommerceSnapshot, buildMLAuthUrl,
     clearSelectedCommerceApp, clearSelectedCommerceGroup, createCommerceSnapshot, disconnectML, ensureMLLiveDefaults, fetchCommerceData, fetchMLOrders,
     handleMlOAuthReturn, normalizeCommerceOrder, normalizeMLOrder,

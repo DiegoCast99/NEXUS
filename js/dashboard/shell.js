@@ -100,6 +100,50 @@
   }
   function clearAvatar() { var p = readProfile(); delete p.photo; saveProfile(p); renderProfileChrome(); }
 
+  // ---- Foto propia por marketplace (la que se muestra en el dashboard principal) ----
+  var MKT_PHOTOS_KEY = "nexus.marketplacePhotos.v1";
+  function getMktPhotos() { try { return JSON.parse(localStorage.getItem(MKT_PHOTOS_KEY)) || {}; } catch (e) { return {}; } }
+  function saveMktPhotos(o) { try { S.safeSetItem(MKT_PHOTOS_KEY, JSON.stringify(o)); } catch (e) {} }
+  function marketplacePhoto(id) { if (!id) return ""; return getMktPhotos()[id] || ""; }
+  function setMarketplacePhoto(id, url) { if (!id) return; var o = getMktPhotos(); o[id] = url; saveMktPhotos(o); }
+  function clearMarketplacePhotoId(id) { if (!id) return; var o = getMktPhotos(); delete o[id]; saveMktPhotos(o); }
+  // Marketplace que se está viendo ahora en E-Commerce (ML1/ML2/ML Brasil/...).
+  function activeMktId() { try { return S.activeMLId ? S.activeMLId() : ""; } catch (e) { return ""; } }
+  // Sube y redimensiona (máx 240px, mantiene proporción, PNG para transparencia).
+  function onMktPhotoFile(e) {
+    var file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file || !/^image\//.test(file.type)) return;
+    var id = activeMktId(); if (!id) return;
+    var reader = new FileReader();
+    reader.onload = function () {
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var max = 240, scale = Math.min(1, max / Math.max(img.width, img.height));
+          var canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(img.width * scale));
+          canvas.height = Math.max(1, Math.round(img.height * scale));
+          canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+          setMarketplacePhoto(id, canvas.toDataURL("image/png"));
+          renderMarketplacePhotoConfig();
+          if (S.renderHome) S.renderHome();
+        } catch (err) { /* canvas tainted / sin soporte */ }
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  }
+  // Pinta el preview del panel de foto para el marketplace activo.
+  function renderMarketplacePhotoConfig() {
+    var prev = el("marketplacePhotoPreview");
+    if (!prev) return;
+    var url = marketplacePhoto(activeMktId());
+    prev.innerHTML = url ? '<img src="' + esc(url) + '" alt="" />' : '<span class="mkt-photo-empty">Sin foto</span>';
+    var clearBtn = el("marketplacePhotoClear");
+    if (clearBtn) clearBtn.style.display = url ? "" : "none";
+  }
+
   // ---- Popovers de la topbar ----
   function closePops(except) {
     ["notifPop", "profilePop", "helpPop"].forEach(function (id) {
@@ -130,7 +174,7 @@
     accounts.forEach(function (acc) {
       var snap = S.getCommerceSnapshot && S.getCommerceSnapshot(acc.id);
       (snap && snap.allOrders ? snap.allOrders : []).forEach(function (o) {
-        all.push({ acc: acc.id, accName: acc.name, product: o.product, total: o.total, createdAt: o.createdAt || o.date, id: o.id, thumbnail: o.thumbnail || "" });
+        all.push({ acc: acc.id, accName: acc.name, product: o.product, total: o.total, createdAt: o.createdAt || o.date, id: o.id, thumbnail: o.thumbnail || "", itemId: o.itemId || "" });
       });
     });
     all.sort(function (a, b) { return new Date(b.createdAt || 0) - new Date(a.createdAt || 0); });
@@ -153,14 +197,45 @@
       var monto = "";
       try { monto = S.currency(Number(s.total) || 0); } catch (e) { monto = "$" + (s.total || 0); }
       // Foto del producto vendido montada sobre el tile naranja; si no hay/falla,
-      // queda el icono de bolsa por detrás.
-      var media = '<span class="notif-ic">' + SALE_IC +
+      // queda el icono de bolsa por detrás. Si el pedido no trae foto, se marca el
+      // tile con su itemId para traerla después (cargarFotosNotif).
+      var thumbAttr = s.itemId ? ' data-thumb-item="' + esc(s.itemId) + '" data-thumb-acc="' + esc(s.acc) + '"' : "";
+      var media = '<span class="notif-ic"' + thumbAttr + '>' + SALE_IC +
         (s.thumbnail ? '<img class="notif-ic-img" src="' + esc(s.thumbnail) + '" alt="" loading="lazy" onerror="this.remove()"/>' : "") +
         '</span>';
       return '<button class="notif-item" type="button" data-notif-sale="ventas">' + media +
         '<span class="notif-main"><b>' + esc(s.product || "Venta") + " · " + monto + '</b>' +
         '<small>' + esc(s.accName) + (fecha ? " · " + esc(fecha) : "") + '</small></span></button>';
     }).join("");
+    cargarFotosNotif(sales);
+  }
+  // Trae la foto (multiget ML) de las ventas que no la tienen y la inyecta en su
+  // tile. Agrupa por cuenta. Así la campana muestra la foto aunque el pedido no
+  // se haya enriquecido en la vista de E-Commerce.
+  function cargarFotosNotif(sales) {
+    if (!S.thumbsForItems) return;
+    var porCuenta = {};
+    sales.forEach(function (s) {
+      if (s.thumbnail || !s.itemId || !s.acc) return;
+      (porCuenta[s.acc] = porCuenta[s.acc] || []).push(String(s.itemId));
+    });
+    Object.keys(porCuenta).forEach(function (acc) {
+      Promise.resolve(S.thumbsForItems(acc, porCuenta[acc])).then(function (map) {
+        if (!map) return;
+        var box = el("notifPopBody"); if (!box) return;
+        Object.keys(map).forEach(function (itemId) {
+          var url = map[itemId]; if (!url) return;
+          var tile = box.querySelector('.notif-ic[data-thumb-item="' + itemId + '"]');
+          if (tile && !tile.querySelector(".notif-ic-img")) {
+            var img = document.createElement("img");
+            img.className = "notif-ic-img"; img.alt = ""; img.loading = "lazy";
+            img.onerror = function () { if (img.parentNode) img.parentNode.removeChild(img); };
+            img.src = url;
+            tile.appendChild(img);
+          }
+        });
+      }).catch(function () {});
+    });
   }
   // Cantidad de ventas SIN VER (desde la última vez que abrió la campana). Si
   // nunca la abrió, cuenta las de los últimos 7 días para no arrancar en 0.
@@ -285,6 +360,15 @@
       if (e.target.closest("[data-avatar-pick]")) { pickAvatar(); }
     });
     el("settingsAvatarClear")?.addEventListener("click", clearAvatar);
+
+    // Foto propia del marketplace (dentro de Configuración de cada negocio).
+    el("marketplacePhotoInput")?.addEventListener("change", onMktPhotoFile);
+    el("marketplacePhotoUpload")?.addEventListener("click", function () { el("marketplacePhotoInput")?.click(); });
+    el("marketplacePhotoClear")?.addEventListener("click", function () {
+      var id = activeMktId(); if (!id) return;
+      clearMarketplacePhotoId(id); renderMarketplacePhotoConfig();
+      if (S.renderHome) S.renderHome();
+    });
     el("settingsSaveProfile")?.addEventListener("click", function () {
       var p = readProfile();
       p.name = (el("settingsName")?.value || "").trim();
@@ -343,7 +427,7 @@
     updateNotifDot();
   }
 
-  Object.assign(S, { initShell: initShell, renderProfileChrome: renderProfileChrome, renderSettings: renderSettings, updateNotifDot: updateNotifDot, profileName: profileName });
+  Object.assign(S, { initShell: initShell, renderProfileChrome: renderProfileChrome, renderSettings: renderSettings, updateNotifDot: updateNotifDot, profileName: profileName, marketplacePhoto: marketplacePhoto, renderMarketplacePhotoConfig: renderMarketplacePhotoConfig });
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initShell);
   else initShell();

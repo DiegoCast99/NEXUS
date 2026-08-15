@@ -24,12 +24,40 @@
   function intn(n) { try { return S.integerNumber(Number(n) || 0); } catch (e) { return String(Math.round(Number(n) || 0)); } }
   function fin(n) { try { return S.financeMoney(Number(n) || 0); } catch (e) { return String(Math.round(Number(n) || 0)); } }
   function logo(key, size) { try { return S.platformLogo ? S.platformLogo(key, size) : ""; } catch (e) { return ""; } }
+  // Logo del negocio: usa la FOTO propia que cargó el titular (Configuración del
+  // marketplace) si existe; si no, el logo de marca generado.
+  function bizLogo(id, slug, size) {
+    var url = S.marketplacePhoto ? S.marketplacePhoto(id) : "";
+    if (url) {
+      var r = Math.round(size * 0.26);
+      return '<span class="pf-logo pf-photo" style="width:' + size + 'px;height:' + size + 'px;border-radius:' + r + 'px"><img src="' + esc(url) + '" alt="" onerror="this.style.display=\'none\'"/></span>';
+    }
+    return logo(slug, size);
+  }
 
-  function periodDays() { return homePeriod === "hoy" ? 1 : Number(homePeriod) || 7; }
-  function periodLabel() { return homePeriod === "hoy" ? "hoy" : "ult. " + homePeriod + " dias"; }
+  // Rango personalizado (YYYY-MM-DD) cuando homePeriod === "custom".
+  var homeCustomFrom = "", homeCustomTo = "";
+  function periodLabel() {
+    if (homePeriod === "custom" && homeCustomFrom && homeCustomTo) return homeCustomFrom + " → " + homeCustomTo;
+    return homePeriod === "hoy" ? "hoy" : "ult. " + homePeriod + " dias";
+  }
   function periodVs() { return homePeriod === "hoy" ? "vs ayer" : "vs periodo previo"; }
 
   function startOfToday() { var d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); }
+  function startOfDayTs(dstr) { var t = new Date(dstr + "T00:00:00").getTime(); return isNaN(t) ? null : t; }
+  function endOfDayTs(dstr) { var t = new Date(dstr + "T23:59:59.999").getTime(); return isNaN(t) ? null : t; }
+  // Ventana [from, to) del periodo activo (hoy / 7 / 30 / personalizado).
+  function periodWindow() {
+    var now = Date.now();
+    if (homePeriod === "custom" && homeCustomFrom && homeCustomTo) {
+      var from = startOfDayTs(homeCustomFrom), to = endOfDayTs(homeCustomTo);
+      if (from == null || to == null || from > to) return { from: now - 7 * 86400000, to: now + 1 };
+      return { from: from, to: to + 1 };
+    }
+    if (homePeriod === "hoy") return { from: startOfToday(), to: now + 1 };
+    var d = Number(homePeriod) || 7;
+    return { from: now - d * 86400000, to: now + 1 };
+  }
   function orderTime(o) {
     var raw = o && (o.createdAt || o.date);
     if (!raw) return null;
@@ -70,36 +98,31 @@
     return agg;
   }
 
-  function mlData(days) {
+  function mlData() {
     var items = collectOrders();
     var hasOrders = items.length > 0;
     var now = Date.now();
-    var span = days * 86400000;
-    var curFrom = days === 1 ? startOfToday() : now - span;
-    var prevFrom = days === 1 ? startOfToday() - 86400000 : now - span * 2;
-    var cur = aggWindow(items, curFrom, days === 1 ? now + 1 : now + 1);
-    var prev = aggWindow(items, prevFrom, curFrom);
+    var win = periodWindow();
+    var curFrom = win.from, curTo = win.to;
+    var span = curTo - curFrom;
+    var cur = aggWindow(items, curFrom, curTo);
+    var prev = aggWindow(items, curFrom - span, curFrom);
 
-    // Top productos + por cuenta: dentro del PERIODO seleccionado.
+    // Top productos + por cuenta + tendencia: TODO dentro de la ventana [curFrom, curTo).
+    // La gráfica "Ingresos por día" ahora sigue el período elegido (antes 14 días
+    // fijos): por eso al cambiar el período la gráfica cambia y se re-anima.
     var trendMap = {}, byName = {}, perAccount = {};
     (S.mlAccounts ? S.mlAccounts() : []).forEach(function (a) { perAccount[a.id] = { id: a.id, name: a.name, revenue: 0, orders: 0, connected: !!(S.getCommerceConfig && S.getCommerceConfig(a.id).hasToken) }; });
     items.forEach(function (it) {
       var t = orderTime(it.o);
-      if (t !== null && t < curFrom) return;
+      if (t !== null && (t < curFrom || t >= curTo)) return;
       var o = it.o, rev = Number(o.total) || 0;
       var nm = o.product || "Producto";
       if (!byName[nm]) byName[nm] = { name: nm, revenue: 0, orders: 0, units: 0, thumbnail: o.thumbnail || "" };
       byName[nm].revenue += rev; byName[nm].orders += 1; byName[nm].units += Number(o.units) || 1;
       if (perAccount[it.acc]) { perAccount[it.acc].revenue += rev; perAccount[it.acc].orders += 1; }
-    });
-    // Gráfica de ventas: SIEMPRE los últimos 14 días (como "esta semana" del mockup),
-    // independiente del periodo de los KPIs.
-    var trend14From = now - 14 * 86400000;
-    items.forEach(function (it) {
-      var t = orderTime(it.o);
-      if (t !== null && t < trend14From) return;
-      var o = it.o, dk = o.date || new Date(t || now).toISOString().slice(0, 10);
-      trendMap[dk] = (trendMap[dk] || 0) + (Number(o.total) || 0);
+      var dk = o.date || new Date(t || now).toISOString().slice(0, 10);
+      trendMap[dk] = (trendMap[dk] || 0) + rev;
     });
 
     // Fallback: sin allOrders pero con totals cacheados.
@@ -256,7 +279,7 @@
         var frac = c.value / total, len = frac * C, gap = C - len;
         // Barrido: cada arco "se dibuja" (dasharray 0→len) en su tramo del giro.
         var cls = animD ? ' class="hn-arc"' : "";
-        var av = animD ? ' style="--dlen:' + len.toFixed(2) + ';--dgap:' + gap.toFixed(2) + ';--ddur:' + Math.max(300, Math.round((len / C) * 1200)) + 'ms;--ddelay:' + Math.round((off / C) * 1200) + 'ms"' : "";
+        var av = animD ? ' style="--dlen:' + len.toFixed(2) + ';--dgap:' + gap.toFixed(2) + ';--ddur:' + Math.max(450, Math.round((len / C) * 1700)) + 'ms;--ddelay:' + Math.round((off / C) * 1700) + 'ms"' : "";
         segs += '<circle' + cls + av + ' cx="21" cy="21" r="15.9155" fill="none" stroke="' + CH_COLORS[i % CH_COLORS.length] + '" stroke-width="5" stroke-dasharray="' + len.toFixed(2) + ' ' + gap.toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" stroke-linecap="butt" transform="rotate(-90 21 21)"/>';
         off += len;
       });
@@ -269,7 +292,7 @@
       var p = total > 0 ? Math.round((c.value / total) * 100) : 0;
       var right = c.soon ? '<span class="home-ch-soon">Proximamente</span>' : '<b>' + p + '%</b>';
       var dot = c.soon ? '' : '<i style="background:' + CH_COLORS[Math.max(0, real.findIndex(function (r) { return r.slug === c.slug; })) % CH_COLORS.length] + '"></i>';
-      return '<div class="home-ch' + (c.soon ? ' is-soon' : '') + '">' + logo(c.slug, 24) +
+      return '<div class="home-ch' + (c.soon ? ' is-soon' : '') + '">' + bizLogo(c.slug, c.slug, 24) +
         '<span class="home-ch-name">' + esc(c.name) + '</span>' + dot + right + '</div>';
     }).join("");
     box.innerHTML = donut + '<div class="home-ch-legend">' + legend + '</div>';
@@ -284,7 +307,7 @@
       // Cada tarjeta abre SU marketplace (deep-link #ecommerce-<id>), no una cuenta fija.
       cards.push(
         '<article class="home-biz-card" data-view="ecommerce-' + esc(a.id) + '" role="button" tabindex="0">' +
-        '<div class="home-biz-top">' + logo("mercadolibre", 40) +
+        '<div class="home-biz-top">' + bizLogo(a.id, "mercadolibre", 40) +
         '<span class="home-biz-badge ' + (a.connected ? "on" : "off") + '">' + (a.connected ? "Conectada" : "Sin conectar") + '</span></div>' +
         '<div class="home-biz-name">' + esc(nombre) + '<small>' + esc(a.name) + '</small></div>' +
         '<div class="home-biz-stat"><b>' + cur(a.revenue) + '</b><span>' + intn(a.orders) + ' ventas</span></div>' +
@@ -293,7 +316,7 @@
     [["Alpha Fitness BR", "Amazon Brasil", "amazon"], ["Alpha Store", "Tienda Mia", "tiendamia"], ["Alpha Shop", "Shopee", "shopee"]].forEach(function (p) {
       cards.push(
         '<article class="home-biz-card is-soon">' +
-        '<div class="home-biz-top">' + logo(p[2], 40) +
+        '<div class="home-biz-top">' + bizLogo(p[2], p[2], 40) +
         '<span class="home-biz-badge off">Proximamente</span></div>' +
         '<div class="home-biz-name">' + esc(p[0]) + '<small>' + esc(p[1]) + '</small></div>' +
         '<div class="home-biz-stat"><b>&mdash;</b><span>en evaluacion</span></div>' +
@@ -358,7 +381,7 @@
     var animG = S.shouldAnimateChart ? S.shouldAnimateChart("home-gastos", vals.join(",")) : false;
     var bars = vals.map(function (v, i) {
       var h = Math.max(2, (v / max) * (H - 6)); var x = i * (bw + gap);
-      var delay = animG ? ' style="animation-delay:' + (i * 45) + 'ms"' : "";
+      var delay = animG ? ' style="animation-delay:' + (i * 60) + 'ms"' : "";
       return '<rect class="hn-bar" x="' + x.toFixed(1) + '" y="' + (H - h).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) + '" rx="2" fill="url(#gastosBar)"' + delay + "/>";
     }).join("");
     chartEl.innerHTML = '<svg class="' + (animG ? "hn-anim-bars" : "") + '" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="gastosBar" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ff8f4a"/><stop offset="100%" stop-color="#ff3d2e"/></linearGradient></defs>' + bars + '</svg>';
@@ -383,7 +406,7 @@
 
   function renderHome() {
     if (!el("homeKpis")) return;
-    var ml = mlData(periodDays());
+    var ml = mlData();
     var meta = metaTotals();
     var finance = financeMonth();
     renderKpis(ml);
@@ -404,9 +427,39 @@
         var btn = e.target.closest("[data-home-period]"); if (!btn) return;
         homePeriod = btn.getAttribute("data-home-period");
         tabs.querySelectorAll("[data-home-period]").forEach(function (b) { b.classList.toggle("is-active", b === btn); });
+        var range = el("homeDateRange");
+        if (homePeriod === "custom") {
+          // Default: últimos 7 días si todavía no eligió fechas.
+          if (!homeCustomFrom || !homeCustomTo) {
+            homeCustomTo = new Date().toISOString().slice(0, 10);
+            homeCustomFrom = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+          }
+          if (el("homeDateFrom")) el("homeDateFrom").value = homeCustomFrom;
+          if (el("homeDateTo")) el("homeDateTo").value = homeCustomTo;
+          if (range) range.classList.remove("is-hidden");
+        } else if (range) {
+          range.classList.add("is-hidden");
+        }
+        if (S.bumpChartGen) S.bumpChartGen();  // fuerza re-animación de las gráficas al cambiar período
         renderHome();
       });
     }
+    // Rango personalizado: los <input type="date"> abren el calendario nativo.
+    ["homeDateFrom", "homeDateTo"].forEach(function (id) {
+      var inp = el(id);
+      if (inp && !inp.dataset.bound) {
+        inp.dataset.bound = "1";
+        inp.addEventListener("change", function () {
+          if (el("homeDateFrom")) homeCustomFrom = el("homeDateFrom").value;
+          if (el("homeDateTo")) homeCustomTo = el("homeDateTo").value;
+          if (homeCustomFrom && homeCustomTo) {
+            homePeriod = "custom";
+            if (S.bumpChartGen) S.bumpChartGen();
+            renderHome();
+          }
+        });
+      }
+    });
     var biz = el("homeBiz");
     if (biz && !biz.dataset.bound) {
       biz.dataset.bound = "1";
