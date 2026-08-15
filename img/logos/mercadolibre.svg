@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 360" role="img" aria-label="Mercado Libre">
+  <ellipse cx="256" cy="180" rx="250" ry="168" fill="#FFE600"/>
+  <g fill="#ffffff">
+    <!-- Antebrazo izquierdo (horizontal, entra por la izquierda) -->
+    <path d="M34 198 L214 198 Q242 198 256 224 L262 236 Q250 262 220 262 L34 262 Q24 262 24 252 L24 208 Q24 198 34 198 Z"/>
+    <!-- Antebrazo derecho (horizontal, entra por la derecha) -->
+    <path d="M478 98 L298 98 Q270 98 256 124 L250 136 Q262 162 292 162 L478 162 Q488 162 488 152 L488 108 Q488 98 478 98 Z"/>
+    <!-- Manos entrelazadas en el centro -->
+    <path d="M246 146 Q222 170 244 202 Q264 226 296 216 Q322 208 326 180 Q328 156 308 142 Q286 128 262 138 Q252 142 246 146 Z"/>
+  </g>
+  <!-- Surcos de dedos -->
+  <g stroke="#FFE600" stroke-width="8" stroke-linecap="round" fill="none">
+    <path d="M256 170 L300 200"/>
+    <path d="M272 158 L312 186"/>
+  </g>
+</svg>

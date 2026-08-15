@@ -221,46 +221,57 @@ th {
    ============================================================ */
 
 /* Boton flotante para ocultar/mostrar la barra. */
+/* Control de plegar/desplegar la barra: chevron discreto en la esquina superior
+   DERECHA de la barra (antes era un cuadrado con 3 rayas arriba-izquierda que
+   tapaba el logo NEXUS). Al plegar, la barra pasa a ancho 0 y el chevron salta al
+   borde izquierdo de la pantalla, apuntando a la derecha para volver a abrir. */
 .sidebar-toggle {
   position: fixed;
-  top: 18px;
-  left: 18px;
-  z-index: 40;
-  width: 36px;
-  height: 36px;
+  top: 26px;
+  left: 240px;          /* borde derecho de la barra (282px) - ~42px */
+  z-index: 45;
+  width: 28px;
+  height: 28px;
   display: grid;
   place-items: center;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 8px;
-  background: rgba(18, 18, 22, 0.86);
-  backdrop-filter: blur(8px);
-  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  background: rgba(20, 20, 24, 0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: rgba(244, 244, 246, 0.78);
   cursor: pointer;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.18s ease, background 0.18s ease;
+  opacity: 1;
+  pointer-events: auto;
+  transition: left 0.22s ease, background 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.14s ease;
 }
 
 .sidebar-toggle svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.8;
+  stroke-width: 2;
   stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 0.22s ease;
 }
 
 .sidebar-toggle:hover {
-  background: rgba(38, 38, 46, 0.94);
+  background: rgba(245, 98, 58, 0.16);
+  border-color: rgba(245, 98, 58, 0.45);
+  color: #fff;
 }
 
-/* Visible solo al pasar por el borde izquierdo, o siempre si esta plegada. */
-.dashboard-shell:hover .sidebar-toggle,
-.sidebar-toggle:focus-visible,
+.sidebar-toggle:active { transform: scale(0.92); }
+
+/* Plegada: el chevron va al borde izquierdo y apunta a la derecha (abrir). */
 .sidebar-collapsed .sidebar-toggle {
-  opacity: 1;
-  pointer-events: auto;
+  left: 14px;
+}
+.sidebar-collapsed .sidebar-toggle svg {
+  transform: rotate(180deg);
 }
 
 .sidebar {

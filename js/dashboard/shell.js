@@ -115,11 +115,16 @@
     closePops(willOpen ? id : null);
     pop.hidden = !willOpen;
     if (anchorBtn) anchorBtn.setAttribute("aria-expanded", String(willOpen));
-    if (willOpen && id === "notifPop") renderNotifs();
+    if (willOpen && id === "notifPop") { renderNotifs(); markNotifsSeen(); }
   }
 
-  // ---- Notificaciones: ventas recientes de todas las cuentas ML ----
-  function recentSales() {
+  // ---- Notificaciones: ventas de TODAS las plataformas (ML1, ML2, ML Brasil,
+  //      Amazon, etc. — todo lo que devuelva mlAccounts) ----
+  var NOTIF_SEEN_KEY = "nexus.notifSeen.v1";
+  function getNotifSeen() { try { return Number(localStorage.getItem(NOTIF_SEEN_KEY)) || 0; } catch (e) { return 0; } }
+  function setNotifSeen(ts) { try { localStorage.setItem(NOTIF_SEEN_KEY, String(ts)); } catch (e) {} }
+
+  function allSales() {
     var accounts = (S.mlAccounts && S.mlAccounts()) || [];
     var all = [];
     accounts.forEach(function (acc) {
@@ -129,14 +134,17 @@
       });
     });
     all.sort(function (a, b) { return new Date(b.createdAt || 0) - new Date(a.createdAt || 0); });
-    return all.slice(0, 6);
+    return all;
   }
+  function recentSales() { return allSales().slice(0, 8); }
+
+  var SALE_IC = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8h12l-1 11H7L6 8Z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg>';
   function renderNotifs() {
     var box = el("notifPopBody");
     if (!box) return;
     var sales = recentSales();
     if (!sales.length) {
-      box.innerHTML = '<div class="notif-empty">No hay ventas recientes para mostrar. Cuando vendas en Mercado Libre, aparecen acá.</div>';
+      box.innerHTML = '<div class="notif-empty">Todavía no hay ventas para mostrar. Cuando vendas en cualquier plataforma (Mercado Libre, Amazon...), aparece acá al instante.</div>';
       return;
     }
     box.innerHTML = sales.map(function (s) {
@@ -145,17 +153,29 @@
       var monto = "";
       try { monto = S.currency(Number(s.total) || 0); } catch (e) { monto = "$" + (s.total || 0); }
       return '<button class="notif-item" type="button" data-notif-sale="ventas">' +
-        '<b>' + esc(s.product || "Venta") + " · " + monto + '</b>' +
-        '<small>' + esc(s.accName) + (fecha ? " · " + esc(fecha) : "") + '</small></button>';
+        '<span class="notif-ic">' + SALE_IC + '</span>' +
+        '<span class="notif-main"><b>' + esc(s.product || "Venta") + " · " + monto + '</b>' +
+        '<small>' + esc(s.accName) + (fecha ? " · " + esc(fecha) : "") + '</small></span></button>';
     }).join("");
   }
-  function updateNotifDot() {
-    var dot = el("notifDot");
-    if (!dot) return;
-    var since = Date.now() - 36 * 3600 * 1000;
-    var has = recentSales().some(function (s) { var t = new Date(s.createdAt).getTime(); return !isNaN(t) && t >= since; });
-    dot.hidden = !has;
+  // Cantidad de ventas SIN VER (desde la última vez que abrió la campana). Si
+  // nunca la abrió, cuenta las de los últimos 7 días para no arrancar en 0.
+  function unseenCount() {
+    var seen = getNotifSeen();
+    var floor = seen || (Date.now() - 7 * 24 * 3600 * 1000);
+    var n = 0;
+    allSales().forEach(function (s) { var t = new Date(s.createdAt).getTime(); if (!isNaN(t) && t > floor) n += 1; });
+    return n;
   }
+  // Pinta el numerito de la campana (1, 2, 3... 9+).
+  function updateNotifDot() {
+    var badge = el("notifDot");
+    if (!badge) return;
+    var n = unseenCount();
+    if (n > 0) { badge.hidden = false; badge.textContent = n > 9 ? "9+" : String(n); }
+    else { badge.hidden = true; badge.textContent = ""; }
+  }
+  function markNotifsSeen() { setNotifSeen(Date.now()); updateNotifDot(); }
 
   // ---- Ayuda (popover creado al vuelo) ----
   function ensureHelpPop() {

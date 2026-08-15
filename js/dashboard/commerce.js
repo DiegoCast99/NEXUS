@@ -979,14 +979,21 @@
     return normalizeMLOrder(mlOrder, 0);
   }
 
+  // Cache de fotos por itemId (dura la sesión): una vez traída una foto, abrir el
+  // detalle de esa venta la muestra al instante, sin volver a pegarle a ML.
+  var _thumbCache = {};
   // Foto de una publicacion (para llenarla despues de mostrar el detalle).
   async function fetchOrderThumb(accountId, itemId) {
     if (!itemId) return "";
+    if (_thumbCache[itemId] != null) return _thumbCache[itemId];
     try {
       var res = await S.requireSecureApi().mlApi(
         "/items/" + itemId + "?attributes=id,secure_thumbnail,thumbnail", "GET", null, accountId);
       var b = res && res.payload;
-      return b ? (b.secure_thumbnail || b.thumbnail || "") : "";
+      var url = b ? (b.secure_thumbnail || b.thumbnail || "") : "";
+      _thumbCache[itemId] = url;
+      if (url) { var im = new Image(); im.decoding = "async"; im.src = url; }  // precarga
+      return url;
     } catch (e) { return ""; }
   }
 
@@ -1085,7 +1092,9 @@
     // Izquierda: foto + producto + unidades. Si vino sin foto (camino rapido de
     // la notificacion), se trae aparte y se rellena sin bloquear el render.
     if (elements.ventaFoto) {
-      if (o.thumbnail) { elements.ventaFoto.src = o.thumbnail; elements.ventaFoto.style.display = ""; }
+      // Foto al instante: la del pedido o la cacheada (precargada en memoria).
+      var fotoYa = o.thumbnail || (o.itemId ? _thumbCache[o.itemId] : "");
+      if (fotoYa) { o.thumbnail = fotoYa; elements.ventaFoto.src = fotoYa; elements.ventaFoto.style.display = ""; }
       else {
         elements.ventaFoto.removeAttribute("src"); elements.ventaFoto.style.display = "none";
         if (o.itemId) {
@@ -2267,15 +2276,41 @@
   // vista y repinta (corrige margen/envío/fotos) sin animar.
   async function enriquecerVentasEnFondo(snapshot, mlId) {
     try {
+      // 1) FOTOS primero (multiget: ~1 llamada cada 20 items) y REPINTAR YA.
+      //    Antes se esperaba tambien al envio (~30 llamadas sueltas y lentas)
+      //    ANTES de repintar, por eso las fotos "demoraban muchisimo". Ahora
+      //    salen apenas llega el multiget, y ademas se precargan en memoria para
+      //    que el detalle de la venta abra la foto al instante.
       await enrichMLOrdersWithItems((snapshot.allOrders || []).slice(0, 60));
+      if (state.commerce.snapshots[mlId] === snapshot) {
+        aplicarVistaComercio(snapshot, getPeriodRange());
+        saveCommerceSnapshots();
+        renderCommerceDashboard();
+        precargarFotosVentas(snapshot);
+      }
+      // 2) Envio real (lento): recien despues, y segundo repintado para el margen.
       await enrichMLOrdersWithShipping((snapshot.allOrders || []).slice(0, 30));
-      // Puede haber cambiado el periodo mientras tanto: recomputar con el actual.
       if (state.commerce.snapshots[mlId] === snapshot) {
         aplicarVistaComercio(snapshot, getPeriodRange());
         saveCommerceSnapshots();
         renderCommerceDashboard();
       }
     } catch (e) { /* best-effort: el primer render ya se mostró */ }
+  }
+
+  // Precarga en memoria las fotos de las ventas (new Image()) para que al abrir
+  // el detalle la foto ya esté en cache del navegador y aparezca al instante.
+  function precargarFotosVentas(snapshot) {
+    try {
+      var vistos = {};
+      (snapshot.allOrders || []).slice(0, 50).forEach(function (o) {
+        if (o.thumbnail && !vistos[o.thumbnail]) {
+          vistos[o.thumbnail] = 1;
+          if (o.itemId) _thumbCache[o.itemId] = o.thumbnail;
+          var im = new Image(); im.decoding = "async"; im.src = o.thumbnail;
+        }
+      });
+    } catch (e) { /* no-op */ }
   }
 
   // Huella estable de las ventas: cambia solo si hay una orden nueva o si

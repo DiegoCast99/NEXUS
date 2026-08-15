@@ -31,7 +31,6 @@
       { id: "publicaciones", label: "Publicaciones", hint: "Stock y estado", flag: "ml" },
       { id: "inventario", label: "Inventario", hint: "Stock central y sync", flag: "ml" },
       { id: "publicidad", label: "Publicidad", hint: "Campañas y ROAS", flag: "ml" },
-      { id: "productos", label: "Productos", hint: "Top rendimiento" },
       { id: "config", label: "Configuracion", hint: "Conexion y avisos" }
     ],
     meta: [

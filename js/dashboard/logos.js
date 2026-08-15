@@ -13,8 +13,10 @@
   // Cada marca: color de fondo del tile + contenido SVG (viewBox 0 0 24 24).
   var MARKS = {
     mercadolibre: {
-      // Logo oficial: ovalo amarillo con borde azul marino + apreton de manos
-      // blanco. Se dibuja "full" (llena el tile, sin fondo cuadrado).
+      // Logo oficial de Mercado Libre. `asset` = archivo real (va ARRIBA del SVG
+      // dibujado; si falta o falla, queda el SVG de respaldo). Para pixel-perfect,
+      // reemplazá img/logos/mercadolibre.svg por el export oficial (o .png).
+      asset: "img/logos/mercadolibre.svg",
       full: true,
       vb: "0 0 48 48",
       svg: '<ellipse cx="24" cy="24" rx="22.4" ry="15.9" fill="#FFE600" stroke="#243A82" stroke-width="2.7"/>' +
@@ -93,9 +95,13 @@
     var full = !!m.full;
     var inner = full ? size : Math.round(size * 0.68);
     var vb = m.vb || "0 0 24 24";
-    var style = "width:" + size + "px;height:" + size + "px;border-radius:" + radius + "px" + (full ? "" : ";background:" + m.bg);
-    return '<span class="pf-logo pf-' + slug + (full ? " pf-full" : "") + '" style="' + style + '">' +
-      '<svg viewBox="' + vb + '" width="' + inner + '" height="' + inner + '" aria-hidden="true">' + m.svg + "</svg></span>";
+    var style = "width:" + size + "px;height:" + size + "px;border-radius:" + radius + "px" + (full ? "" : ";background:" + m.bg) + (m.asset ? ";position:relative" : "");
+    var svgTag = '<svg viewBox="' + vb + '" width="' + inner + '" height="' + inner + '" aria-hidden="true">' + m.svg + "</svg>";
+    // Asset oficial (si existe) montado ARRIBA del SVG; onerror lo quita y deja el SVG.
+    var imgTag = m.asset
+      ? '<img src="' + m.asset + '" alt="" onerror="this.remove()" loading="lazy" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;border-radius:inherit"/>'
+      : "";
+    return '<span class="pf-logo pf-' + slug + (full ? " pf-full" : "") + '" style="' + style + '">' + svgTag + imgTag + "</span>";
   }
 
   Object.assign(S, { platformLogo: platformLogo, logoSlugFor: slugFor });

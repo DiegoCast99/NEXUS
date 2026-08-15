@@ -91,14 +91,16 @@
   border-color: transparent;
   transform: none;
 }
+/* Activo con "fade": naranja translúcido suave (no un bloque neón), barra fina a
+   la izquierda + icono ámbar. Deja ver la barra por detrás. */
 .module-link.is-active {
-  border-color: transparent;
-  background: linear-gradient(135deg, #e6603c, #c94629);
-  box-shadow: 0 5px 14px rgba(150, 55, 30, 0.2), inset 0 1px 0 rgba(255, 190, 150, 0.14);
+  border-color: rgba(245, 98, 58, 0.24);
+  background: linear-gradient(135deg, rgba(245, 98, 58, 0.20), rgba(245, 98, 58, 0.04) 72%);
+  box-shadow: inset 2px 0 0 rgba(245, 98, 58, 0.6);
 }
-.module-link.is-active b,
-.module-link.is-active small { color: #fff; opacity: 1; }
-.module-link.is-active svg { color: #fff; filter: none; }
+.module-link.is-active b { color: #fff; opacity: 1; }
+.module-link.is-active small { color: rgba(255, 255, 255, 0.66); opacity: 1; }
+.module-link.is-active svg { color: #ff8a5c; filter: drop-shadow(0 0 7px rgba(245, 98, 58, 0.4)); }
 
 .side-spacer { flex: 1 1 auto; min-height: 8px; }
 
@@ -237,15 +239,28 @@
 }
 .icon-btn:hover { color: var(--text); border-color: var(--border-strong); background: var(--panel-strong); }
 .icon-btn svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+/* Campana en naranja suave "difuminado" (glow) para que resalte lindo. */
+#notifBell { color: #ff8a5c; border-color: rgba(245, 98, 58, 0.22); background: rgba(245, 98, 58, 0.08); }
+#notifBell svg { filter: drop-shadow(0 0 6px rgba(245, 98, 58, 0.5)); }
+#notifBell:hover { color: #ffa27a; border-color: rgba(245, 98, 58, 0.42); background: rgba(245, 98, 58, 0.15); }
+/* Badge con NÚMERO de notificaciones sin ver. */
 .bell-dot {
   position: absolute;
-  top: 9px;
-  right: 10px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--accent-2);
-  box-shadow: 0 0 0 2px var(--panel);
+  top: -5px;
+  right: -5px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #ff7a45, #e0472a);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 2px 7px rgba(224, 71, 42, 0.55), 0 0 0 2px var(--bg);
 }
 .bell-dot[hidden] { display: none; }
 
@@ -285,35 +300,57 @@
   z-index: 70;
   width: 300px;
   padding: 8px;
-  border: 1px solid var(--border-strong);
-  border-radius: 14px;
-  background: var(--panel-strong);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.55);
+  /* Vidrio translúcido, igual que las tarjetas del dashboard. */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background: rgba(18, 18, 22, 0.62);
+  backdrop-filter: blur(22px) saturate(1.3);
+  -webkit-backdrop-filter: blur(22px) saturate(1.3);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 .topbar-pop[hidden] { display: none; }
-.notif-pop { width: 340px; }
+.notif-pop { width: 350px; }
 .topbar-pop-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 6px 8px 10px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 .topbar-pop-head b { font-size: 14px; }
-.topbar-pop-x { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 13px; }
-.notif-pop-body { display: grid; gap: 4px; max-height: 360px; overflow-y: auto; }
+.topbar-pop-x { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 13px; border-radius: 7px; width: 24px; height: 24px; }
+.topbar-pop-x:hover { background: rgba(255, 255, 255, 0.06); color: var(--text); }
+.notif-pop-body { display: grid; gap: 5px; max-height: 380px; overflow-y: auto; padding-top: 4px; }
 .notif-item {
   display: grid;
-  gap: 2px;
+  grid-template-columns: 30px 1fr;
+  align-items: center;
+  gap: 11px;
   padding: 9px 10px;
-  border-radius: 9px;
-  background: rgba(255, 255, 255, 0.03);
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.035);
+  text-align: left;
   cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
-.notif-item:hover { background: rgba(255, 106, 61, 0.12); }
-.notif-item b { font-size: 13px; }
+.notif-item:hover { background: rgba(245, 98, 58, 0.12); border-color: rgba(245, 98, 58, 0.28); }
+.notif-ic {
+  width: 30px;
+  height: 30px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: linear-gradient(135deg, rgba(245, 98, 58, 0.95), rgba(224, 71, 42, 0.75));
+  box-shadow: 0 3px 9px rgba(224, 71, 42, 0.3);
+}
+.notif-ic svg { width: 15px; height: 15px; fill: none; stroke: #fff; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.notif-main { display: grid; gap: 2px; min-width: 0; }
+.notif-item b { font-size: 12.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .notif-item small { font-size: 11px; color: var(--muted); }
-.notif-empty { padding: 18px 12px; text-align: center; color: var(--muted); font-size: 13px; }
+.notif-empty { padding: 22px 14px; text-align: center; color: var(--muted); font-size: 13px; }
 
 .profile-pop-id {
   display: flex;
@@ -381,9 +418,11 @@
   border: 1px solid rgba(255, 118, 66, 0.22);
   border-radius: var(--radius);
   background:
-    radial-gradient(135% 115% at 50% -20%, rgba(255, 98, 46, 0.34), rgba(255, 74, 34, 0.06) 46%, transparent 62%),
-    linear-gradient(180deg, rgba(52, 26, 17, 0.85), rgba(22, 16, 14, 0.5) 60%),
-    var(--panel);
+    radial-gradient(135% 115% at 50% -20%, rgba(255, 98, 46, 0.26), rgba(255, 74, 34, 0.05) 46%, transparent 62%),
+    linear-gradient(180deg, rgba(52, 26, 17, 0.44), rgba(22, 16, 14, 0.2) 60%),
+    rgba(18, 18, 22, 0.42);
+  backdrop-filter: blur(16px) saturate(1.3);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
   box-shadow: inset 0 1px 0 rgba(255, 150, 90, 0.08);
 }
 .home-kpi-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -568,12 +607,24 @@
   border-radius: var(--radius);
 }
 
-/* --- Tarjetas de metrica: base dark con toque cálido --- */
+/* --- Tarjetas de metrica: VIDRIO esmerilado (translúcidas, dejan ver el fondo) --- */
 .metric-card {
   background:
     radial-gradient(120% 130% at 50% -30%, rgba(255, 106, 61, 0.06), transparent 60%),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.045), transparent 56%),
-    var(--panel);
+    linear-gradient(135deg, rgba(255, 255, 255, 0.05), transparent 56%),
+    rgba(18, 18, 22, 0.5);
+  backdrop-filter: blur(16px) saturate(1.3);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+/* --- Paneles (gráficas, listas, stock, gastos, campañas): mismo vidrio --- */
+.panel {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.045), transparent 58%),
+    rgba(18, 18, 22, 0.5);
+  backdrop-filter: blur(16px) saturate(1.3);
+  -webkit-backdrop-filter: blur(16px) saturate(1.3);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 /* La destacada (Balance / Ventas brutas / ROAS): naranja fuerte, como los KPI del home. */
 .metric-card.featured {

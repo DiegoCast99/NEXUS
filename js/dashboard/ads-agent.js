@@ -210,13 +210,16 @@
     html += '<div class="agent-card agent-setup">' +
       '<div class="agent-setup-obj"><span class="agent-eyebrow">Objetivo</span><b>Maximizar ventas</b>' +
       '<small>El agente usa todo tu techo en las campañas que mejor venden y frena las que gastan al pedo.</small></div>' +
-      '<label class="field agent-cap-field"><span>Techo de gasto mensual</span>' +
-      '<input id="agentCapInput" type="text" inputmode="decimal" placeholder="Ej: 30000" value="' + (cfg.monthlyCap ? cfg.monthlyCap : "") + '" autocomplete="off" /></label>' +
+      '<label class="field agent-cap-field"><span>Techo de gasto mensual <em style="font-style:normal;font-weight:600;color:#ff8a5c">· en pesos ($)</em></span>' +
+      '<span style="position:relative;display:block">' +
+      '<span aria-hidden="true" style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:rgba(244,244,246,0.62);font-weight:600;pointer-events:none">$</span>' +
+      '<input id="agentCapInput" type="text" inputmode="decimal" placeholder="30.000" value="' + (cfg.monthlyCap ? cfg.monthlyCap : "") + '" autocomplete="off" style="padding-left:28px" /></span>' +
+      '<small style="display:block;margin-top:6px;color:rgba(244,244,246,0.5);font-size:11px">Es en pesos uruguayos (UYU), no en dólares.</small></label>' +
       '<button class="primary-button" type="button" id="agentCapSave">Guardar techo</button>' +
       '</div>';
 
     if (!p.cap) {
-      html += '<div class="agent-empty">Cargá tu <b>techo de gasto mensual</b> arriba y el agente te arma el plan: cuánto poner por día, qué campañas escalar y cuáles frenar para vender lo máximo posible sin pasarte.</div>';
+      html += '<div class="agent-empty">Cargá tu <b>techo de gasto mensual en pesos</b> arriba y el agente te arma el plan: cuánto poner por día, qué campañas escalar y cuáles frenar para vender lo máximo posible sin pasarte.</div>';
       box.innerHTML = html;
       return;
     }

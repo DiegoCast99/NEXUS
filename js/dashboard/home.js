@@ -12,7 +12,9 @@
   const S = window.NexusDash;
   if (!S) return;
 
-  var homePeriod = "hoy"; // "hoy" | "7" | "30"
+  // Arranca en 30 dias para mostrar datos reales al entrar (con "hoy" quedaba
+  // todo en $0 si aun no habia ventas HOY, aunque hubiera del mes).
+  var homePeriod = "30"; // "hoy" | "7" | "30"
   var invAlertsCache = null;
 
   function el(id) { return document.getElementById(id); }
@@ -279,8 +281,9 @@
     var cards = [];
     ml.perAccount.forEach(function (a, idx) {
       var nombre = idx === 0 ? "Alpha Fitness" : "Alpha Fitness " + (idx + 1);
+      // Cada tarjeta abre SU marketplace (deep-link #ecommerce-<id>), no una cuenta fija.
       cards.push(
-        '<article class="home-biz-card" data-view="ventas" role="button" tabindex="0">' +
+        '<article class="home-biz-card" data-view="ecommerce-' + esc(a.id) + '" role="button" tabindex="0">' +
         '<div class="home-biz-top">' + logo("mercadolibre", 40) +
         '<span class="home-biz-badge ' + (a.connected ? "on" : "off") + '">' + (a.connected ? "Conectada" : "Sin conectar") + '</span></div>' +
         '<div class="home-biz-name">' + esc(nombre) + '<small>' + esc(a.name) + '</small></div>' +

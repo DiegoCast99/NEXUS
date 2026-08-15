@@ -20,8 +20,10 @@
     const ecomMatch = view.match(/^(?:ecommerce|e-commerce)-([a-z0-9]+)$/);
     if (ecomMatch) return { view: "ecommerce", metaPlatform: null, commerceApp: ecomMatch[1], nav: "ventas" };
     if (view === "ecommerce" || view === "e-commerce") return { view: "ecommerce", metaPlatform: null, nav: "ventas" };
-    // Accesos directos del sidebar: abren el negocio ML directo a su seccion.
-    if (view === "ventas") return { view: "ecommerce", metaPlatform: null, commerceApp: "mercadolibre", section: "resumen", nav: "ventas" };
+    // "E-Commerce" (sidebar): muestra el SELECTOR de negocios (Mercado Libre UY/BR,
+    // Amazon, etc.) para poder entrar a cualquier marketplace, como antes. Sin
+    // commerceApp => setView cae al selector.
+    if (view === "ventas") return { view: "ecommerce", metaPlatform: null, nav: "ventas" };
     if (view === "productos") return { view: "ecommerce", metaPlatform: null, commerceApp: "mercadolibre", section: "inventario", nav: "productos" };
     if (view === "finance" || view === "finanzas" || view === "finanzas-personales") return { view: "finance", metaPlatform: null };
     // Deep-link a una herramienta: #herramientas-<tool> (ej: #herramientas-publicador).
