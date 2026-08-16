@@ -434,10 +434,24 @@
     };
   }
 
-  // Trae foto (secure_thumbnail) y stock (available_quantity) de las
-  // publicaciones vendidas y se los pega a cada pedido. Usa el multiget de ML
-  // (/items?ids=...) que acepta hasta 20 ids por llamada. Best-effort: si
-  // falla, los pedidos se muestran igual, sin foto.
+  // Saca la mejor URL de foto del body de un item ML, robusta:
+  // secure_thumbnail (https) → thumbnail → pictures[0].secure_url. SIEMPRE fuerza
+  // https (si `thumbnail` viene http, el navegador lo bloquea como mixed content
+  // en el sitio https y la foto queda vacía → esa era la causa de "no aparece").
+  function thumbFromItemBody(b) {
+    if (!b) return "";
+    var t = b.secure_thumbnail || b.thumbnail || "";
+    if (!t && b.pictures && b.pictures[0]) t = b.pictures[0].secure_url || b.pictures[0].url || "";
+    if (t && t.indexOf("http://") === 0) t = "https://" + t.slice(7);
+    // La miniatura -I.jpg de ML es chica y a veces borrosa; -O/-V da mejor foto.
+    return t;
+  }
+
+  // Trae foto y stock (available_quantity) de las publicaciones vendidas y se los
+  // pega a cada pedido. Multiget de ML (/items?ids=...), hasta 20 ids por llamada.
+  // Best-effort: si falla, los pedidos se muestran igual (y el render carga la
+  // foto on-demand). Se pide `pictures` además de secure_thumbnail por si la
+  // proyección de atributos no devuelve la miniatura.
   async function enrichMLOrdersWithItems(orders) {
     var ids = [];
     var vistos = {};
@@ -452,16 +466,18 @@
       var lote = ids.slice(i, i + 20);
       try {
         var endpoint = "/items?ids=" + lote.join(",") +
-          "&attributes=id,secure_thumbnail,thumbnail,available_quantity";
+          "&attributes=id,secure_thumbnail,thumbnail,pictures,available_quantity";
         var result = await api.mlApi(endpoint, "GET", null, activeMLId());
         var rows = (result.payload || []);
         rows.forEach(function (row) {
-          var body = row && row.body ? row.body : null;
+          var body = row && row.body ? row.body : (row && row.id ? row : null);
           if (!body || !body.id) return;
+          var url = thumbFromItemBody(body);
           mapa[String(body.id)] = {
-            thumbnail: body.secure_thumbnail || body.thumbnail || "",
+            thumbnail: url,
             stock: (typeof body.available_quantity === "number") ? body.available_quantity : null
           };
+          if (url) { _thumbCache[String(body.id)] = url; }
         });
       } catch (e) {
         console.warn("No se pudieron traer fotos/stock de ML:", e && e.message);
@@ -470,7 +486,7 @@
 
     orders.forEach(function (o) {
       var info = mapa[o.itemId];
-      if (info) { o.thumbnail = info.thumbnail; o.stock = info.stock; }
+      if (info) { if (info.thumbnail) o.thumbnail = info.thumbnail; if (info.stock != null) o.stock = info.stock; }
     });
     return orders;
   }
@@ -901,10 +917,15 @@
 
     const orders = snapshot?.orders || [];
     if (elements.commerceOrdersTable) {
-      elements.commerceOrdersTable.innerHTML = orders.slice(0, 300).map((order) => {
-        var foto = order.thumbnail
-          ? `<img class="order-thumb" src="${escapeHtml(order.thumbnail)}" alt="" loading="lazy" onerror="this.style.display='none'" />`
-          : `<span class="order-thumb order-thumb-empty" aria-hidden="true"></span>`;
+      const visibles = orders.slice(0, 300);
+      elements.commerceOrdersTable.innerHTML = visibles.map((order) => {
+        // Foto: la del pedido o la cacheada (precargada). Si no hay, un slot vacío
+        // marcado con el itemId para inyectarla apenas la traiga el loader on-demand.
+        var thumbUrl = order.thumbnail || (order.itemId ? _thumbCache[order.itemId] : "");
+        if (thumbUrl && !order.thumbnail) order.thumbnail = thumbUrl;
+        var foto = thumbUrl
+          ? `<img class="order-thumb" src="${escapeHtml(thumbUrl)}" alt="" loading="lazy" onerror="this.style.display='none'" />`
+          : `<span class="order-thumb order-thumb-empty" data-thumb-item="${escapeHtml(order.itemId || "")}" aria-hidden="true"></span>`;
         var stockLine = (order.stock === 0 || order.stock)
           ? `<small class="order-stock">Stock: ${integerNumber.format(order.stock)} u.</small>`
           : "";
@@ -927,6 +948,7 @@
         </tr>
       `;
       }).join("");
+      cargarFotosOrdenesTabla(visibles);   // trae las fotos que falten y las inyecta
     }
     elements.commerceEmptyState?.classList.toggle("is-visible", orders.length === 0);
 
@@ -990,9 +1012,8 @@
     if (_thumbCache[itemId] != null) return _thumbCache[itemId];
     try {
       var res = await S.requireSecureApi().mlApi(
-        "/items/" + itemId + "?attributes=id,secure_thumbnail,thumbnail", "GET", null, accountId);
-      var b = res && res.payload;
-      var url = b ? (b.secure_thumbnail || b.thumbnail || "") : "";
+        "/items/" + itemId + "?attributes=id,secure_thumbnail,thumbnail,pictures", "GET", null, accountId);
+      var url = thumbFromItemBody(res && res.payload);
       _thumbCache[itemId] = url;
       if (url) { var im = new Image(); im.decoding = "async"; im.src = url; }  // precarga
       return url;
@@ -1014,16 +1035,45 @@
       var api = S.requireSecureApi();
       for (var i = 0; i < faltan.length; i += 20) {
         var lote = faltan.slice(i, i + 20);
-        var res = await api.mlApi("/items?ids=" + lote.join(",") + "&attributes=id,secure_thumbnail,thumbnail", "GET", null, accountId);
+        var res = await api.mlApi("/items?ids=" + lote.join(",") + "&attributes=id,secure_thumbnail,thumbnail,pictures", "GET", null, accountId);
         (res.payload || []).forEach(function (row) {
-          var b = row && row.body; if (!b || !b.id) return;
-          var url = b.secure_thumbnail || b.thumbnail || "";
+          var b = row && row.body ? row.body : (row && row.id ? row : null); if (!b || !b.id) return;
+          var url = thumbFromItemBody(b);
           _thumbCache[String(b.id)] = url; out[String(b.id)] = url;
           if (url) { var im = new Image(); im.decoding = "async"; im.src = url; }
         });
       }
     } catch (e) { /* best-effort */ }
     return out;
+  }
+
+  // Carga on-demand las fotos que falten en la tabla de Ventas y las inyecta en
+  // su fila apenas llegan (multiget, cacheado). Así las fotos aparecen al ver la
+  // tabla, sin depender del enriquecimiento en segundo plano.
+  function cargarFotosOrdenesTabla(orders) {
+    if (!elements.commerceOrdersTable) return;
+    var acc = state.commerce.selectedApp;
+    if (!acc || !isMLApp(acc)) return;
+    var ids = [];
+    orders.forEach(function (o) {
+      if (!o.thumbnail && o.itemId && ids.indexOf(o.itemId) === -1) ids.push(o.itemId);
+    });
+    if (!ids.length) return;
+    Promise.resolve(thumbsForItems(acc, ids)).then(function (map) {
+      if (!map || !elements.commerceOrdersTable) return;
+      Object.keys(map).forEach(function (itemId) {
+        var url = map[itemId]; if (!url) return;
+        orders.forEach(function (o) { if (String(o.itemId) === itemId && !o.thumbnail) o.thumbnail = url; });
+        var slots = elements.commerceOrdersTable.querySelectorAll('.order-thumb-empty[data-thumb-item="' + itemId + '"]');
+        Array.prototype.forEach.call(slots, function (slot) {
+          var img = document.createElement("img");
+          img.className = "order-thumb"; img.alt = ""; img.loading = "lazy";
+          img.onerror = function () { img.style.display = "none"; };
+          img.src = url;
+          if (slot.parentNode) slot.parentNode.replaceChild(img, slot);
+        });
+      });
+    }).catch(function () {});
   }
 
   // Mete/actualiza una orden en el snapshot para que "volver" muestre la lista
@@ -1287,7 +1337,7 @@
         var grupo = ids.slice(i, i + 20);
         var det = await api.mlApi(
           "/items?ids=" + grupo.join(",") +
-          "&attributes=id,title,price,currency_id,available_quantity,sold_quantity,status,secure_thumbnail,thumbnail,permalink,variations",
+          "&attributes=id,title,price,currency_id,available_quantity,sold_quantity,status,secure_thumbnail,thumbnail,pictures,permalink,variations",
           "GET", null, cuenta
         );
         (det.payload || []).forEach(function (row) {
@@ -1300,7 +1350,7 @@
             stock: (typeof b.available_quantity === "number") ? b.available_quantity : null,
             sold: Number(b.sold_quantity) || 0,
             status: String(b.status || ""),
-            thumbnail: b.secure_thumbnail || b.thumbnail || "",
+            thumbnail: thumbFromItemBody(b),
             permalink: b.permalink || "",
             hasVariations: Array.isArray(b.variations) && b.variations.length > 0,
             expanded: false,
