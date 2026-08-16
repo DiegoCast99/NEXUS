@@ -65,6 +65,7 @@
   stroke-width: 1.6;
   stroke-linejoin: round;
 }
+.app-brand .brand-mark .brand-mark-img { width: 23px; height: 23px; display: block; }
 .app-brand .brand-name {
   font-size: 17px;
   font-weight: 800;
@@ -804,6 +805,7 @@
     box-shadow: 0 5px 14px rgba(255, 77, 46, 0.35);
   }
   .m-brand .brand-mark svg { width: 18px; height: 18px; fill: none; stroke: #fff; stroke-width: 1.6; }
+  .m-brand .brand-mark .brand-mark-img { width: 20px; height: 20px; display: block; }
   .topbar-tools { gap: 8px; }
   .profile-chip { padding: 0; border: 0; background: none; }
   .profile-chip-name, .profile-chip > svg { display: none; }
