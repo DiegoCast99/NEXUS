@@ -1243,6 +1243,20 @@
 .inv-listing-table th:first-child,
 .inv-listing-table td:first-child { text-align: left; width: 34%; }
 
+/* Publicaciones con variantes: flecha para desplegar + filas de variante */
+.inv-expand {
+  border: 0; background: none; color: var(--muted); cursor: pointer; padding: 0;
+  width: 20px; height: 20px; flex: none; display: inline-grid; place-items: center; margin-right: 2px;
+  transition: color 0.15s ease;
+}
+.inv-expand:hover { color: var(--accent); }
+.inv-expand svg { transition: transform 0.18s ease; }
+.inv-parent.is-open .inv-expand svg { transform: rotate(90deg); }
+.inv-expand-spacer { display: inline-block; width: 22px; flex: none; }
+.inv-var-row > td { background: rgba(255, 255, 255, 0.022); }
+.inv-var-row .inv-var-cell { padding-left: 34px; }
+.inv-var-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(245, 98, 58, 0.65); flex: none; margin-right: 6px; }
+
 /* Inputs inline dentro de la tabla de productos */
 .inv-in {
   width: 100%;

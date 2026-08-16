@@ -18,6 +18,8 @@
   var catalogo = {};      // mlbId -> { title }  (publicaciones de ML)
   var catalogoCargado = false;
   var composeSel = "";    // publicacion en edicion de composicion
+  var composeVar = "";    // sabor/variación en edición ("" = composición simple)
+  var invExpanded = {};   // mlbId -> desplegado (mostrar sus variantes) en la lista
   var serverStock = {};   // Fase 4: stock por producto tal como se cargó del servidor
                           // (baseline para el merge 3-way al guardar).
   var currentTab = "productos"; // pestaña activa: "productos" | "publicaciones"
@@ -353,37 +355,72 @@
     Object.keys(catalogo).forEach(function (m) { set[m] = true; });
     var mlbIds = Object.keys(set);
     elements.invListingEmpty?.classList.toggle("is-visible", !mlbIds.length);
-    elements.invListingBody.innerHTML = mlbIds.map(function (mlbId) {
-      var computed = computeListing(mlbId);
+    var html = "";
+    mlbIds.forEach(function (mlbId) {
       var st = inv.listingState[mlbId] || {};
-      var resumen = resumenComposicion(mlbId);
-      // "Stock ML" = lo que hay AHORA en Mercado Libre. Si Nexus ya sincronizó (o
-      // una venta lo actualizó), ese valor es el más fresco; si no, el stock real
-      // que trajo la última carga de publicaciones.
       var cat = catalogo[mlbId] || {};
-      var stockML = st.published != null ? st.published
-        : (cat.stock != null ? cat.stock : null);
-      // Foto a la izquierda del título, igual que en "Publicaciones".
+      var vars = variacionesDe(mlbId);
+      // "Stock ML" = lo que hay AHORA en Mercado Libre (o el de la última carga).
+      var stockML = st.published != null ? st.published : (cat.stock != null ? cat.stock : null);
       var foto = cat.thumbnail
         ? "<img class='order-thumb' src='" + escapeHtml(cat.thumbnail) + "' alt='' loading='lazy' onerror=\"this.style.display='none'\" />"
         : "<span class='order-thumb order-thumb-empty' aria-hidden='true'></span>";
-      // Etiqueta de cuenta (ML1 / ML2): a qué cuenta pertenece este anuncio.
       var accId = inv.listingAccounts[mlbId] || cat.account || "";
       var accName = accId && S.mlAccountById ? (S.mlAccountById(accId) || {}).name : "";
       var accBadge = accName ? " <span class='inv-acct-badge'>" + escapeHtml(accName) + "</span>" : "";
-      return "<tr>" +
-        "<td class='order-product'><div class='order-product-cell'>" + foto +
-          "<div class='order-product-info'><b>" + escapeHtml(tituloListing(mlbId)) + "</b>" +
-          "<small class='order-stock'>" + escapeHtml(mlbId) + accBadge + "</small></div></div></td>" +
-        "<td>" + (resumen ? escapeHtml(resumen) : "<span class='pub-quiet'>Sin configurar</span>") + "</td>" +
-        "<td class='num'>" + (computed == null ? "—" : integerNumber.format(computed)) + "</td>" +
-        "<td class='num'>" + (stockML != null ? integerNumber.format(stockML) : "—") + "</td>" +
-        "<td>" + estadoPill(st.status, resumen, st.error) + "</td>" +
-        "<td>" + (st.status === "error"
-          ? "<button class='table-action' type='button' data-inv-retry='" + escapeHtml(mlbId) + "'>Reintentar</button>"
-          : "<button class='table-action' type='button' data-inv-config='" + escapeHtml(mlbId) + "'>Configurar</button>") + "</td>" +
-      "</tr>";
-    }).join("");
+
+      if (vars.length) {
+        // Publicación CON sabores/variaciones: fila padre expandible.
+        var exp = !!invExpanded[mlbId];
+        var computed = computeListing(mlbId);
+        var arrow = "<button class='inv-expand' type='button' data-inv-expand='" + escapeHtml(mlbId) + "' aria-expanded='" + exp + "' aria-label='Ver variantes'>" +
+          "<svg viewBox='0 0 24 24' width='13' height='13' fill='none' stroke='currentColor' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M9 6l6 6-6 6'/></svg></button>";
+        html += "<tr class='inv-parent" + (exp ? " is-open" : "") + "'>" +
+          "<td class='order-product'><div class='order-product-cell'>" + arrow + foto +
+            "<div class='order-product-info'><b>" + escapeHtml(tituloListing(mlbId)) + "</b>" +
+            "<small class='order-stock'>" + escapeHtml(mlbId) + accBadge + "</small></div></div></td>" +
+          "<td><span class='pub-quiet'>" + vars.length + " variantes</span></td>" +
+          "<td class='num'>" + (computed == null ? "—" : integerNumber.format(computed)) + "</td>" +
+          "<td class='num'>" + (stockML != null ? integerNumber.format(stockML) : "—") + "</td>" +
+          "<td>" + estadoPill(st.status, resumenComposicion(mlbId), st.error) + "</td>" +
+          "<td></td>" +
+        "</tr>";
+        if (exp) {
+          vars.forEach(function (v) {
+            var propia = inv.compositions[compKey(mlbId, v.id)];
+            var resumenV = (propia && propia.length) ? compArrTexto(propia) : "";
+            var compV = computeVariation(mlbId, v.id);
+            html += "<tr class='inv-var-row'>" +
+              "<td class='order-product'><div class='order-product-cell inv-var-cell'><span class='inv-var-dot' aria-hidden='true'></span>" +
+                "<div class='order-product-info'><b>" + escapeHtml(v.label) + "</b>" +
+                (v.stock != null ? "<small class='order-stock'>Stock ML: " + integerNumber.format(v.stock) + "</small>" : "") + "</div></div></td>" +
+              "<td>" + (resumenV ? escapeHtml(resumenV) : "<span class='pub-quiet'>Sin configurar</span>") + "</td>" +
+              "<td class='num'>" + (compV == null ? "—" : integerNumber.format(compV)) + "</td>" +
+              "<td class='num'>—</td>" +
+              "<td></td>" +
+              "<td><button class='table-action' type='button' data-inv-config='" + escapeHtml(mlbId) + "' data-inv-var='" + escapeHtml(String(v.id)) + "'>Configurar</button></td>" +
+            "</tr>";
+          });
+        }
+      } else {
+        // Publicación SIN variantes: fila simple.
+        var computed2 = computeListing(mlbId);
+        var resumen = resumenComposicion(mlbId);
+        html += "<tr>" +
+          "<td class='order-product'><div class='order-product-cell'><span class='inv-expand-spacer' aria-hidden='true'></span>" + foto +
+            "<div class='order-product-info'><b>" + escapeHtml(tituloListing(mlbId)) + "</b>" +
+            "<small class='order-stock'>" + escapeHtml(mlbId) + accBadge + "</small></div></div></td>" +
+          "<td>" + (resumen ? escapeHtml(resumen) : "<span class='pub-quiet'>Sin configurar</span>") + "</td>" +
+          "<td class='num'>" + (computed2 == null ? "—" : integerNumber.format(computed2)) + "</td>" +
+          "<td class='num'>" + (stockML != null ? integerNumber.format(stockML) : "—") + "</td>" +
+          "<td>" + estadoPill(st.status, resumen, st.error) + "</td>" +
+          "<td>" + (st.status === "error"
+            ? "<button class='table-action' type='button' data-inv-retry='" + escapeHtml(mlbId) + "'>Reintentar</button>"
+            : "<button class='table-action' type='button' data-inv-config='" + escapeHtml(mlbId) + "'>Configurar</button>") + "</td>" +
+        "</tr>";
+      }
+    });
+    elements.invListingBody.innerHTML = html;
   }
   function estadoPill(status, tieneComp, error) {
     if (!tieneComp) return '<span class="type-pill">—</span>';
@@ -424,12 +461,21 @@
       var head = titulo
         ? "<div class='inv-comp-flavor'><b>" + escapeHtml(titulo) + "</b>" + (stockML != null ? "<small>Stock ML: " + integerNumber.format(stockML) + "</small>" : "") + "</div>"
         : "";
-      return "<div class='inv-comp-block'>" + head + rows +
+      return "<div class='inv-comp-block' data-comp-block='" + escapeHtml(String(varId)) + "'>" + head + rows +
         "<button class='ghost-button inv-comp-add' type='button' data-comp-add='" + escapeHtml(String(varId)) + "'>+ Componente</button></div>";
     }
 
     var vars = variacionesDe(composeSel);
-    if (vars.length) {
+    if (vars.length && composeVar) {
+      // Configurando UN sabor puntual (desde la lista desplegada).
+      var v = null;
+      for (var i = 0; i < vars.length; i++) { if (String(vars[i].id) === String(composeVar)) { v = vars[i]; break; } }
+      var label = v ? v.label : composeVar;
+      if (elements.invComposeTitle) elements.invComposeTitle.textContent = "Composición · " + tituloListing(composeSel) + " · " + label;
+      elements.invComposeRows.innerHTML =
+        "<p class='inv-hint'>Definí los productos físicos (y cuántos) que consume el sabor <b>" + escapeHtml(label) + "</b>.</p>" +
+        blockHtml(composeVar, label, v ? v.stock : null);
+    } else if (vars.length) {
       elements.invComposeRows.innerHTML =
         "<p class='inv-hint'>Esta publicación tiene <b>sabores/variaciones</b>: enlazá cada uno con su producto. Al vender un sabor, se descuenta ese.</p>" +
         vars.map(function (v) { return blockHtml(v.id, v.label, v.stock); }).join("");
@@ -531,8 +577,9 @@
     } catch (e) { setInvMsg("Error al reintentar: " + ((e && e.message) || "error"), "error"); }
   }
 
-  function invConfigurar(mlbId) { composeSel = mlbId; renderCompose(); elements.invCompose?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
-  function invComposeCancelar() { composeSel = ""; renderCompose(); }
+  function invConfigurar(mlbId, varId) { composeSel = mlbId; composeVar = varId || ""; renderCompose(); elements.invCompose?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
+  function invComposeCancelar() { composeSel = ""; composeVar = ""; renderCompose(); }
+  function invToggleExpand(mlbId) { invExpanded[mlbId] = !invExpanded[mlbId]; renderListings(); }
   // Agrega un componente al bloque de un sabor (varId "" = composición simple).
   function invComposeAddComponent(varId) {
     if (!composeSel) return;
@@ -554,29 +601,23 @@
   }
   async function invComposeGuardar() {
     if (!composeSel || !elements.invComposeRows) return;
-    // Reconstruir la composición desde el DOM, agrupando las filas por sabor (data-var).
-    var porVar = {};
-    elements.invComposeRows.querySelectorAll(".inv-comp-row").forEach(function (r) {
-      var varId = r.getAttribute("data-var") || "";
-      var pid = (r.querySelector(".inv-comp-prod") || {}).value;
-      var qty = Math.max(1, Math.floor(Number((r.querySelector(".inv-comp-qty") || {}).value) || 1));
-      if (!pid) return;
-      (porVar[varId] = porVar[varId] || []).push({ productId: pid, qty: qty });
-    });
-    var vars = variacionesDe(composeSel);
-    if (vars.length) {
-      // Por sabor: escribir cada uno (o borrarlo si quedó vacío) y borrar la base
-      // legacy a nivel publicación para que no se aplique doble.
-      delete inv.compositions[composeSel];
-      vars.forEach(function (v) {
-        var k = compKey(composeSel, v.id);
-        if (porVar[v.id] && porVar[v.id].length) inv.compositions[k] = porVar[v.id];
-        else delete inv.compositions[k];
+    // Guardar SOLO los bloques presentes en el editor (cada uno = un sabor o la
+    // composición simple). Así editar un sabor NO borra los otros que no se tocaron.
+    var tocoVariante = false;
+    elements.invComposeRows.querySelectorAll(".inv-comp-block").forEach(function (blk) {
+      var varId = blk.getAttribute("data-comp-block") || "";
+      var comp = [];
+      blk.querySelectorAll(".inv-comp-row").forEach(function (r) {
+        var pid = (r.querySelector(".inv-comp-prod") || {}).value;
+        var qty = Math.max(1, Math.floor(Number((r.querySelector(".inv-comp-qty") || {}).value) || 1));
+        if (pid) comp.push({ productId: pid, qty: qty });
       });
-    } else {
-      var comp = porVar[""] || [];
-      if (comp.length) inv.compositions[composeSel] = comp; else delete inv.compositions[composeSel];
-    }
+      var k = compKey(composeSel, varId);
+      if (comp.length) inv.compositions[k] = comp; else delete inv.compositions[k];
+      if (varId) tocoVariante = true;
+    });
+    // Si configuramos por sabor, borrar la base legacy a nivel publicación (no doble).
+    if (tocoVariante) delete inv.compositions[composeSel];
     if (elements.invComposeMsg) { elements.invComposeMsg.textContent = "Guardando…"; elements.invComposeMsg.className = "meta-message"; }
     try {
       await invSave();
@@ -611,6 +652,6 @@
     abrirInventario, renderInventory, invTab, detenerInvTiempoReal,
     invAddProduct, invGuardarProductos, invDeleteProduct,
     invCargarPublicaciones, invResyncAll, invReintentarUno,
-    invConfigurar, invComposeCancelar, invComposeAddComponent, invComposeQuitar, invComposeGuardar
+    invConfigurar, invComposeCancelar, invComposeAddComponent, invComposeQuitar, invComposeGuardar, invToggleExpand
   });
 })();

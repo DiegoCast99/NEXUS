@@ -256,8 +256,10 @@
     });
     // Configurar la composición, o reintentar el sync de una publicación en error.
     elements.invListingBody?.addEventListener("click", (event) => {
+      const exp = event.target.closest("[data-inv-expand]");
+      if (exp) { S.invToggleExpand(exp.getAttribute("data-inv-expand")); return; }
       const cfg = event.target.closest("button[data-inv-config]");
-      if (cfg) { S.invConfigurar(cfg.getAttribute("data-inv-config")); return; }
+      if (cfg) { S.invConfigurar(cfg.getAttribute("data-inv-config"), cfg.getAttribute("data-inv-var") || ""); return; }
       const retry = event.target.closest("button[data-inv-retry]");
       if (retry) S.invReintentarUno(retry.getAttribute("data-inv-retry"));
     });
