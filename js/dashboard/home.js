@@ -21,6 +21,13 @@
   function esc(s) { try { return S.escapeHtml(String(s == null ? "" : s)); } catch (e) { return String(s == null ? "" : s); } }
   function cur(n) { try { return S.currency(Number(n) || 0); } catch (e) { return "$" + Math.round(Number(n) || 0); } }
   function curK(n) { n = Number(n) || 0; try { return "$" + S.compactNumber(n); } catch (e) { return cur(n); } }
+  // Plataformas brasileras → sus ventas van en REALES (R$), no en pesos.
+  function esBR(id) { return id === "mercadolivre" || id === "amazon" || id === "shopee"; }
+  function curPlat(id, n) {
+    n = Number(n) || 0;
+    if (esBR(id)) { try { return "R$ " + Math.round(n).toLocaleString("pt-BR"); } catch (e) { return "R$ " + Math.round(n); } }
+    return cur(n);
+  }
   function intn(n) { try { return S.integerNumber(Number(n) || 0); } catch (e) { return String(Math.round(Number(n) || 0)); } }
   function fin(n) { try { return S.financeMoney(Number(n) || 0); } catch (e) { return String(Math.round(Number(n) || 0)); } }
   function logo(key, size) { try { return S.platformLogo ? S.platformLogo(key, size) : ""; } catch (e) { return ""; } }
@@ -222,26 +229,45 @@
         margenPrevPct > 0 ? { dir: margenPct >= margenPrevPct ? "up" : "down", good: margenPct >= margenPrevPct, text: (margenPct >= margenPrevPct ? "+" : "") + (margenPct - margenPrevPct).toFixed(1) + "pts" } : null);
   }
 
-  // ---- Gráfica de línea con puntos "iluminados" ----
+  // ---- Gráfica de línea con puntos "iluminados" + ejes (días abajo, $ izq.) ----
   function renderSalesChart(trend) {
     var box = el("homeSalesChart"); var totalEl = el("homeSalesTotal");
     if (!box) return;
-    var pts = trend.slice(-14);
+    var pts = trend.slice();   // ya viene filtrado al período elegido (sin cap fijo)
     var total = pts.reduce(function (a, p) { return a + (Number(p.revenue) || 0); }, 0);
     if (totalEl) totalEl.textContent = pts.length ? cur(total) : "";
     if (!pts.length) { box.innerHTML = '<div class="home-empty">Sin ventas en el periodo. Cuando sincronices Mercado Libre, tus ingresos por dia aparecen acá.</div>'; return; }
-    var W = 720, H = 240, padX = 14, padTop = 22, padBottom = 26;
-    var max = Math.max.apply(null, pts.map(function (p) { return Number(p.revenue) || 0; })) || 1;
-    var stepX = pts.length > 1 ? (W - padX * 2) / (pts.length - 1) : 0;
-    function x(i) { return padX + stepX * i; }
-    function y(v) { return padTop + (1 - (Number(v) || 0) / max) * (H - padTop - padBottom); }
+    // padL/padBottom dejan lugar para las etiquetas de los ejes (superpuestas en HTML).
+    var W = 720, H = 220, padL = 60, padR = 16, padTop = 18, padBottom = 30;
+    var plotW = W - padL - padR, plotH = H - padTop - padBottom;
+    var rawMax = Math.max.apply(null, pts.map(function (p) { return Number(p.revenue) || 0; })) || 1;
+    var scale = rawMax * 1.08;   // 8% de aire arriba para que el pico no toque el borde
+    var stepX = pts.length > 1 ? plotW / (pts.length - 1) : 0;
+    function x(i) { return pts.length > 1 ? padL + stepX * i : padL + plotW / 2; }
+    function y(v) { return padTop + (1 - (Number(v) || 0) / scale) * plotH; }
+    var baseY = H - padBottom;
     var line = pts.map(function (p, i) { return (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p.revenue).toFixed(1); }).join(" ");
-    var area = line + " L" + x(pts.length - 1).toFixed(1) + " " + (H - padBottom) + " L" + x(0).toFixed(1) + " " + (H - padBottom) + " Z";
-    var dots = pts.map(function (p, i) { var last = i === pts.length - 1; return '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(p.revenue).toFixed(1) + '" r="' + (last ? 5.6 : 4.6) + '" fill="url(#homeDotCore)"/>'; }).join("");
-    var grid = "";
-    for (var g = 1; g <= 3; g++) { var gy = padTop + ((H - padTop - padBottom) / 3) * g; grid += '<line x1="' + padX + '" y1="' + gy.toFixed(1) + '" x2="' + (W - padX) + '" y2="' + gy.toFixed(1) + '" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>'; }
+    var area = line + " L" + x(pts.length - 1).toFixed(1) + " " + baseY + " L" + x(0).toFixed(1) + " " + baseY + " Z";
+    var showDots = pts.length <= 45;
+    var dots = showDots ? pts.map(function (p, i) { var last = i === pts.length - 1; return '<circle cx="' + x(i).toFixed(1) + '" cy="' + y(p.revenue).toFixed(1) + '" r="' + (last ? 5.6 : 4.6) + '" fill="url(#homeDotCore)"/>'; }).join("") : "";
+
+    // Rejilla horizontal + etiquetas de $ (eje Y, izquierda), 4 niveles.
+    var grid = "", yLabels = "";
+    for (var g = 0; g <= 3; g++) {
+      var frac = g / 3, gy = padTop + frac * plotH, val = scale * (1 - frac);
+      grid += '<line x1="' + padL + '" y1="' + gy.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + gy.toFixed(1) + '" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>';
+      yLabels += '<span class="hc-y" style="top:' + (gy / H * 100).toFixed(2) + '%">' + curK(val) + '</span>';
+    }
+    // Etiquetas de días (eje X, abajo): ~6 repartidas + siempre la última.
+    var stepLbl = Math.max(1, Math.ceil(pts.length / 6)), xLabels = "";
+    pts.forEach(function (p, i) {
+      if (i % stepLbl !== 0 && i !== pts.length - 1) return;
+      var d = String(p.date || ""), lbl = d.length >= 10 ? (d.slice(8, 10) + "/" + d.slice(5, 7)) : d;
+      xLabels += '<span class="hc-x" style="left:' + (x(i) / W * 100).toFixed(2) + '%">' + esc(lbl) + '</span>';
+    });
+
     var anim = S.shouldAnimateChart ? S.shouldAnimateChart("home-sales", pts.map(function (p) { return Number(p.revenue) || 0; }).join(",")) : false;
-    box.innerHTML =
+    var svg =
       '<svg class="' + (anim ? "hn-anim" : "") + '" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Ingresos por dia">' +
       '<defs>' +
       '<radialGradient id="homeDotCore" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#fff1e6"/><stop offset="45%" stop-color="#ff9457"/><stop offset="100%" stop-color="#ff5a2e"/></radialGradient>' +
@@ -252,6 +278,7 @@
       '<path class="hn-area" d="' + area + '" fill="url(#homeArea)"/>' +
       '<path class="hn-line" pathLength="1" d="' + line + '" fill="none" stroke="#ff7a45" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" filter="url(#homeLineGlow)"/>' +
       '<g class="hn-dots" filter="url(#homeGlow)">' + dots + '</g></svg>';
+    box.innerHTML = '<div class="hc-chart">' + svg + yLabels + xLabels + '</div>';
   }
 
   // ---- Ventas por canal (dona SVG + leyenda con logos) ----
@@ -298,29 +325,45 @@
     box.innerHTML = donut + '<div class="home-ch-legend">' + legend + '</div>';
   }
 
-  // ---- Negocios (con logo de marketplace) ----
+  // ---- Negocios (por marketplace, no por "Alpha Fitness") ----
+  // Arma una tarjeta. o: {view, logoId, slug, title, sub, revenueStr, orders, connected, soon}
+  function bizCardHTML(o) {
+    var badge = o.soon
+      ? '<span class="home-biz-badge off">Proximamente</span>'
+      : '<span class="home-biz-badge ' + (o.connected ? "on" : "off") + '">' + (o.connected ? "Conectada" : "Sin conectar") + '</span>';
+    var stat = o.soon
+      ? '<div class="home-biz-stat"><b>&mdash;</b><span>en evaluacion</span></div>'
+      : '<div class="home-biz-stat"><b>' + esc(o.revenueStr) + '</b><span>' + intn(o.orders) + ' ventas</span></div>';
+    var open = o.soon ? 'class="home-biz-card is-soon"' : 'class="home-biz-card" data-view="' + esc(o.view) + '" role="button" tabindex="0"';
+    return '<article ' + open + '>' +
+      '<div class="home-biz-top">' + bizLogo(o.logoId, o.slug, 40) + badge + '</div>' +
+      '<div class="home-biz-name">' + esc(o.title) + '<small>' + esc(o.sub || "") + '</small></div>' +
+      stat + '</article>';
+  }
   function renderBiz(ml) {
     var box = el("homeBiz"); if (!box) return;
     var cards = [];
-    ml.perAccount.forEach(function (a, idx) {
-      var nombre = idx === 0 ? "Alpha Fitness" : "Alpha Fitness " + (idx + 1);
-      // Cada tarjeta abre SU marketplace (deep-link #ecommerce-<id>), no una cuenta fija.
-      cards.push(
-        '<article class="home-biz-card" data-view="ecommerce-' + esc(a.id) + '" role="button" tabindex="0">' +
-        '<div class="home-biz-top">' + bizLogo(a.id, "mercadolibre", 40) +
-        '<span class="home-biz-badge ' + (a.connected ? "on" : "off") + '">' + (a.connected ? "Conectada" : "Sin conectar") + '</span></div>' +
-        '<div class="home-biz-name">' + esc(nombre) + '<small>' + esc(a.name) + '</small></div>' +
-        '<div class="home-biz-stat"><b>' + cur(a.revenue) + '</b><span>' + intn(a.orders) + ' ventas</span></div>' +
-        '</article>');
+    // Mercado Libre Uruguay = ML1 + ML2 UNIFICADOS (mismo país, mismos productos):
+    // un solo cuadrito con saldo y ventas sumados. Al entrar se ven por separado.
+    var uy = { revenue: 0, orders: 0, connected: false, n: 0 };
+    var otras = [];
+    ml.perAccount.forEach(function (a) {
+      if (a.id === "mercadolibre" || a.id === "mercadolibre2") {
+        uy.revenue += a.revenue; uy.orders += a.orders; uy.connected = uy.connected || a.connected; uy.n += 1;
+      } else { otras.push(a); }
     });
-    [["Alpha Fitness BR", "Amazon Brasil", "amazon"], ["Alpha Store", "Tienda Mia", "tiendamia"], ["Alpha Shop", "Shopee", "shopee"]].forEach(function (p) {
-      cards.push(
-        '<article class="home-biz-card is-soon">' +
-        '<div class="home-biz-top">' + bizLogo(p[2], p[2], 40) +
-        '<span class="home-biz-badge off">Proximamente</span></div>' +
-        '<div class="home-biz-name">' + esc(p[0]) + '<small>' + esc(p[1]) + '</small></div>' +
-        '<div class="home-biz-stat"><b>&mdash;</b><span>en evaluacion</span></div>' +
-        '</article>');
+    if (uy.n) {
+      cards.push(bizCardHTML({ view: "ecommerce-mercadolibre", logoId: "mercadolibre", slug: "mercadolibre",
+        title: "Mercado Libre", sub: "Uruguay", revenueStr: curPlat("mercadolibre", uy.revenue), orders: uy.orders, connected: uy.connected }));
+    }
+    // ML Brasil (y cualquier otra cuenta ML) aparte, en su moneda.
+    otras.forEach(function (a) {
+      cards.push(bizCardHTML({ view: "ecommerce-" + a.id, logoId: a.id, slug: "mercadolibre",
+        title: "Mercado Libre", sub: esBR(a.id) ? "Brasil" : "", revenueStr: curPlat(a.id, a.revenue), orders: a.orders, connected: a.connected }));
+    });
+    // Placeholders: marketplaces brasileros próximamente.
+    [["Amazon BR", "Brasil", "amazon"], ["Tienda Mia", "", "tiendamia"], ["Shopee", "Brasil", "shopee"]].forEach(function (p) {
+      cards.push(bizCardHTML({ logoId: p[2], slug: p[2], title: p[0], sub: p[1], soon: true }));
     });
     box.innerHTML = cards.slice(0, 4).join("");
   }

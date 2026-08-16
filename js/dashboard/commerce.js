@@ -1006,44 +1006,66 @@
   // Cache de fotos por itemId (dura la sesión): una vez traída una foto, abrir el
   // detalle de esa venta la muestra al instante, sin volver a pegarle a ML.
   var _thumbCache = {};
-  // Foto de una publicacion (para llenarla despues de mostrar el detalle).
+  function _precargar(url) { if (url) { try { var im = new Image(); im.decoding = "async"; im.src = url; } catch (e) {} } }
+
+  // Foto de UNA publicacion, robusto: pide el item COMPLETO (/items/{id} sin
+  // proyeccion de atributos, que a veces omitia la miniatura) y saca la mejor
+  // URL en https. Cachea.
   async function fetchOrderThumb(accountId, itemId) {
     if (!itemId) return "";
-    if (_thumbCache[itemId] != null) return _thumbCache[itemId];
+    itemId = String(itemId);
+    if (_thumbCache[itemId]) return _thumbCache[itemId];
     try {
-      var res = await S.requireSecureApi().mlApi(
-        "/items/" + itemId + "?attributes=id,secure_thumbnail,thumbnail,pictures", "GET", null, accountId);
+      var res = await S.requireSecureApi().mlApi("/items/" + itemId, "GET", null, accountId);
       var url = thumbFromItemBody(res && res.payload);
-      _thumbCache[itemId] = url;
-      if (url) { var im = new Image(); im.decoding = "async"; im.src = url; }  // precarga
+      if (url) { _thumbCache[itemId] = url; _precargar(url); }
       return url;
     } catch (e) { return ""; }
   }
 
-  // Fotos (cacheadas) de varios itemIds de UNA cuenta, con multiget. La usan las
-  // notificaciones para mostrar la foto del producto aunque el pedido no se haya
-  // enriquecido todavía. Devuelve { itemId: url }. Best-effort.
+  // Fotos de varios itemIds de UNA cuenta. BULLETPROOF: intenta el multiget
+  // (/items?ids=…, rapido) y para cualquier id que NO devuelva foto cae al item
+  // individual (/items/{id} completo). Fuerza https (mixed-content). Cachea +
+  // precarga. Devuelve { itemId: url }.
   async function thumbsForItems(accountId, itemIds) {
     var out = {}, faltan = [];
     (itemIds || []).forEach(function (id) {
       if (!id) return; id = String(id);
-      if (_thumbCache[id] != null) out[id] = _thumbCache[id];
+      if (_thumbCache[id]) out[id] = _thumbCache[id];
       else if (faltan.indexOf(id) === -1) faltan.push(id);
     });
     if (!faltan.length || !accountId) return out;
-    try {
-      var api = S.requireSecureApi();
-      for (var i = 0; i < faltan.length; i += 20) {
-        var lote = faltan.slice(i, i + 20);
+    var api;
+    try { api = S.requireSecureApi(); } catch (e) { return out; }
+
+    var pendientes = faltan.slice();
+    // 1) Multiget (barato). Los que resuelvan salen de `pendientes`.
+    for (var i = 0; i < faltan.length; i += 20) {
+      var lote = faltan.slice(i, i + 20);
+      try {
         var res = await api.mlApi("/items?ids=" + lote.join(",") + "&attributes=id,secure_thumbnail,thumbnail,pictures", "GET", null, accountId);
-        (res.payload || []).forEach(function (row) {
+        var rows = (res && res.payload && res.payload.length) ? res.payload : [];
+        rows.forEach(function (row) {
           var b = row && row.body ? row.body : (row && row.id ? row : null); if (!b || !b.id) return;
           var url = thumbFromItemBody(b);
-          _thumbCache[String(b.id)] = url; out[String(b.id)] = url;
-          if (url) { var im = new Image(); im.decoding = "async"; im.src = url; }
+          if (url) {
+            var k = String(b.id);
+            _thumbCache[k] = url; out[k] = url; _precargar(url);
+            var p = pendientes.indexOf(k); if (p !== -1) pendientes.splice(p, 1);
+          }
         });
-      }
-    } catch (e) { /* best-effort */ }
+      } catch (e) { /* el multiget puede estar restringido → van al fallback */ }
+    }
+    // 2) Fallback item por item (en paralelo, cap 8) para lo que falte.
+    for (var j = 0; j < pendientes.length; j += 8) {
+      var grupo = pendientes.slice(j, j + 8);
+      await Promise.all(grupo.map(function (id) {
+        return api.mlApi("/items/" + id, "GET", null, accountId).then(function (r) {
+          var url = thumbFromItemBody(r && r.payload);
+          if (url) { _thumbCache[id] = url; out[id] = url; _precargar(url); }
+        }).catch(function () {});
+      }));
+    }
     return out;
   }
 
@@ -1056,6 +1078,7 @@
     if (!acc || !isMLApp(acc)) return;
     var ids = [];
     orders.forEach(function (o) {
+      if (ids.length >= 60) return;   // tope: no floodear ML por 300 filas
       if (!o.thumbnail && o.itemId && ids.indexOf(o.itemId) === -1) ids.push(o.itemId);
     });
     if (!ids.length) return;
