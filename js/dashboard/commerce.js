@@ -712,6 +712,64 @@
     return allOrders.map(normalizeMLOrder);
   }
 
+  // Órdenes recientes de UNA cuenta puntual (no la activa). Ventana corta, liviano.
+  async function fetchOrdersDeCuenta(cuenta, range) {
+    var api = S.requireSecureApi();
+    var me = await api.mlApi("/users/me", "GET", null, cuenta);
+    var userId = (me.payload || {}).id;
+    if (!userId) return [];
+    var out = [], offset = 0, limit = 50;
+    for (var page = 0; page < 4; page++) {
+      var endpoint = "/orders/search?seller=" + userId +
+        "&order.date_created.from=" + encodeURIComponent(isoFrom(range.from)) +
+        "&order.date_created.to=" + encodeURIComponent(isoTo(range.to)) +
+        "&sort=date_desc&limit=" + limit + "&offset=" + offset;
+      var result = await api.mlApi(endpoint, "GET", null, cuenta);
+      var payload = result.payload || {};
+      var results = payload.results || [];
+      out = out.concat(results);
+      var paging = payload.paging || {};
+      if (results.length === 0 || offset + limit >= (paging.total || 0)) break;
+      offset += limit;
+    }
+    return out.map(normalizeMLOrder);
+  }
+
+  // Refresca las ventas recientes de TODAS las cuentas ML conectadas y mergea las
+  // nuevas en sus snapshots, para que la campanita muestre lo último de CADA
+  // cuenta (no solo la activa). Best-effort; se llama al abrir la campana y al
+  // iniciar. La cuenta activa igual la refresca su propio sync.
+  var _notifRefreshBusy = false;
+  async function refrescarVentasNotif() {
+    if (_notifRefreshBusy) return;
+    _notifRefreshBusy = true;
+    try {
+      var accounts = (S.mlAccounts && S.mlAccounts()) || [];
+      var now = Date.now();
+      var range = { from: toDateInput(new Date(now - 30 * 86400000)), to: toDateInput(new Date(now)) };
+      var cambios = false;
+      await Promise.all(accounts.map(function (acc) {
+        var cfg = getCommerceConfig(acc.id);
+        if (!cfg || !cfg.hasToken) return Promise.resolve();
+        return fetchOrdersDeCuenta(acc.id, range).then(function (orders) {
+          if (!orders || !orders.length) return;
+          var snap = state.commerce.snapshots[acc.id];
+          if (!snap) {
+            state.commerce.snapshots[acc.id] = createCommerceSnapshot(orders, "live", { range: range, viewRange: range });
+            cambios = true;
+          } else {
+            var byId = {};
+            (snap.allOrders || []).forEach(function (o) { byId[String(o.id)] = true; });
+            var nuevos = orders.filter(function (o) { return !byId[String(o.id)]; });
+            if (nuevos.length) { snap.allOrders = nuevos.concat(snap.allOrders || []); cambios = true; }
+          }
+        }).catch(function () {});
+      }));
+      if (cambios) { try { saveCommerceSnapshots(); } catch (e) {} }
+    } catch (e) { /* best-effort */ }
+    finally { _notifRefreshBusy = false; }
+  }
+
   // Visitas a las publicaciones del vendedor en el periodo.
   // Endpoint distinto al de ordenes: /users/{id}/items_visits.
   // Si falla (ML tarda 48h en consolidar, o el rango excede 150 dias) no
@@ -3178,7 +3236,7 @@
   }
 
   Object.assign(S, {
-    adsDatos, activeMLId, adsUpdateCampaign, cargarAdsMTD, thumbsForItems, diagnosticarFotos,
+    adsDatos, activeMLId, adsUpdateCampaign, cargarAdsMTD, thumbsForItems, diagnosticarFotos, refrescarVentasNotif,
     aggregateCommerceProducts, aggregateCommerceTrend, buildDemoCommerceSnapshot, buildMLAuthUrl,
     clearSelectedCommerceApp, clearSelectedCommerceGroup, createCommerceSnapshot, disconnectML, ensureMLLiveDefaults, fetchCommerceData, fetchMLOrders,
     handleMlOAuthReturn, normalizeCommerceOrder, normalizeMLOrder,

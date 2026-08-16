@@ -356,10 +356,11 @@
       cards.push(bizCardHTML({ view: "ecommerce-mercadolibre", logoId: "mercadolibre", slug: "mercadolibre",
         title: "Mercado Libre", sub: "Uruguay", revenueStr: curPlat("mercadolibre", uy.revenue), orders: uy.orders, connected: uy.connected }));
     }
-    // ML Brasil (y cualquier otra cuenta ML) aparte, en su moneda.
+    // ML Brasil (y cualquier otra cuenta ML) aparte, en su moneda. En Brasil el
+    // nombre va en portugués: "Mercado Livre".
     otras.forEach(function (a) {
       cards.push(bizCardHTML({ view: "ecommerce-" + a.id, logoId: a.id, slug: "mercadolibre",
-        title: "Mercado Libre", sub: esBR(a.id) ? "Brasil" : "", revenueStr: curPlat(a.id, a.revenue), orders: a.orders, connected: a.connected }));
+        title: a.id === "mercadolivre" ? "Mercado Livre" : "Mercado Libre", sub: esBR(a.id) ? "Brasil" : "", revenueStr: curPlat(a.id, a.revenue), orders: a.orders, connected: a.connected }));
     });
     // Placeholders: marketplaces brasileros próximamente.
     [["Amazon BR", "Brasil", "amazon"], ["Tienda Mia", "", "tiendamia"], ["Shopee", "Brasil", "shopee"]].forEach(function (p) {

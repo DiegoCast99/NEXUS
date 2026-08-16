@@ -107,8 +107,16 @@
   function marketplacePhoto(id) { if (!id) return ""; return getMktPhotos()[id] || ""; }
   function setMarketplacePhoto(id, url) { if (!id) return; var o = getMktPhotos(); o[id] = url; saveMktPhotos(o); }
   function clearMarketplacePhotoId(id) { if (!id) return; var o = getMktPhotos(); delete o[id]; saveMktPhotos(o); }
-  // Marketplace que se está viendo ahora en E-Commerce (ML1/ML2/ML Brasil/...).
-  function activeMktId() { try { return S.activeMLId ? S.activeMLId() : ""; } catch (e) { return ""; } }
+  // Marketplace que se está viendo ahora (id REAL del selectedApp: mercadolibre,
+  // mercadolivre, amazon, shopee, tiendamia...). Antes usaba activeMLId(), que para
+  // cualquier cuenta NO-ML devolvía "mercadolibre" → todas compartían la misma foto.
+  // ML1 y ML2 (Uruguay) sí comparten foto (en el home van unificados) → clave común.
+  function activeMktId() {
+    try {
+      var id = (S.state && S.state.commerce && S.state.commerce.selectedApp) || "";
+      return id === "mercadolibre2" ? "mercadolibre" : id;
+    } catch (e) { return ""; }
+  }
   // Sube y redimensiona (máx 240px, mantiene proporción, PNG para transparencia).
   function onMktPhotoFile(e) {
     var file = e.target.files && e.target.files[0];
@@ -159,7 +167,14 @@
     closePops(willOpen ? id : null);
     pop.hidden = !willOpen;
     if (anchorBtn) anchorBtn.setAttribute("aria-expanded", String(willOpen));
-    if (willOpen && id === "notifPop") { renderNotifs(); markNotifsSeen(); }
+    if (willOpen && id === "notifPop") {
+      renderNotifs();  // pinta lo cacheado al instante
+      // Refresca las ventas recientes de TODAS las cuentas (no solo la activa) y
+      // repinta + marca visto cuando termina.
+      var trasRefresco = function () { renderNotifs(); markNotifsSeen(); };
+      if (S.refrescarVentasNotif) Promise.resolve(S.refrescarVentasNotif()).then(trasRefresco).catch(trasRefresco);
+      else trasRefresco();
+    }
   }
 
   // ---- Notificaciones: ventas de TODAS las plataformas (ML1, ML2, ML Brasil,
@@ -441,6 +456,12 @@
     S.initHome?.();
     renderProfileChrome();
     updateNotifDot();
+    // Al iniciar, refrescá las ventas recientes de TODAS las cuentas para que la
+    // campanita muestre lo último de cada una (no solo la activa). Con un delay
+    // corto para no competir con la carga inicial.
+    setTimeout(function () {
+      if (S.refrescarVentasNotif) Promise.resolve(S.refrescarVentasNotif()).then(function () { updateNotifDot(); }).catch(function () {});
+    }, 2500);
   }
 
   Object.assign(S, { initShell: initShell, renderProfileChrome: renderProfileChrome, renderSettings: renderSettings, updateNotifDot: updateNotifDot, profileName: profileName, marketplacePhoto: marketplacePhoto, renderMarketplacePhotoConfig: renderMarketplacePhotoConfig });
