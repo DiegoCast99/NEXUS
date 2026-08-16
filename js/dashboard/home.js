@@ -46,7 +46,7 @@
   var homeCustomFrom = "", homeCustomTo = "";
   function periodLabel() {
     if (homePeriod === "custom" && homeCustomFrom && homeCustomTo) return homeCustomFrom + " → " + homeCustomTo;
-    return homePeriod === "hoy" ? "hoy" : "ult. " + homePeriod + " dias";
+    return homePeriod === "hoy" ? "hoy" : "ult. " + homePeriod + " días";
   }
   function periodVs() { return homePeriod === "hoy" ? "vs ayer" : "vs periodo previo"; }
 

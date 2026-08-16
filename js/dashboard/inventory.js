@@ -246,13 +246,35 @@
   }
 
   // ---- Catalogo de publicaciones de ML (de TODAS las cuentas del inventario) ----
+  // Cache LOCAL del catálogo (clave SIN prefijo nexus → no sincroniza a Firestore).
+  // Al entrar se pinta al instante desde cache y se refresca en segundo plano.
+  var CATALOGO_CACHE_KEY = "nx_inv_catalogo_v1";
+  function cargarCatalogoCache() {
+    try {
+      var raw = localStorage.getItem(CATALOGO_CACHE_KEY);
+      if (!raw) return false;
+      var obj = JSON.parse(raw);
+      if (obj && typeof obj === "object") { catalogo = obj; return Object.keys(obj).length > 0; }
+    } catch (e) {}
+    return false;
+  }
+  function guardarCatalogoCache() { try { localStorage.setItem(CATALOGO_CACHE_KEY, JSON.stringify(catalogo)); } catch (e) {} }
+  // Mejor URL de foto (https forzado + fallback a pictures).
+  function thumbURL(b) {
+    if (!b) return "";
+    var t = b.secure_thumbnail || b.thumbnail || "";
+    if (!t && b.pictures && b.pictures[0]) t = b.pictures[0].secure_url || b.pictures[0].url || "";
+    if (t && t.indexOf("http://") === 0) t = "https://" + t.slice(7);
+    return t;
+  }
+
   async function cargarCatalogo() {
     var api = S.requireSecureApi();
     var cuentas = cuentasMLDelInventario();
-    for (var ci = 0; ci < cuentas.length; ci++) {
-      await cargarCatalogoCuenta(api, cuentas[ci]);
-    }
+    // Cuentas en paralelo (cada una hace sus lotes en paralelo también).
+    await Promise.all(cuentas.map(function (c) { return cargarCatalogoCuenta(api, c).catch(function () {}); }));
     catalogoCargado = true;
+    guardarCatalogoCache();
   }
 
   async function cargarCatalogoCuenta(api, cuenta) {
@@ -267,24 +289,31 @@
       offset += 50;
       if (!lote.length || offset >= total) break;
     }
-    for (var i = 0; i < ids.length; i += 20) {
-      var det = await api.mlApi("/items?ids=" + ids.slice(i, i + 20).join(",") + "&attributes=id,title,available_quantity,variations,secure_thumbnail,thumbnail", "GET", null, cuenta);
-      (det.payload || []).forEach(function (row) {
-        var b = row && row.body; if (!b || !b.id) return;
-        // Stock real actual en ML: con variaciones, la suma; si no, el del item.
+    // Lotes de 20 ids en PARALELO (cap 6 concurrentes), SIN sleeps. Se repinta por
+    // tanda (render incremental) para que las fotos aparezcan apenas llegan.
+    var batches = [];
+    for (var i = 0; i < ids.length; i += 20) batches.push(ids.slice(i, i + 20));
+    function procesar(det) {
+      (det && det.payload || []).forEach(function (row) {
+        var b = row && row.body ? row.body : (row && row.id ? row : null); if (!b || !b.id) return;
         var vars = b.variations || [];
         var stockML = vars.length
           ? vars.reduce(function (s, v) { return s + (Number(v.available_quantity) || 0); }, 0)
           : (Number(b.available_quantity) || 0);
-        // Guardar los sabores (id + etiqueta) para poder enlazar la composición
-        // sabor por sabor. La etiqueta sale de attribute_combinations (ej "Chocolate").
         var variaciones = vars.map(function (v) {
           var et = (v.attribute_combinations || []).map(function (a) { return a.value_name; }).filter(Boolean).join(" / ");
           return { id: String(v.id), label: et || ("Sabor " + v.id), stock: Number(v.available_quantity) || 0 };
         });
-        catalogo[b.id] = { title: b.title || b.id, stock: stockML, thumbnail: b.secure_thumbnail || b.thumbnail || "", variations: variaciones, account: cuenta };
+        catalogo[b.id] = { title: b.title || b.id, stock: stockML, thumbnail: thumbURL(b), variations: variaciones, account: cuenta };
       });
-      await dormir(100);
+    }
+    for (var g = 0; g < batches.length; g += 6) {
+      await Promise.all(batches.slice(g, g + 6).map(function (lote) {
+        return api.mlApi("/items?ids=" + lote.join(",") + "&attributes=id,title,available_quantity,variations,secure_thumbnail,thumbnail,pictures", "GET", null, cuenta)
+          .then(procesar).catch(function () {});
+      }));
+      renderListings();          // incremental: cada tanda muestra sus fotos
+      guardarCatalogoCache();    // ir persistiendo lo traído
     }
     catalogoCargado = true;
   }
@@ -293,7 +322,11 @@
   // el botón "Cargar publicaciones de ML" sigue disponible como respaldo.
   async function cargarCatalogoAuto() {
     try {
-      if (!catalogoCargado) setInvMsg("Cargando publicaciones de Mercado Libre…");
+      // 1) Pintar YA desde el cache local (fotos al instante en la re-entrada).
+      var hayCache = cargarCatalogoCache();
+      if (hayCache) { renderListings(); setInvMsg(""); }
+      else if (!catalogoCargado) setInvMsg("Cargando publicaciones de Mercado Libre…");
+      // 2) Refrescar desde ML en segundo plano (repinta por tanda).
       await cargarCatalogo();
       renderListings();
       setInvMsg("");

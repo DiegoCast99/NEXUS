@@ -1276,7 +1276,7 @@
     txtVenta(elements.ventaTotal, moneyWithCents.format(o.margin || 0));
     txtVenta(elements.ventaLiberacion, o.releaseDate
       ? "El dinero se libera el " + S.formatDate(o.releaseDate) + "."
-      : "El dinero se libera unos dias despues de la entrega del paquete.");
+      : "El dinero se libera unos días después de la entrega del paquete.");
 
     // Datos del comprador
     txtVenta(elements.ventaComprador, o.customer || "Comprador");
@@ -1979,7 +1979,7 @@
     var dias = Math.ceil((new Date(fechaISO + "T00:00:00") - new Date(hoyISO() + "T00:00:00")) / 86400000);
     if (dias <= 0) return "hoy";
     if (dias === 1) return "manana";
-    return "en " + dias + " dias";
+    return "en " + dias + " días";
   }
 
   // Cache por cuenta: saldo real de MP y fechas de liberacion por pago.
