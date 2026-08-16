@@ -369,6 +369,7 @@
       clearMarketplacePhotoId(id); renderMarketplacePhotoConfig();
       if (S.renderHome) S.renderHome();
     });
+    el("diagFotosBtn")?.addEventListener("click", function () { if (S.diagnosticarFotos) S.diagnosticarFotos(); });
     el("settingsSaveProfile")?.addEventListener("click", function () {
       var p = readProfile();
       p.name = (el("settingsName")?.value || "").trim();

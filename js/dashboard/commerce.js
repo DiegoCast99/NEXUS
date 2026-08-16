@@ -1099,6 +1099,57 @@
     }).catch(function () {});
   }
 
+  // Diagnóstico VISIBLE de por qué no cargan las fotos (sin consola). Prueba una
+  // orden real: reporta si tiene itemId, y qué devuelve ML (single + multiget).
+  async function diagnosticarFotos() {
+    var box = document.getElementById("diagFotosResult");
+    if (!box) return;
+    var L = [];
+    function pinta() { box.textContent = L.join("\n"); }
+    L.push("Probando…"); pinta();
+    var acc = activeMLId();
+    var snap = getCommerceSnapshot(acc);
+    var orders = (snap && (snap.allOrders || snap.orders)) || [];
+    var conId = orders.filter(function (o) { return o.itemId; });
+    L = [];
+    L.push("Cuenta activa: " + acc);
+    L.push("Órdenes en snapshot: " + orders.length + "  ·  con itemId: " + conId.length);
+    if (!orders.length) { L.push("⚠️ No hay órdenes cargadas. Entrá a Ventas y esperá el sync."); pinta(); return; }
+    if (!conId.length) { L.push("⚠️ CAUSA: ninguna orden trae itemId (datos viejos en caché). Solución: forzar re-sync."); pinta(); return; }
+    var id = conId[0].itemId;
+    L.push("Item de prueba: " + id);
+    L.push("thumbnail guardado en la orden: " + (conId[0].thumbnail || "(vacío)"));
+    pinta();
+    // 1) single /items/{id}
+    try {
+      var r1 = await S.requireSecureApi().mlApi("/items/" + id, "GET", null, acc);
+      var b = r1 && r1.payload;
+      L.push("");
+      L.push("[/items/{id}] OK");
+      L.push("  secure_thumbnail: " + ((b && b.secure_thumbnail) || "(vacío)"));
+      L.push("  thumbnail: " + ((b && b.thumbnail) || "(vacío)"));
+      L.push("  pictures: " + ((b && b.pictures && b.pictures.length) || 0) + ((b && b.pictures && b.pictures[0]) ? "  [0].secure_url=" + b.pictures[0].secure_url : ""));
+      L.push("  → URL resultante: " + (thumbFromItemBody(b) || "(vacío)"));
+    } catch (e) {
+      L.push("");
+      L.push("[/items/{id}] ERROR: " + ((e && e.message) || "?") + "  status=" + ((e && (e.mlStatus || e.httpStatus)) || "?") + "  code=" + ((e && e.code) || "?"));
+    }
+    pinta();
+    // 2) multiget
+    try {
+      var r2 = await S.requireSecureApi().mlApi("/items?ids=" + id + "&attributes=id,secure_thumbnail,thumbnail,pictures", "GET", null, acc);
+      var arr = r2 && r2.payload;
+      L.push("");
+      L.push("[/items?ids=] tipo=" + (Array.isArray(arr) ? "array(" + arr.length + ")" : typeof arr));
+      var b2 = Array.isArray(arr) && arr[0] ? (arr[0].body || arr[0]) : null;
+      L.push("  → URL resultante: " + (thumbFromItemBody(b2) || "(vacío)"));
+    } catch (e2) {
+      L.push("");
+      L.push("[/items?ids=] ERROR: " + ((e2 && e2.message) || "?") + "  status=" + ((e2 && (e2.mlStatus || e2.httpStatus)) || "?"));
+    }
+    pinta();
+  }
+
   // Mete/actualiza una orden en el snapshot para que "volver" muestre la lista
   // con ella y ventaPorId la encuentre. Best-effort: si no hay snapshot todavia,
   // el refresh en segundo plano lo arma.
@@ -3127,7 +3178,7 @@
   }
 
   Object.assign(S, {
-    adsDatos, activeMLId, adsUpdateCampaign, cargarAdsMTD, thumbsForItems,
+    adsDatos, activeMLId, adsUpdateCampaign, cargarAdsMTD, thumbsForItems, diagnosticarFotos,
     aggregateCommerceProducts, aggregateCommerceTrend, buildDemoCommerceSnapshot, buildMLAuthUrl,
     clearSelectedCommerceApp, clearSelectedCommerceGroup, createCommerceSnapshot, disconnectML, ensureMLLiveDefaults, fetchCommerceData, fetchMLOrders,
     handleMlOAuthReturn, normalizeCommerceOrder, normalizeMLOrder,
