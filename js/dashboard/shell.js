@@ -203,7 +203,7 @@
       var media = '<span class="notif-ic"' + thumbAttr + '>' + SALE_IC +
         (s.thumbnail ? '<img class="notif-ic-img" src="' + esc(s.thumbnail) + '" alt="" loading="lazy" onerror="this.remove()"/>' : "") +
         '</span>';
-      return '<button class="notif-item" type="button" data-notif-sale="ventas">' + media +
+      return '<button class="notif-item" type="button" data-notif-sale="ventas" data-notif-acc="' + esc(s.acc) + '" data-notif-order="' + esc(s.id) + '">' + media +
         '<span class="notif-main"><b>' + esc(s.product || "Venta") + " · " + monto + '</b>' +
         '<small>' + esc(s.accName) + (fecha ? " · " + esc(fecha) : "") + '</small></span></button>';
     }).join("");
@@ -398,7 +398,22 @@
     // Cerrar popovers al elegir una opcion, con la X, click afuera o Escape
     document.addEventListener("click", function (e) {
       if (e.target.closest("[data-pop-close]")) { closePops(null); return; }
-      if (e.target.closest("[data-notif-sale]")) { closePops(null); if (S.setView) S.setView("ventas"); return; }
+      var saleBtn = e.target.closest("[data-notif-sale]");
+      if (saleBtn) {
+        var acc = saleBtn.getAttribute("data-notif-acc");
+        var orderId = saleBtn.getAttribute("data-notif-order");
+        closePops(null);
+        if (acc && orderId && S.openSaleDeepLink) {
+          // Igual que el push: splash breve → E-Commerce → detalle de ESA venta
+          // (instantáneo si ya está en el snapshot; si no, trae solo esa orden).
+          try { document.documentElement.classList.add("booting-sale"); } catch (e2) {}
+          if (S.setView) S.setView("ecommerce", false);
+          S.openSaleDeepLink(acc, orderId);
+        } else if (S.setView) {
+          S.setView("ecommerce");
+        }
+        return;
+      }
       if (e.target.closest("#profilePop [data-view], #profilePop [data-avatar-pick]")) { closePops(null); return; }
       var inTop = e.target.closest(".topbar-pop, #notifBell, #profileChip, #helpBtn");
       if (!inTop) closePops(null);
