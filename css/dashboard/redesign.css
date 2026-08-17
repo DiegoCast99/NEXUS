@@ -68,7 +68,7 @@
    naranja del tile → el fondo "desaparece" y el logo blanco queda intacto. */
 .app-brand .brand-mark .brand-mark-img { width: 74%; height: 74%; object-fit: contain; display: block; margin: auto; mix-blend-mode: screen; }
 .app-brand .brand-name {
-  font-size: 19px;
+  font-size: 21px;
   font-weight: 800;
   letter-spacing: 0.16em;
   color: var(--text);
@@ -82,8 +82,10 @@
    mobile. El resto de las letras (N, X, U, S) quedan como estaban. */
 .bn-e {
   display: inline-block;
-  width: 0.62em;
+  box-sizing: content-box;
+  width: 0.5em;            /* ancho de las barras */
   height: 0.7em;
+  padding: 0 0.09em;       /* bearing lateral: mismo aire que entre las demás letras */
   vertical-align: baseline;
   background-image:
     linear-gradient(currentColor, currentColor),
@@ -92,6 +94,8 @@
   background-size: 100% 0.14em;   /* barra = hueco: 5 bandas parejas (0.14×5=0.7) */
   background-position: left top, left center, left bottom;
   background-repeat: no-repeat;
+  background-origin: content-box; /* las barras NO invaden el padding (bearing real) */
+  background-clip: content-box;
 }
 .bn-e::after { content: none !important; }   /* sin subrayado decorativo */
 
@@ -817,7 +821,7 @@
   .m-only { display: flex !important; }
   .m-brand {
     display: flex; align-items: center; gap: 9px;
-    font-weight: 800; letter-spacing: 0.14em; font-size: 18px; color: var(--text);
+    font-weight: 800; letter-spacing: 0.14em; font-size: 20px; color: var(--text);
   }
   .m-brand .m-brand-name::after { content: none !important; }
   .m-brand .brand-mark {

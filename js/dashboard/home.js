@@ -285,11 +285,16 @@
   var CH_COLORS = ["#ff6a3d", "#f5a623", "#ff3d2e", "#b24dff", "#52e1ff"];
   function renderChannels(ml) {
     var box = el("homeChannels"); if (!box) return;
-    var mlRev = ml.perAccount.reduce(function (a, x) { return a + (x.revenue || 0); }, 0);
-    // Canales reales + placeholders (Amazon/Shopee: aún sin conectar). Mismo set
-    // que las tarjetas de "Tus negocios": Tienda Mía se quitó por ahora.
+    // Uruguay (ML1+ML2) y Brasil (Mercado Livre) van como canales SEPARADOS, igual
+    // que las tarjetas de "Tus negocios". Amazon/Shopee: placeholders sin conectar.
+    var uyRev = 0, brRev = 0;
+    ml.perAccount.forEach(function (x) {
+      if (x.id === "mercadolivre") brRev += (x.revenue || 0);
+      else uyRev += (x.revenue || 0);
+    });
     var channels = [
-      { name: "Mercado Libre", slug: "mercadolibre", value: mlRev, soon: false },
+      { name: "Mercado Libre", slug: "mercadolibre", value: uyRev, soon: false },
+      { name: "Mercado Livre", slug: "mercadolivre", value: brRev, soon: false },
       { name: "Amazon", slug: "amazon", value: 0, soon: true },
       { name: "Shopee", slug: "shopee", value: 0, soon: true }
     ];
@@ -316,9 +321,10 @@
     }
 
     var legend = channels.map(function (c, i) {
+      var isReal = !c.soon && c.value > 0;   // punto de color solo si aporta a la dona
       var p = total > 0 ? Math.round((c.value / total) * 100) : 0;
       var right = c.soon ? '<span class="home-ch-soon">Proximamente</span>' : '<b>' + p + '%</b>';
-      var dot = c.soon ? '' : '<i style="background:' + CH_COLORS[Math.max(0, real.findIndex(function (r) { return r.slug === c.slug; })) % CH_COLORS.length] + '"></i>';
+      var dot = isReal ? '<i style="background:' + CH_COLORS[real.findIndex(function (r) { return r.slug === c.slug; }) % CH_COLORS.length] + '"></i>' : '';
       return '<div class="home-ch' + (c.soon ? ' is-soon' : '') + '">' + bizLogo(c.slug, c.slug, 24) +
         '<span class="home-ch-name">' + esc(c.name) + '</span>' + dot + right + '</div>';
     }).join("");
