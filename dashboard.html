@@ -54,10 +54,10 @@
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260813-redesign1" />
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260813-redesign2" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260813-redesign1" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260816-fix9" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260816-fix13" />
     <link rel="stylesheet" href="./css/dashboard/tools.css?v=20260813-redesign1" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260813-redesign1" />
-    <link rel="stylesheet" href="./css/dashboard/redesign.css?v=20260816-fix12" />
+    <link rel="stylesheet" href="./css/dashboard/redesign.css?v=20260816-fix13" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260724-adapt1" />
     <link rel="stylesheet" href="./css/dashboard/mobile.css?v=20260813-logos1" />
   </head>
@@ -1222,6 +1222,10 @@
 
               <!-- Vista 2: PUBLICACIONES + composición + historial -->
               <div class="inv-view is-hidden" data-inv-view="publicaciones">
+                <!-- Selector de cuenta: separa las publicaciones de cada cuenta de
+                     ML (ML1 / ML2 / Mercado Livre Brasil). El stock físico es único
+                     y central; sólo las publicaciones se filtran por cuenta. -->
+                <div class="inv-acct-tabs" id="invAccountTabs" role="tablist"></div>
                 <div class="inv-actions">
                   <button class="ghost-button" type="button" id="invLoadListings">Cargar publicaciones de ML</button>
                   <button class="primary-button" type="button" id="invResync">Sincronizar todo</button>
@@ -1699,7 +1703,7 @@
     <script src="./js/dashboard/meta.js?v=20260716-nav1"></script>
     <script src="./js/dashboard/commerce.js?v=20260816-fix11"></script>
     <script src="./js/dashboard/ads-agent.js?v=20260815-fix1"></script>
-    <script src="./js/dashboard/inventory.js?v=20260816-fix10"></script>
+    <script src="./js/dashboard/inventory.js?v=20260816-fix13"></script>
     <script src="./js/dashboard/notifications.js?v=20260717-acct4"></script>
     <script src="./js/dashboard/tools.js?v=20260727-mob5"></script>
     <script src="./js/dashboard/platform-nav.js?v=20260815-fix1"></script>
@@ -1707,7 +1711,7 @@
     <script src="./js/dashboard/logos.js?v=20260815-fix1"></script>
     <script src="./js/dashboard/home.js?v=20260816-fix12"></script>
     <script src="./js/dashboard/shell.js?v=20260816-fix12"></script>
-    <script src="./js/dashboard/app.js?v=20260816-fix9"></script>
+    <script src="./js/dashboard/app.js?v=20260816-fix13"></script>
     <script src="./js/dashboard/mobile-tables.js?v=20260727-mob3"></script>
     <script src="./js/pwa.js?v=20260711-push1" defer></script>
   </body>

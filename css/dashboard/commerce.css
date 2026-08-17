@@ -1358,6 +1358,39 @@
 .inv-tab.is-active { color: var(--text); border-bottom-color: var(--accent); }
 .inv-view.is-hidden { display: none; }
 
+/* Selector de cuenta del inventario (ML1 / ML2 / Mercado Livre): chips que
+   filtran las publicaciones mostradas. El stock físico es central y no se filtra. */
+.inv-acct-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin: 2px 0 14px; }
+.inv-acct-tabs:empty { display: none; }
+.inv-acct-chip {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+.inv-acct-chip:hover { color: var(--text); border-color: var(--accent); }
+.inv-acct-chip.is-active {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.inv-acct-chip .inv-acct-count {
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Editor de composición por sabor (variaciones) */
 .inv-comp-block {
   padding: 12px;
