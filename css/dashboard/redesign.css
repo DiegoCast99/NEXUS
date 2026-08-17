@@ -68,13 +68,32 @@
    naranja del tile → el fondo "desaparece" y el logo blanco queda intacto. */
 .app-brand .brand-mark .brand-mark-img { width: 74%; height: 74%; object-fit: contain; display: block; margin: auto; mix-blend-mode: screen; }
 .app-brand .brand-name {
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 800;
   letter-spacing: 0.16em;
   color: var(--text);
 }
 /* Anular el subrayado decorativo heredado de layout.css. */
 .app-brand span::after { content: none !important; }
+
+/* Wordmark: la "E" de NEXUS estilizada como tres barras horizontales (≡), a juego
+   con el isotipo. Se dibuja con currentColor y medidas en 'em', así toma el color
+   y escala con el tamaño del nombre, y sirve igual en el sidebar y en la barra
+   mobile. El resto de las letras (N, X, U, S) quedan como estaban. */
+.bn-e {
+  display: inline-block;
+  width: 0.62em;
+  height: 0.7em;
+  vertical-align: baseline;
+  background-image:
+    linear-gradient(currentColor, currentColor),
+    linear-gradient(currentColor, currentColor),
+    linear-gradient(currentColor, currentColor);
+  background-size: 100% 0.14em;   /* barra = hueco: 5 bandas parejas (0.14×5=0.7) */
+  background-position: left top, left center, left bottom;
+  background-repeat: no-repeat;
+}
+.bn-e::after { content: none !important; }   /* sin subrayado decorativo */
 
 /* Nav de modulos: item = icono + (titulo/subtitulo) */
 .module-nav { gap: 4px; }
@@ -798,8 +817,9 @@
   .m-only { display: flex !important; }
   .m-brand {
     display: flex; align-items: center; gap: 9px;
-    font-weight: 800; letter-spacing: 0.14em; font-size: 16px; color: var(--text);
+    font-weight: 800; letter-spacing: 0.14em; font-size: 18px; color: var(--text);
   }
+  .m-brand .m-brand-name::after { content: none !important; }
   .m-brand .brand-mark {
     width: 32px; height: 32px; display: grid; place-items: center;
     background: none; box-shadow: none;
