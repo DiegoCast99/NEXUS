@@ -68,7 +68,7 @@
    naranja del tile → el fondo "desaparece" y el logo blanco queda intacto. */
 .app-brand .brand-mark .brand-mark-img { width: 74%; height: 74%; object-fit: contain; display: block; margin: auto; mix-blend-mode: screen; }
 .app-brand .brand-name {
-  font-size: 21px;
+  font-size: 26px;
   font-weight: 800;
   letter-spacing: 0.16em;
   color: var(--text);
@@ -85,7 +85,7 @@
   box-sizing: content-box;
   width: 0.5em;            /* ancho de las barras */
   height: 0.7em;
-  padding: 0 0.09em;       /* bearing lateral: mismo aire que entre las demás letras */
+  padding: 0 0.14em;       /* bearing lateral: iguala el aire del letter-spacing */
   vertical-align: baseline;
   background-image:
     linear-gradient(currentColor, currentColor),
@@ -821,7 +821,7 @@
   .m-only { display: flex !important; }
   .m-brand {
     display: flex; align-items: center; gap: 9px;
-    font-weight: 800; letter-spacing: 0.14em; font-size: 20px; color: var(--text);
+    font-weight: 800; letter-spacing: 0.14em; font-size: 24px; color: var(--text);
   }
   .m-brand .m-brand-name::after { content: none !important; }
   .m-brand .brand-mark {
