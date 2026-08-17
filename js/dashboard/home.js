@@ -286,11 +286,11 @@
   function renderChannels(ml) {
     var box = el("homeChannels"); if (!box) return;
     var mlRev = ml.perAccount.reduce(function (a, x) { return a + (x.revenue || 0); }, 0);
-    // Canales reales + placeholders (Amazon/Tienda Mía/Shopee: aún sin conectar).
+    // Canales reales + placeholders (Amazon/Shopee: aún sin conectar). Mismo set
+    // que las tarjetas de "Tus negocios": Tienda Mía se quitó por ahora.
     var channels = [
       { name: "Mercado Libre", slug: "mercadolibre", value: mlRev, soon: false },
       { name: "Amazon", slug: "amazon", value: 0, soon: true },
-      { name: "Tienda Mia", slug: "tiendamia", value: 0, soon: true },
       { name: "Shopee", slug: "shopee", value: 0, soon: true }
     ];
     var total = channels.reduce(function (a, c) { return a + c.value; }, 0);
@@ -362,8 +362,9 @@
       cards.push(bizCardHTML({ view: "ecommerce-" + a.id, logoId: a.id, slug: "mercadolibre",
         title: a.id === "mercadolivre" ? "Mercado Livre" : "Mercado Libre", sub: esBR(a.id) ? "Brasil" : "", revenueStr: curPlat(a.id, a.revenue), orders: a.orders, connected: a.connected }));
     });
-    // Placeholders: marketplaces brasileros próximamente.
-    [["Amazon BR", "Brasil", "amazon"], ["Tienda Mia", "", "tiendamia"], ["Shopee", "Brasil", "shopee"]].forEach(function (p) {
+    // Placeholders: marketplaces brasileros próximamente. Orden pedido por el
+    // titular: Amazon Brasil y Shopee Brasil (Tienda Mía se quita por ahora).
+    [["Amazon BR", "Brasil", "amazon"], ["Shopee", "Brasil", "shopee"]].forEach(function (p) {
       cards.push(bizCardHTML({ logoId: p[2], slug: p[2], title: p[0], sub: p[1], soon: true }));
     });
     box.innerHTML = cards.slice(0, 4).join("");
