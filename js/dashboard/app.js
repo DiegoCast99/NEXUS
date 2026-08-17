@@ -241,8 +241,6 @@
     // ---- Inventario central (stock + sync a ML) ----
     // Pestañas: Lista de productos / Publicaciones y enlaces (delegado en el panel).
     elements.invPanel?.addEventListener("click", (event) => {
-      const acct = event.target.closest("[data-inv-account]");
-      if (acct) { S.invSetAccount(acct.getAttribute("data-inv-account")); return; }
       const tab = event.target.closest("[data-inv-tab]");
       if (tab) S.invTab(tab.getAttribute("data-inv-tab"), true);
     });

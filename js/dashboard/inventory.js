@@ -20,7 +20,6 @@
   var composeSel = "";    // publicacion en edicion de composicion
   var composeVar = "";    // sabor/variación en edición ("" = composición simple)
   var invExpanded = {};   // mlbId -> desplegado (mostrar sus variantes) en la lista
-  var invAccount = "";    // cuenta ML cuyas publicaciones se muestran ("" = sin elegir aún)
   var serverStock = {};   // Fase 4: stock por producto tal como se cargó del servidor
                           // (baseline para el merge 3-way al guardar).
   var currentTab = "productos"; // pestaña activa: "productos" | "publicaciones"
@@ -252,37 +251,6 @@
   function cuentaDeListing(mlbId) {
     return inv.listingAccounts[mlbId] || (catalogo[mlbId] && catalogo[mlbId].account) || "";
   }
-  // Asegura que invAccount apunte a una cuenta válida y conectada; por defecto la
-  // activa (la de la tarjeta por la que se entró), o la primera disponible.
-  function ensureInvAccount(cuentas) {
-    if (invAccount && cuentas.indexOf(invAccount) !== -1) return;
-    var activa = activeML();
-    invAccount = cuentas.indexOf(activa) !== -1 ? activa : (cuentas[0] || activa);
-  }
-  // Chips ML1 / ML2 / Mercado Livre para filtrar las publicaciones por cuenta.
-  function renderAccountTabs() {
-    var cont = document.getElementById("invAccountTabs");
-    if (!cont) return;
-    var cuentas = cuentasMLDelInventario();
-    if (cuentas.length <= 1) { cont.innerHTML = ""; invAccount = cuentas[0] || invAccount; return; }
-    ensureInvAccount(cuentas);
-    // Conteo de publicaciones por cuenta (catálogo + composiciones ya guardadas).
-    var conteo = {};
-    var vistos = {};
-    Object.keys(catalogo).forEach(function (m) { vistos[m] = true; });
-    Object.keys(inv.compositions).forEach(function (k) { vistos[String(k).split("::")[0]] = true; });
-    Object.keys(vistos).forEach(function (m) {
-      var acc = cuentaDeListing(m) || cuentas[0];
-      conteo[acc] = (conteo[acc] || 0) + 1;
-    });
-    cont.innerHTML = cuentas.map(function (id) {
-      var acc = S.mlAccountById ? S.mlAccountById(id) : null;
-      var nombre = (acc && acc.name) || id;
-      var n = conteo[id] || 0;
-      return "<button class='inv-acct-chip" + (id === invAccount ? " is-active" : "") + "' type='button' role='tab' data-inv-account='" + escapeHtml(id) + "'>" +
-        escapeHtml(nombre) + "<span class='inv-acct-count'>" + n + "</span></button>";
-    }).join("");
-  }
 
   // ---- Catalogo de publicaciones de ML (de TODAS las cuentas del inventario) ----
   // Cache LOCAL del catálogo (clave SIN prefijo nexus → no sincroniza a Firestore).
@@ -419,7 +387,6 @@
 
   function renderListings() {
     if (!elements.invListingBody) return;
-    renderAccountTabs();
     // Mostrar: las que ya tienen composicion + (si se cargo el catalogo) todas las
     // del catalogo. Las claves de composición pueden ser por sabor ("MLB::var"):
     // se colapsan al id base de la publicación.
@@ -427,11 +394,13 @@
     Object.keys(inv.compositions).forEach(function (m) { set[String(m).split("::")[0]] = true; });
     Object.keys(catalogo).forEach(function (m) { set[m] = true; });
     var mlbIds = Object.keys(set);
-    // Filtrar por la cuenta elegida en el selector (ML1 / ML2 / Mercado Livre).
-    // Con una sola cuenta no se filtra (no hay selector).
+    // Filtrar por la cuenta ACTIVA del selector superior (ML1 / ML2 / Mercado
+    // Livre). El stock físico es central; solo cambia qué publicaciones se listan.
+    // Con una sola cuenta conectada no se filtra.
     var cuentas = cuentasMLDelInventario();
     if (cuentas.length > 1) {
-      mlbIds = mlbIds.filter(function (m) { return (cuentaDeListing(m) || cuentas[0]) === invAccount; });
+      var actual = activeML();
+      mlbIds = mlbIds.filter(function (m) { return (cuentaDeListing(m) || cuentas[0]) === actual; });
     }
     elements.invListingEmpty?.classList.toggle("is-visible", !mlbIds.length);
     var html = "";
@@ -655,12 +624,11 @@
     } catch (e) { setInvMsg("Error al reintentar: " + ((e && e.message) || "error"), "error"); }
   }
 
-  // Cambia la cuenta mostrada en el selector de publicaciones (ML1 / ML2 / Brasil).
-  function invSetAccount(id) {
-    if (!id || id === invAccount) return;
-    invAccount = id;
-    composeSel = ""; composeVar = "";   // cerrar editor de composición de otra cuenta
-    renderListings(); renderCompose();
+  // El selector superior (ML1 / ML2 / Mercado Livre) cambió de cuenta: re-filtrar
+  // las publicaciones y cerrar cualquier editor de composición abierto de la otra.
+  function invRefiltrarPorCuenta() {
+    composeSel = ""; composeVar = "";
+    renderInventory();
   }
 
   function invConfigurar(mlbId, varId) { composeSel = mlbId; composeVar = varId || ""; renderCompose(); elements.invCompose?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
@@ -739,6 +707,6 @@
     invAddProduct, invGuardarProductos, invDeleteProduct,
     invCargarPublicaciones, invResyncAll, invReintentarUno,
     invConfigurar, invComposeCancelar, invComposeAddComponent, invComposeQuitar, invComposeGuardar, invToggleExpand,
-    invSetAccount
+    invRefiltrarPorCuenta
   });
 })();

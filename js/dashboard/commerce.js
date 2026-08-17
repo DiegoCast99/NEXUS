@@ -585,9 +585,11 @@
     if (!esML || !elements.mlAccountSelect) return;
 
     var actual = activeMLId();
-    // Solo las cuentas de esta tarjeta: Mercado Livre (Brasil) es otra tarjeta
-    // y no debe aparecer entre las de Uruguay.
-    var cuentas = S.mlAccountsFor(actual);
+    // TODAS las cuentas de Mercado Libre en un único selector (Uruguay 1 y 2 +
+    // Mercado Livre Brasil). El titular pidió un solo selector arriba para saltar
+    // entre las tres cuentas, no chips por sección. El inventario/stock es central
+    // y compartido; cada sección se filtra por la cuenta elegida acá.
+    var cuentas = (S.mlAccounts && S.mlAccounts()) || S.mlAccountsFor(actual);
     // Con una sola cuenta el selector no aporta nada.
     if (cuentas.length < 2) {
       elements.mlAccountField?.classList.add("is-hidden");
@@ -607,6 +609,12 @@
   function selectMLAccount(id) {
     if (!isMLApp(id) || id === activeMLId()) return;
     selectCommerceApp(id);
+    // Si el Inventario está a la vista, re-filtrar sus publicaciones por la nueva
+    // cuenta (el stock físico es central; solo cambia qué publicaciones se listan).
+    var invPanel = document.getElementById("invPanel");
+    if (invPanel && !invPanel.classList.contains("section-hidden") && S.invRefiltrarPorCuenta) {
+      S.invRefiltrarPorCuenta();
+    }
   }
 
   // Refleja en la UI el periodo guardado (y muestra las fechas solo si es custom).
