@@ -300,18 +300,31 @@
     // tanda (render incremental) para que las fotos aparezcan apenas llegan.
     var batches = [];
     for (var i = 0; i < ids.length; i += 20) batches.push(ids.slice(i, i + 20));
+    var candidatosVar = {};   // ids con variantes que el multiget NO trajo -> backfill por item
     function procesar(det) {
       (det && det.payload || []).forEach(function (row) {
         var b = row && row.body ? row.body : (row && row.id ? row : null); if (!b || !b.id) return;
-        var vars = b.variations || [];
-        var stockML = vars.length
-          ? vars.reduce(function (s, v) { return s + (Number(v.available_quantity) || 0); }, 0)
+        var variaciones = mapVariacionesML(b.variations || []);
+        var prev = catalogo[b.id];
+        // No perder variantes ya conocidas por una respuesta degradada del multiget
+        // (ML a veces omite el array `variations` en el multiget): si antes tenía y
+        // ahora vino vacío, se conservan las de antes.
+        if (!variaciones.length && prev && prev.variations && prev.variations.length) {
+          variaciones = prev.variations;
+        }
+        var stockML = variaciones.length
+          ? variaciones.reduce(function (s, v) { return s + (Number(v.stock) || 0); }, 0)
           : (Number(b.available_quantity) || 0);
-        var variaciones = vars.map(function (v) {
-          var et = (v.attribute_combinations || []).map(function (a) { return a.value_name; }).filter(Boolean).join(" / ");
-          return { id: String(v.id), label: et || ("Sabor " + v.id), stock: Number(v.available_quantity) || 0 };
-        });
-        catalogo[b.id] = { title: b.title || b.id, stock: stockML, thumbnail: thumbURL(b), variations: variaciones, account: cuenta };
+        catalogo[b.id] = {
+          title: b.title || b.id, stock: stockML, thumbnail: thumbURL(b),
+          variations: variaciones, account: cuenta, novar: prev && prev.novar
+        };
+        // Señal de ML: las publicaciones CON variantes traen available_quantity nulo
+        // en el padre (el stock vive en cada variante). Si además el multiget no
+        // incluyó el array, la pedimos por item para garantizar la flecha.
+        if (!variaciones.length && b.available_quantity == null && !(prev && prev.novar)) {
+          candidatosVar[b.id] = true;
+        }
       });
     }
     for (var g = 0; g < batches.length; g += 6) {
@@ -322,7 +335,42 @@
       renderListings();          // incremental: cada tanda muestra sus fotos
       guardarCatalogoCache();    // ir persistiendo lo traído
     }
+    await backfillVariaciones(api, cuenta, Object.keys(candidatosVar));
     catalogoCargado = true;
+  }
+
+  // Mapea el array `variations` crudo de ML al formato interno {id,label,stock}.
+  function mapVariacionesML(vars) {
+    return (vars || []).map(function (v) {
+      var et = (v.attribute_combinations || []).map(function (a) { return a.value_name; }).filter(Boolean).join(" / ");
+      return { id: String(v.id), label: et || ("Sabor " + v.id), stock: Number(v.available_quantity) || 0 };
+    });
+  }
+
+  // Backfill de variantes: para las publicaciones que ML devolvió SIN el array de
+  // variantes pese a tenerlas (señal: available_quantity nulo en el padre), las
+  // consultamos por item con el endpoint dedicado. Garantiza que TODA publicación
+  // con variantes muestre su flecha para configurar sabor por sabor. Las que
+  // confirmadamente no tienen variantes se marcan (novar) para no reconsultar.
+  async function backfillVariaciones(api, cuenta, mlbIds) {
+    if (!mlbIds || !mlbIds.length) return;
+    for (var i = 0; i < mlbIds.length; i += 6) {
+      await Promise.all(mlbIds.slice(i, i + 6).map(function (id) {
+        return api.mlApi("/items/" + id + "/variations", "GET", null, cuenta).then(function (r) {
+          var c = catalogo[id]; if (!c) return;
+          var vs = Array.isArray(r.payload) ? r.payload : [];
+          if (vs.length) {
+            c.variations = mapVariacionesML(vs);
+            c.stock = c.variations.reduce(function (s, v) { return s + (Number(v.stock) || 0); }, 0);
+            c.novar = false;
+          } else {
+            c.novar = true;   // confirmado sin variantes: no volver a consultarla
+          }
+        }).catch(function () {});
+      }));
+      renderListings();
+      guardarCatalogoCache();
+    }
   }
 
   // Auto-carga del catálogo al entrar (sin tocar el botón). Silencioso: si falla,
