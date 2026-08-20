@@ -54,7 +54,7 @@
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260813-redesign1" />
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260813-redesign2" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260813-redesign1" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260816-fix14" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260817-fix18" />
     <link rel="stylesheet" href="./css/dashboard/tools.css?v=20260813-redesign1" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260813-redesign1" />
     <link rel="stylesheet" href="./css/dashboard/redesign.css?v=20260817-fix17" />
@@ -1229,6 +1229,12 @@
                   <button class="ghost-button" type="button" id="invLoadListings">Cargar publicaciones de ML</button>
                   <button class="primary-button" type="button" id="invResync">Sincronizar todo</button>
                 </div>
+                <!-- Filtro rápido: ver sincronizadas / sin sincronizar sin bajar toda la lista -->
+                <div class="inv-filter" id="invListingFilter" role="group" aria-label="Filtrar publicaciones">
+                  <button class="inv-filter-btn is-active" type="button" data-inv-filter="all">Todas <span class="inv-filter-count" data-count="all">0</span></button>
+                  <button class="inv-filter-btn" type="button" data-inv-filter="unsynced">Sin sincronizar <span class="inv-filter-count" data-count="unsynced">0</span></button>
+                  <button class="inv-filter-btn" type="button" data-inv-filter="synced">Sincronizadas <span class="inv-filter-count" data-count="synced">0</span></button>
+                </div>
                 <div class="table-wrap">
                   <table class="meta-table inv-listing-table">
                     <thead>
@@ -1702,7 +1708,7 @@
     <script src="./js/dashboard/meta.js?v=20260716-nav1"></script>
     <script src="./js/dashboard/commerce.js?v=20260816-fix14"></script>
     <script src="./js/dashboard/ads-agent.js?v=20260815-fix1"></script>
-    <script src="./js/dashboard/inventory.js?v=20260817-fix17"></script>
+    <script src="./js/dashboard/inventory.js?v=20260817-fix18"></script>
     <script src="./js/dashboard/notifications.js?v=20260717-acct4"></script>
     <script src="./js/dashboard/tools.js?v=20260727-mob5"></script>
     <script src="./js/dashboard/platform-nav.js?v=20260815-fix1"></script>
@@ -1710,7 +1716,7 @@
     <script src="./js/dashboard/logos.js?v=20260815-fix1"></script>
     <script src="./js/dashboard/home.js?v=20260816-fix16"></script>
     <script src="./js/dashboard/shell.js?v=20260816-fix12"></script>
-    <script src="./js/dashboard/app.js?v=20260816-fix14"></script>
+    <script src="./js/dashboard/app.js?v=20260817-fix18"></script>
     <script src="./js/dashboard/mobile-tables.js?v=20260727-mob3"></script>
     <script src="./js/pwa.js?v=20260711-push1" defer></script>
   </body>

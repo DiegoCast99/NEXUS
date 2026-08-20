@@ -242,7 +242,9 @@
     // Pestañas: Lista de productos / Publicaciones y enlaces (delegado en el panel).
     elements.invPanel?.addEventListener("click", (event) => {
       const tab = event.target.closest("[data-inv-tab]");
-      if (tab) S.invTab(tab.getAttribute("data-inv-tab"), true);
+      if (tab) { S.invTab(tab.getAttribute("data-inv-tab"), true); return; }
+      const flt = event.target.closest("[data-inv-filter]");
+      if (flt) S.invSetFilter(flt.getAttribute("data-inv-filter"));
     });
     elements.invReload?.addEventListener("click", () => S.abrirInventario());
     elements.invAddProd?.addEventListener("click", () => S.invAddProduct());
@@ -256,6 +258,8 @@
     });
     // Configurar la composición, o reintentar el sync de una publicación en error.
     elements.invListingBody?.addEventListener("click", (event) => {
+      const fam = event.target.closest("[data-fam-expand]");
+      if (fam) { S.invToggleFamilia(fam.getAttribute("data-fam-expand")); return; }
       const exp = event.target.closest("[data-inv-expand]");
       if (exp) { S.invToggleExpand(exp.getAttribute("data-inv-expand")); return; }
       const cfg = event.target.closest("button[data-inv-config]");

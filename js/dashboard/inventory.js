@@ -19,7 +19,9 @@
   var catalogoCargado = false;
   var composeSel = "";    // publicacion en edicion de composicion
   var composeVar = "";    // sabor/variación en edición ("" = composición simple)
-  var invExpanded = {};   // mlbId -> desplegado (mostrar sus variantes) en la lista
+  var invExpanded = {};   // mlbId -> desplegado (variantes NATIVAS de ML de esa publicación)
+  var famExpanded = {};   // baseKey -> desplegado (FAMILIA de publicaciones sueltas por sabor)
+  var listFilter = "all"; // filtro del listado: "all" | "synced" | "unsynced"
   var serverStock = {};   // Fase 4: stock por producto tal como se cargó del servidor
                           // (baseline para el merge 3-way al guardar).
   var currentTab = "productos"; // pestaña activa: "productos" | "publicaciones"
@@ -433,6 +435,102 @@
     }).join("");
   }
 
+  // --- Agrupación por sabor (familias de publicaciones sueltas) ---
+  // Publicaciones SEPARADAS que son el mismo producto en distinto sabor se agrupan
+  // bajo una flecha. La detección es por el SABOR al final del título; la unificación
+  // es SOLO visual: cada sabor mantiene su publicación y su composición explícita
+  // (no se deduce la composición del nombre, únicamente se agrupa la vista).
+  function stripDiacritics(s) {
+    return (s && s.normalize) ? s.normalize("NFD").replace(/[\u0300-\u036f]/g, "") : String(s || "");
+  }
+  function normTok(s) { return stripDiacritics(String(s || "").toLowerCase()).replace(/\s+/g, " ").trim(); }
+  function capitalizar(s) { s = String(s || ""); return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+  // Base "corta"/genérica: no agrupar, para no unir productos distintos por un prefijo pobre.
+  function esBaseCorta(base) { return !base || base.replace(/\s+/g, "").length < 6; }
+
+  // Léxico de sabores (ES + PT). Las frases multi-palabra se prueban primero por
+  // longitud de sufijo. Si un sabor tuyo no aparece acá, esa publicación queda suelta
+  // (no se agrupa mal): se puede sumar el término a esta lista.
+  var SABORES = [
+    "dulce de leche", "doce de leite", "cookies and cream", "cookies & cream", "cookies cream",
+    "frutos rojos", "frutas rojas", "frutos del bosque", "frutas del bosque", "frutos vermelhos",
+    "chocolate blanco", "chocolate branco", "chocolate amargo", "chocolate con leche", "chocolate ao leite",
+    "cafe con leche", "peanut butter", "salted caramel", "leite condensado", "crema de mani",
+    "banana split", "red velvet", "frutilla con crema", "cookies e cream",
+    "vainilla", "baunilha", "vanilla", "chocolate", "frutilla", "morango", "fresa", "strawberry",
+    "cookies", "cookie", "banana", "platano", "coco", "mani", "amendoim", "peanut", "limon", "limao",
+    "naranja", "laranja", "cappuccino", "capuccino", "cafe", "coffee", "menta", "mint", "sandia", "melancia",
+    "durazno", "pessego", "melocoton", "mango", "manga", "pina", "abacaxi", "uva", "cereza", "cereja", "cherry",
+    "avellana", "avela", "almendra", "amendoa", "yogur", "yogurt", "iogurte", "neutro", "natural", "tropical",
+    "brigadeiro", "beijinho", "pacoca", "pacoquinha", "churros", "marshmallow", "caramelo", "caramel", "toffee", "canela",
+    "cinnamon", "cheesecake", "acai", "maracuya", "maracuja", "kiwi", "frambuesa", "framboesa", "arandano",
+    "blueberry", "guarana", "chicle", "bubblegum",
+    // sabores/marcas muy comunes en whey brasileño-uruguayo
+    "ovomaltine", "leite ninho", "ninho", "trufa", "nutella", "sensacao", "prestigio", "ferrero",
+    "chocotine", "baru", "castanha", "pe de moleque", "torta de limao", "flan", "bombom", "bombon",
+    "oreo", "ouro branco", "sonho de valsa", "matcha", "cha verde", "leite em po"
+  ];
+  var SABOR_SET = {};
+  SABORES.forEach(function (s) { SABOR_SET[normTok(s)] = true; });
+
+  // Detecta el sabor al final del título; devuelve la base (para agrupar) y textos
+  // de display con el case original del título.
+  function detectarSabor(titulo) {
+    var original = String(titulo || "").replace(/\s+/g, " ").trim();
+    var toksO = original.split(" ");
+    var toksN = normTok(original).split(" ");
+    for (var n = 3; n >= 1; n--) {
+      var start = toksN.length - n;
+      if (start < 1) continue;                       // debe quedar algo de base
+      if (SABOR_SET[toksN.slice(start).join(" ")]) {
+        return {
+          base: toksN.slice(0, start).join(" ").trim(),
+          baseDisplay: toksO.slice(0, start).join(" ").trim(),
+          sabor: toksN.slice(start).join(" "),
+          saborDisplay: toksO.slice(start).join(" ")
+        };
+      }
+    }
+    return { base: normTok(original), baseDisplay: original, sabor: null, saborDisplay: null };
+  }
+
+  // Palabras que al final de un título NO deben tomarse como "sabor" en el fallback
+  // estructural (tamaños, packs, adjetivos comerciales).
+  var NO_SABOR = {};
+  ("kg gr grs ml lt lts un und uni unid unidad unidades pack kit combo caps softgel softgels tabs " +
+   "tabletas capsulas capsula servicios porciones doses original importado nacional nuevo nueva oferta " +
+   "promo edicion limitada").split(" ").forEach(function (w) { NO_SABOR[w] = true; });
+  function esPalabraSabor(tok) {
+    var n = normTok(tok);
+    return /^[a-z]{3,}$/.test(n) && !NO_SABOR[n];   // palabra alfabética, no tamaño/pack/adjetivo
+  }
+
+  // Descriptor de familia de una publicación (sin variantes nativas). Devuelve
+  // {base, baseDisplay, sabor} o null si no debe agruparse.
+  //  - Nivel 1 (léxico): sabor reconocido al final del título.
+  //  - Nivel 2 (estructural): mismo título salvo el ÚLTIMO token, y ese token es una
+  //    PALABRA (no tamaño/pack). Exige base larga (4+ tokens, base >=6) para no unir
+  //    productos distintos de nombre corto. Cubre sabores que no están en el léxico
+  //    ("que no quede ninguna variante suelta") sin arriesgar mezclar productos.
+  function descriptorFamilia(info, titulo) {
+    if (info && info.sabor && !esBaseCorta(info.base)) {
+      return { base: info.base, baseDisplay: info.baseDisplay, sabor: info.saborDisplay };
+    }
+    var original = String(titulo || "").replace(/\s+/g, " ").trim();
+    var toksO = original.split(" ");
+    if (toksO.length >= 4 && esPalabraSabor(toksO[toksO.length - 1])) {
+      var baseDisp = toksO.slice(0, toksO.length - 1).join(" ").trim();
+      var baseNorm = normTok(baseDisp);
+      if (!esBaseCorta(baseNorm)) {
+        return { base: baseNorm, baseDisplay: baseDisp, sabor: toksO[toksO.length - 1] };
+      }
+    }
+    return null;
+  }
+
+  // Una publicación está "sincronizada" cuando su último push a ML fue OK.
+  function esSincronizada(mlbId) { return (inv.listingState[mlbId] || {}).status === "synced"; }
+
   function renderListings() {
     if (!elements.invListingBody) return;
     // Mostrar: las que ya tienen composicion + (si se cargo el catalogo) todas las
@@ -450,72 +548,217 @@
       var actual = activeML();
       mlbIds = mlbIds.filter(function (m) { return (cuentaDeListing(m) || cuentas[0]) === actual; });
     }
-    elements.invListingEmpty?.classList.toggle("is-visible", !mlbIds.length);
-    var html = "";
-    mlbIds.forEach(function (mlbId) {
-      var st = inv.listingState[mlbId] || {};
-      var cat = catalogo[mlbId] || {};
-      var vars = variacionesDe(mlbId);
-      // "Stock ML" = lo que hay AHORA en Mercado Libre (o el de la última carga).
-      var stockML = st.published != null ? st.published : (cat.stock != null ? cat.stock : null);
-      var foto = cat.thumbnail
-        ? "<img class='order-thumb' src='" + escapeHtml(cat.thumbnail) + "' alt='' loading='lazy' onerror=\"this.style.display='none'\" />"
-        : "<span class='order-thumb order-thumb-empty' aria-hidden='true'></span>";
-      // La cuenta ya la indica el selector de arriba; no repetimos badge por fila.
-      var accBadge = "";
 
-      if (vars.length) {
-        // Publicación CON sabores/variaciones: fila padre expandible.
-        var exp = !!invExpanded[mlbId];
-        var computed = computeListing(mlbId);
-        var arrow = "<button class='inv-expand' type='button' data-inv-expand='" + escapeHtml(mlbId) + "' aria-expanded='" + exp + "' aria-label='Ver variantes'>" +
-          "<svg viewBox='0 0 24 24' width='13' height='13' fill='none' stroke='currentColor' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M9 6l6 6-6 6'/></svg></button>";
-        html += "<tr class='inv-parent" + (exp ? " is-open" : "") + "'>" +
-          "<td class='order-product'><div class='order-product-cell'>" + arrow + foto +
-            "<div class='order-product-info'><b>" + escapeHtml(tituloListing(mlbId)) + "</b>" +
-            "<small class='order-stock'>" + escapeHtml(mlbId) + accBadge + "</small></div></div></td>" +
-          "<td><span class='pub-quiet'>" + vars.length + " variantes</span></td>" +
-          "<td class='num'>" + (computed == null ? "—" : integerNumber.format(computed)) + "</td>" +
-          "<td class='num'>" + (stockML != null ? integerNumber.format(stockML) : "—") + "</td>" +
-          "<td>" + estadoPill(st.status, resumenComposicion(mlbId), st.error) + "</td>" +
-          "<td></td>" +
-        "</tr>";
-        if (exp) {
-          vars.forEach(function (v) {
-            var propia = inv.compositions[compKey(mlbId, v.id)];
-            var resumenV = (propia && propia.length) ? compArrTexto(propia) : "";
-            var compV = computeVariation(mlbId, v.id);
-            html += "<tr class='inv-var-row'>" +
-              "<td class='order-product'><div class='order-product-cell inv-var-cell'><span class='inv-var-dot' aria-hidden='true'></span>" +
-                "<div class='order-product-info'><b>" + escapeHtml(v.label) + "</b>" +
-                (v.stock != null ? "<small class='order-stock'>Stock ML: " + integerNumber.format(v.stock) + "</small>" : "") + "</div></div></td>" +
-              "<td>" + (resumenV ? escapeHtml(resumenV) : "<span class='pub-quiet'>Sin configurar</span>") + "</td>" +
-              "<td class='num'>" + (compV == null ? "—" : integerNumber.format(compV)) + "</td>" +
-              "<td class='num'>—</td>" +
-              "<td></td>" +
-              "<td><button class='table-action' type='button' data-inv-config='" + escapeHtml(mlbId) + "' data-inv-var='" + escapeHtml(String(v.id)) + "'>Configurar</button></td>" +
-            "</tr>";
-          });
-        }
-      } else {
-        // Publicación SIN variantes: fila simple.
-        var computed2 = computeListing(mlbId);
-        var resumen = resumenComposicion(mlbId);
-        html += "<tr>" +
-          "<td class='order-product'><div class='order-product-cell'><span class='inv-expand-spacer' aria-hidden='true'></span>" + foto +
-            "<div class='order-product-info'><b>" + escapeHtml(tituloListing(mlbId)) + "</b>" +
-            "<small class='order-stock'>" + escapeHtml(mlbId) + accBadge + "</small></div></div></td>" +
-          "<td>" + (resumen ? escapeHtml(resumen) : "<span class='pub-quiet'>Sin configurar</span>") + "</td>" +
-          "<td class='num'>" + (computed2 == null ? "—" : integerNumber.format(computed2)) + "</td>" +
-          "<td class='num'>" + (stockML != null ? integerNumber.format(stockML) : "—") + "</td>" +
-          "<td>" + estadoPill(st.status, resumen, st.error) + "</td>" +
-          "<td>" + (st.status === "error"
-            ? "<button class='table-action' type='button' data-inv-retry='" + escapeHtml(mlbId) + "'>Reintentar</button>"
-            : "<button class='table-action' type='button' data-inv-config='" + escapeHtml(mlbId) + "'>Configurar</button>") + "</td>" +
-        "</tr>";
-      }
+    // Conteo por estado (a nivel publicación) para los botones del filtro.
+    var syncedCount = 0;
+    mlbIds.forEach(function (m) { if (esSincronizada(m)) syncedCount++; });
+    actualizarFiltroUI(mlbIds.length, syncedCount, mlbIds.length - syncedCount);
+
+    // Aplicar el filtro activo (sincronizadas / sin sincronizar).
+    var visSet = {};
+    mlbIds.forEach(function (m) {
+      var ok = listFilter === "synced" ? esSincronizada(m)
+             : listFilter === "unsynced" ? !esSincronizada(m) : true;
+      if (ok) visSet[m] = true;
     });
+
+    // Descriptor de familia por publicación (sin variantes NATIVAS de ML), una vez.
+    // descDe[m] = {base, baseDisplay, sabor} o ausente si esa publicación no agrupa.
+    var descDe = {};
+    mlbIds.forEach(function (m) {
+      if (variacionesDe(m).length) return;
+      var d = descriptorFamilia(detectarSabor(tituloListing(m)), tituloListing(m));
+      if (d) descDe[m] = d;
+    });
+
+    // Agrupar en FAMILIAS: publicaciones separadas que son el mismo producto en
+    // distinto sabor (mismo "base" del título tras quitarle el sabor). El total
+    // de la familia se calcula sobre TODAS (ignorando el filtro), así una familia
+    // con un solo sabor visible se sigue mostrando agrupada.
+    var famTot = {};   // base -> [mlbId...]  (todas)
+    mlbIds.forEach(function (m) {
+      if (!descDe[m]) return;
+      (famTot[descDe[m].base] = famTot[descDe[m].base] || []).push(m);
+    });
+    var famBaseDe = {};   // mlbId -> base (solo familias de 2+)
+    Object.keys(famTot).forEach(function (base) {
+      if (famTot[base].length >= 2) famTot[base].forEach(function (m) { famBaseDe[m] = base; });
+    });
+
+    var html = "";
+    var famDone = {};
+    mlbIds.forEach(function (mlbId) {
+      if (!visSet[mlbId]) return;                    // respeta el filtro activo
+      var base = famBaseDe[mlbId];
+      if (base) {                                    // pertenece a una familia
+        if (famDone[base]) return;
+        famDone[base] = true;
+        // Miembros de la familia VISIBLES (según el filtro), en el orden del catálogo.
+        var visibles = famTot[base].filter(function (m) { return visSet[m]; });
+        html += renderFamilia(base, visibles, famTot[base], descDe);
+        return;
+      }
+      if (variacionesDe(mlbId).length) html += renderVariantParent(mlbId);
+      else html += renderSimpleRow(mlbId, null);
+    });
+
+    // Estado vacío / mensajes según el filtro.
+    if (html) {
+      elements.invListingEmpty?.classList.toggle("is-visible", false);
+    } else if (listFilter === "synced") {
+      elements.invListingEmpty?.classList.toggle("is-visible", false);
+      html = filaMensaje("Todavía no hay publicaciones sincronizadas.");
+    } else if (listFilter === "unsynced") {
+      elements.invListingEmpty?.classList.toggle("is-visible", false);
+      html = filaMensaje("Todo sincronizado: no hay publicaciones pendientes.");
+    } else {
+      elements.invListingEmpty?.classList.toggle("is-visible", true);
+    }
     elements.invListingBody.innerHTML = html;
+  }
+
+  function filaMensaje(txt) {
+    return "<tr class='inv-filter-empty-row'><td colspan='6'>" + escapeHtml(txt) + "</td></tr>";
+  }
+
+  function fotoDe(mlbId) {
+    var cat = catalogo[mlbId] || {};
+    return cat.thumbnail
+      ? "<img class='order-thumb' src='" + escapeHtml(cat.thumbnail) + "' alt='' loading='lazy' onerror=\"this.style.display='none'\" />"
+      : "<span class='order-thumb order-thumb-empty' aria-hidden='true'></span>";
+  }
+
+  // Fila de una publicación NATIVA con variantes de ML (una sola MLB, varios sabores
+  // internos). Padre expandible + fila por variante (config por sabor).
+  function renderVariantParent(mlbId) {
+    var st = inv.listingState[mlbId] || {};
+    var vars = variacionesDe(mlbId);
+    var stockML = st.published != null ? st.published : ((catalogo[mlbId] || {}).stock != null ? catalogo[mlbId].stock : null);
+    var exp = !!invExpanded[mlbId];
+    var computed = computeListing(mlbId);
+    var arrow = "<button class='inv-expand' type='button' data-inv-expand='" + escapeHtml(mlbId) + "' aria-expanded='" + exp + "' aria-label='Ver variantes'>" +
+      "<svg viewBox='0 0 24 24' width='13' height='13' fill='none' stroke='currentColor' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M9 6l6 6-6 6'/></svg></button>";
+    var out = "<tr class='inv-parent" + (exp ? " is-open" : "") + "'>" +
+      "<td class='order-product'><div class='order-product-cell'>" + arrow + fotoDe(mlbId) +
+        "<div class='order-product-info'><b>" + escapeHtml(tituloListing(mlbId)) + "</b>" +
+        "<small class='order-stock'>" + escapeHtml(mlbId) + "</small></div></div></td>" +
+      "<td><span class='pub-quiet'>" + vars.length + " variantes</span></td>" +
+      "<td class='num'>" + (computed == null ? "—" : integerNumber.format(computed)) + "</td>" +
+      "<td class='num'>" + (stockML != null ? integerNumber.format(stockML) : "—") + "</td>" +
+      "<td>" + estadoPill(st.status, resumenComposicion(mlbId), st.error) + "</td>" +
+      "<td></td>" +
+    "</tr>";
+    if (exp) {
+      vars.forEach(function (v) {
+        var propia = inv.compositions[compKey(mlbId, v.id)];
+        var resumenV = (propia && propia.length) ? compArrTexto(propia) : "";
+        var compV = computeVariation(mlbId, v.id);
+        out += "<tr class='inv-var-row'>" +
+          "<td class='order-product'><div class='order-product-cell inv-var-cell'><span class='inv-var-dot' aria-hidden='true'></span>" +
+            "<div class='order-product-info'><b>" + escapeHtml(v.label) + "</b>" +
+            (v.stock != null ? "<small class='order-stock'>Stock ML: " + integerNumber.format(v.stock) + "</small>" : "") + "</div></div></td>" +
+          "<td>" + (resumenV ? escapeHtml(resumenV) : "<span class='pub-quiet'>Sin configurar</span>") + "</td>" +
+          "<td class='num'>" + (compV == null ? "—" : integerNumber.format(compV)) + "</td>" +
+          "<td class='num'>—</td>" +
+          "<td></td>" +
+          "<td><button class='table-action' type='button' data-inv-config='" + escapeHtml(mlbId) + "' data-inv-var='" + escapeHtml(String(v.id)) + "'>Configurar</button></td>" +
+        "</tr>";
+      });
+    }
+    return out;
+  }
+
+  // Fila simple. Si `child` viene, se renderiza como hijo de una familia (indentada,
+  // con el sabor como título). Cada sabor conserva su MLB, su stock y su composición.
+  function renderSimpleRow(mlbId, child) {
+    var st = inv.listingState[mlbId] || {};
+    var cat = catalogo[mlbId] || {};
+    var stockML = st.published != null ? st.published : (cat.stock != null ? cat.stock : null);
+    var computed = computeListing(mlbId);
+    var resumen = resumenComposicion(mlbId);
+    var rowClass, prodCell;
+    if (child) {
+      rowClass = " class='inv-var-row'";
+      prodCell = "<td class='order-product'><div class='order-product-cell inv-var-cell'><span class='inv-var-dot' aria-hidden='true'></span>" + fotoDe(mlbId) +
+        "<div class='order-product-info'><b>" + escapeHtml(capitalizar(child.sabor) || "Variante") + "</b>" +
+        "<small class='order-stock'>" + escapeHtml(mlbId) + "</small></div></div></td>";
+    } else {
+      rowClass = "";
+      prodCell = "<td class='order-product'><div class='order-product-cell'><span class='inv-expand-spacer' aria-hidden='true'></span>" + fotoDe(mlbId) +
+        "<div class='order-product-info'><b>" + escapeHtml(tituloListing(mlbId)) + "</b>" +
+        "<small class='order-stock'>" + escapeHtml(mlbId) + "</small></div></div></td>";
+    }
+    return "<tr" + rowClass + ">" + prodCell +
+      "<td>" + (resumen ? escapeHtml(resumen) : "<span class='pub-quiet'>Sin configurar</span>") + "</td>" +
+      "<td class='num'>" + (computed == null ? "—" : integerNumber.format(computed)) + "</td>" +
+      "<td class='num'>" + (stockML != null ? integerNumber.format(stockML) : "—") + "</td>" +
+      "<td>" + estadoPill(st.status, resumen, st.error) + "</td>" +
+      "<td>" + (st.status === "error"
+        ? "<button class='table-action' type='button' data-inv-retry='" + escapeHtml(mlbId) + "'>Reintentar</button>"
+        : "<button class='table-action' type='button' data-inv-config='" + escapeHtml(mlbId) + "'>Configurar</button>") + "</td>" +
+    "</tr>";
+  }
+
+  // Fila FAMILIA: agrupa varias publicaciones sueltas (mismo producto, distinto
+  // sabor). Padre expandible con agregados sobre TODOS los sabores + fila por sabor.
+  function renderFamilia(base, visibles, todosIds, descDe) {
+    var enc = encodeURIComponent(base);
+    // Tri-estado: por defecto se abre sola bajo filtro, pero si el usuario tocó la
+    // flecha, su elección manda (así puede plegarla sin volver a "Todas").
+    var exp = famExpanded.hasOwnProperty(base) ? !!famExpanded[base] : (listFilter !== "all");
+    var nombre = (descDe[todosIds[0]] && descDe[todosIds[0]].baseDisplay) || base;
+
+    var sumComp = 0, hayComp = false, sumStock = 0, hayStock = false;
+    var anyConf = false, anyErr = false, allSynced = true;
+    todosIds.forEach(function (id) {
+      var c = computeListing(id);
+      if (c != null) { sumComp += c; hayComp = true; }
+      var st = inv.listingState[id] || {};
+      if (resumenComposicion(id)) anyConf = true;
+      if (st.status === "error") anyErr = true;
+      if (st.status !== "synced") allSynced = false;
+      var sm = st.published != null ? st.published : ((catalogo[id] || {}).stock);
+      if (sm != null) { sumStock += Number(sm) || 0; hayStock = true; }
+    });
+    var estado = !anyConf ? '<span class="type-pill">—</span>'
+      : anyErr ? '<span class="type-pill expense">Error</span>'
+      : allSynced ? '<span class="type-pill income">Sincronizado</span>'
+      : '<span class="type-pill pub-warn">Pendiente</span>';
+
+    var subtitulo = listFilter === "all"
+      ? (todosIds.length + " sabores")
+      : (visibles.length + " de " + todosIds.length + " sabores");
+
+    var arrow = "<button class='inv-expand' type='button' data-fam-expand='" + escapeHtml(enc) + "' aria-expanded='" + exp + "' aria-label='Ver sabores'>" +
+      "<svg viewBox='0 0 24 24' width='13' height='13' fill='none' stroke='currentColor' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M9 6l6 6-6 6'/></svg></button>";
+
+    var out = "<tr class='inv-parent inv-family" + (exp ? " is-open" : "") + "'>" +
+      "<td class='order-product'><div class='order-product-cell'>" + arrow + fotoDe(todosIds[0]) +
+        "<div class='order-product-info'><b>" + escapeHtml(nombre) + "</b>" +
+        "<small class='order-stock'>" + escapeHtml(subtitulo) + "</small></div></div></td>" +
+      "<td><span class='pub-quiet'>Producto en " + todosIds.length + " sabores</span></td>" +
+      "<td class='num'>" + (hayComp ? integerNumber.format(sumComp) : "—") + "</td>" +
+      "<td class='num'>" + (hayStock ? integerNumber.format(sumStock) : "—") + "</td>" +
+      "<td>" + estado + "</td>" +
+      "<td></td>" +
+    "</tr>";
+    if (exp) {
+      visibles.forEach(function (id) {
+        out += renderSimpleRow(id, { sabor: (descDe[id] && descDe[id].sabor) || "Variante" });
+      });
+    }
+    return out;
+  }
+
+  // Refleja el filtro activo y los contadores en la barra de filtros.
+  function actualizarFiltroUI(tot, synced, unsynced) {
+    var bar = document.getElementById("invListingFilter");
+    if (!bar) return;
+    bar.querySelectorAll("[data-inv-filter]").forEach(function (b) {
+      b.classList.toggle("is-active", b.getAttribute("data-inv-filter") === listFilter);
+    });
+    var setC = function (k, v) { var el = bar.querySelector('[data-count="' + k + '"]'); if (el) el.textContent = v; };
+    setC("all", tot); setC("synced", synced); setC("unsynced", unsynced);
   }
   function estadoPill(status, tieneComp, error) {
     if (!tieneComp) return '<span class="type-pill">—</span>';
@@ -682,6 +925,20 @@
   function invConfigurar(mlbId, varId) { composeSel = mlbId; composeVar = varId || ""; renderCompose(); elements.invCompose?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
   function invComposeCancelar() { composeSel = ""; composeVar = ""; renderCompose(); }
   function invToggleExpand(mlbId) { invExpanded[mlbId] = !invExpanded[mlbId]; renderListings(); }
+  // Familia (publicaciones sueltas del mismo producto por sabor): desplegar/plegar.
+  function invToggleFamilia(enc) {
+    var base; try { base = decodeURIComponent(enc); } catch (e) { base = enc; }
+    // Invierte el estado EFECTIVO actual (respeta el auto-abierto bajo filtro), así
+    // el primer clic siempre hace lo contrario de lo que se ve.
+    var cur = famExpanded.hasOwnProperty(base) ? !!famExpanded[base] : (listFilter !== "all");
+    famExpanded[base] = !cur;
+    renderListings();
+  }
+  // Filtro del listado: "all" | "synced" | "unsynced".
+  function invSetFilter(f) {
+    listFilter = (f === "synced" || f === "unsynced") ? f : "all";
+    renderListings();
+  }
   // Agrega un componente al bloque de un sabor (varId "" = composición simple).
   function invComposeAddComponent(varId) {
     if (!composeSel) return;
@@ -755,6 +1012,7 @@
     invAddProduct, invGuardarProductos, invDeleteProduct,
     invCargarPublicaciones, invResyncAll, invReintentarUno,
     invConfigurar, invComposeCancelar, invComposeAddComponent, invComposeQuitar, invComposeGuardar, invToggleExpand,
+    invToggleFamilia, invSetFilter,
     invRefiltrarPorCuenta
   });
 })();

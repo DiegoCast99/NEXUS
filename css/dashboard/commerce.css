@@ -1257,6 +1257,37 @@
 .inv-var-row .inv-var-cell { padding-left: 34px; }
 .inv-var-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(245, 98, 58, 0.65); flex: none; margin-right: 6px; }
 
+/* Familia: agrupa publicaciones sueltas del mismo producto por sabor */
+.inv-family .inv-family-ico { margin-right: 0; }
+.inv-family > td { background: rgba(245, 98, 58, 0.05); }
+
+/* Filtro rápido del listado (sincronizadas / sin sincronizar) */
+.inv-filter {
+  display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 14px;
+}
+.inv-filter-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 13px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--panel);
+  color: var(--muted); font-size: 12.5px; font-weight: 600; font-family: inherit;
+  cursor: pointer; transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.inv-filter-btn:hover { color: var(--text); border-color: rgba(245, 98, 58, 0.45); }
+.inv-filter-btn.is-active {
+  color: #fff; border-color: var(--accent);
+  background: rgba(245, 98, 58, 0.16);
+}
+.inv-filter-count {
+  min-width: 20px; padding: 1px 7px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07); color: inherit;
+  font-size: 11.5px; font-weight: 700; text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.inv-filter-btn.is-active .inv-filter-count { background: rgba(245, 98, 58, 0.35); }
+.inv-filter-empty-row td {
+  text-align: center; color: var(--muted); padding: 26px 12px; font-size: 13px;
+}
+
 /* Inputs inline dentro de la tabla de productos */
 .inv-in {
   width: 100%;
