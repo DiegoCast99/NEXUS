@@ -1250,6 +1250,7 @@
     txtVenta(elements.ventaFecha, "");
     if (elements.ventaFoto) { elements.ventaFoto.removeAttribute("src"); elements.ventaFoto.style.display = "none"; }
     txtVenta(elements.ventaProductoTitulo, "");
+    if (elements.ventaProductoExtra) elements.ventaProductoExtra.innerHTML = "";
     if (elements.ventaEnvioDatos) elements.ventaEnvioDatos.textContent = "";
     elements.ventaLista?.classList.add("is-hidden");
     elements.ventaDetail.classList.remove("is-hidden");
@@ -1339,6 +1340,18 @@
     txtVenta(elements.ventaVariacion, o.variation || "");
     if (elements.ventaVariacion) elements.ventaVariacion.style.display = o.variation ? "" : "none";
     txtVenta(elements.ventaUnidades, (o.units || 1) + ((o.units || 1) === 1 ? " unidad" : " unidades"));
+    // Detalles extra bajo el título (llenan el card junto a la foto grande).
+    if (elements.ventaProductoExtra) {
+      var precioU = moneyWithCents.format(o.unitPrice || (o.units ? (o.total || 0) / o.units : o.total || 0));
+      var estadoTxt = o.refunded ? "Devuelta" : (o.credited ? "Cobro aprobado" : (o.status || "—"));
+      var lineas = [
+        "<span>Precio unitario <b>" + precioU + "</b></span>",
+        "<span>Importe del producto <b>" + moneyWithCents.format(o.total || 0) + "</b></span>",
+        "<span>Estado <b>" + escapeHtml(estadoTxt) + "</b></span>"
+      ];
+      if (o.itemId) lineas.push("<span>Publicación <b>" + escapeHtml(o.itemId) + "</b></span>");
+      elements.ventaProductoExtra.innerHTML = lineas.join("");
+    }
 
     // Derecha: desglose (a cuanto vendiste, cargos, lucro liquido)
     var estado = o.refunded ? "Cobro devuelto"
@@ -2891,25 +2904,49 @@
   // aggregation_type=DAILY (endpoint por campaña), así el detalle muestra solo sus
   // datos (no el agregado). Best-effort: si el endpoint falla o no trae días,
   // devuelve [] y el llamador cae al filtro de la serie agregada.
+  // Extrae el array de "días" (o campañas con .metrics) de las varias formas posibles
+  // de la respuesta DAILY, para pasarlo a adsSerieDiaria.
+  function adsExtraerDias(p) {
+    if (!p) return [];
+    if (Array.isArray(p)) return p;
+    if (Array.isArray(p.metrics)) return p.metrics;
+    if (Array.isArray(p.results)) return p.results;
+    if (Array.isArray(p.daily)) return p.daily;
+    if (Array.isArray(p.series)) return p.series;
+    if (p.metrics && Array.isArray(p.metrics.results)) return p.metrics.results;
+    return [];
+  }
   async function cargarAdsGraficoCampaign(cuenta, campaignId) {
     var cache = adsDatos(cuenta);
     if (!cache.advertiserId || !campaignId) return [];
-    try {
-      var api = S.requireSecureApi();
-      var METRICS = "units_quantity,organic_units_quantity,cost,total_amount,roas,direct_items_quantity,indirect_items_quantity";
-      var url = adsMktBase(cache) + "/campaigns/" + encodeURIComponent(campaignId) +
-        "?date_from=" + adsDesdeISO(29) + "&date_to=" + hoyISO() +
-        "&metrics=" + METRICS + "&aggregation_type=DAILY";
-      var res = await api.mlApi(url, "GET", null, cuenta);
-      var p = res.payload || {};
-      // La respuesta puede venir como {metrics:[días]}, {results:[días]}, o un array.
-      var dias = Array.isArray(p) ? p
-        : Array.isArray(p.metrics) ? p.metrics
-        : Array.isArray(p.results) ? p.results
-        : (p.metrics && Array.isArray(p.metrics.results)) ? p.metrics.results
-        : [];
-      return adsSerieDiaria(dias);   // suma por fecha -> serie de ESTA campaña
-    } catch (e) { return []; }
+    var api; try { api = S.requireSecureApi(); } catch (e) { return []; }
+    var METRICS = "units_quantity,organic_units_quantity,cost,total_amount,roas,direct_items_quantity,indirect_items_quantity";
+    var q = "date_from=" + adsDesdeISO(29) + "&date_to=" + hoyISO() + "&metrics=" + METRICS + "&aggregation_type=DAILY";
+    var id = encodeURIComponent(campaignId);
+    // 1) Path-scoped (inequívoco: SOLO esta campaña). ML no publica el endpoint de
+    //    daily por campaña; probamos las dos bases.
+    var scoped = [adsMktBase(cache) + "/campaigns/" + id + "?" + q, adsAdvBase(cache) + "/campaigns/" + id + "?" + q];
+    for (var i = 0; i < scoped.length; i++) {
+      try {
+        var r = await api.mlApi(scoped[i], "GET", null, cuenta);
+        var s = adsSerieDiaria(adsExtraerDias(r && r.payload));
+        if (s.length) return s;
+      } catch (e) { /* siguiente variante */ }
+    }
+    // 2) Búsqueda filtrada por campaña (por si el path-scoped no diera daily). Solo
+    //    con UNA campaña: ahí el filtro no puede confundirse con el agregado.
+    if ((cache.campaigns || []).length <= 1) {
+      var filt = [adsMktBase(cache) + "/campaigns/search?" + q + "&campaign_id=" + id,
+                  adsMktBase(cache) + "/campaigns/search?" + q + "&campaigns_ids=" + id];
+      for (var j = 0; j < filt.length; j++) {
+        try {
+          var r2 = await api.mlApi(filt[j], "GET", null, cuenta);
+          var s2 = adsSerieDiaria(adsExtraerDias(r2 && r2.payload));
+          if (s2.length) return s2;
+        } catch (e2) { /* siguiente variante */ }
+      }
+    }
+    return [];
   }
 
   // Barra con esquinas superiores redondeadas (para las barras de la gráfica de ads).
@@ -2925,10 +2962,10 @@
     ctx.closePath();
   }
 
-  // Gráfica de Publicidad (barras ventas atribuidas+otras + línea ROAS). Diseño
-  // moderno: nítida en retina (DPR), barras con gradiente/glow/esquinas redondeadas
-  // y línea ROAS aqua con área y glow. Sirve para el agregado y el detalle de una
-  // campaña (mismo canvas/estilo, distinta serie).
+  // Gráfica de Publicidad (barras ventas atribuidas+otras + línea ROAS). Estilo
+  // dashboard de ads: nítida en retina (DPR), línea ROAS ROSA NEÓN protagonista con
+  // área degradada grande + glow, y barras índigo frías discretas. Paleta propia
+  // (no la naranja de la marca). Sirve para el agregado y el detalle de una campaña.
   function drawAdsChart(serie, canvas, key) {
     canvas = canvas || elements.adsChart;
     key = key || "adschart";
@@ -2967,7 +3004,10 @@
         };
       }));
     }
-    var ROAS = "#33e1cf";   // aqua/cyan: contrasta con el naranja, look futurista
+    // Paleta neón (estilo dashboards de ads): línea ROAS rosa protagonista + barras
+    // frías (índigo) discretas. NO usa el naranja de la marca a propósito.
+    var ROAS = "#ff3d9a";                 // rosa neón (protagonista)
+    var ROAS_GLOW = "rgba(255,61,154,0.60)";
     var rTop = Math.min(4, barW / 2);
 
     function paint(p) {
@@ -2978,7 +3018,7 @@
         var gy = padT + (plotH / 4) * g;
         ctx.beginPath(); ctx.moveTo(padL, gy); ctx.lineTo(W - padR, gy); ctx.stroke();
       }
-      // Barras: atribuidas (naranja marca, con glow) + otras (durazno claro) arriba.
+      // Barras: atribuidas (índigo, con glow suave) + otras (índigo claro) arriba.
       serie.forEach(function (d, i) {
         var x = padL + i * slot + (slot - barW) / 2;
         var hAtr = ((d.atribuidas || 0) / maxU) * plotH * p;
@@ -2986,27 +3026,29 @@
         if (hOtr > 0.5) {
           var yO = baseY - hAtr - hOtr;
           var gO = ctx.createLinearGradient(0, yO, 0, baseY - hAtr);
-          gO.addColorStop(0, "rgba(255,196,150,0.85)"); gO.addColorStop(1, "rgba(255,176,130,0.14)");
+          gO.addColorStop(0, "rgba(170,188,255,0.68)"); gO.addColorStop(1, "rgba(150,170,255,0.10)");
           ctx.fillStyle = gO; adsBarraTop(ctx, x, yO, barW, hOtr, Math.min(rTop, hOtr)); ctx.fill();
         }
         if (hAtr > 0.5) {
           var yA = baseY - hAtr;
           var gA = ctx.createLinearGradient(0, yA, 0, baseY);
-          gA.addColorStop(0, "rgba(255,138,76,0.98)"); gA.addColorStop(1, "rgba(255,106,61,0.10)");
+          gA.addColorStop(0, "rgba(124,148,255,0.90)"); gA.addColorStop(1, "rgba(110,130,255,0.06)");
           ctx.save();
-          ctx.shadowColor = "rgba(255,106,61,0.45)"; ctx.shadowBlur = p >= 1 ? 10 : 0;
+          ctx.shadowColor = "rgba(120,140,255,0.40)"; ctx.shadowBlur = p >= 1 ? 8 : 0;
           ctx.fillStyle = gA; adsBarraTop(ctx, x, yA, barW, hAtr, hOtr > 0.5 ? 0 : rTop); ctx.fill();
           ctx.restore();
         }
       });
-      // Línea ROAS: área + línea con glow + puntos.
+      // Línea ROAS: ÁREA grande degradada + línea gruesa con glow + puntos (protagonista).
       var pts = serie.map(function (d, i) {
         return { x: padL + i * slot + slot / 2, fy: baseY - ((d.roas || 0) / maxR) * plotH };
       });
       var yAt = function (pt) { return baseY - (baseY - pt.fy) * p; };
       if (pts.length > 1) {
         var area = ctx.createLinearGradient(0, padT, 0, baseY);
-        area.addColorStop(0, "rgba(51,225,207,0.22)"); area.addColorStop(1, "rgba(51,225,207,0)");
+        area.addColorStop(0, "rgba(255,61,154,0.34)");
+        area.addColorStop(0.55, "rgba(255,61,154,0.12)");
+        area.addColorStop(1, "rgba(255,61,154,0)");
         ctx.beginPath(); ctx.moveTo(pts[0].x, baseY);
         pts.forEach(function (pt) { ctx.lineTo(pt.x, yAt(pt)); });
         ctx.lineTo(pts[pts.length - 1].x, baseY); ctx.closePath();
@@ -3014,14 +3056,16 @@
       }
       ctx.beginPath();
       pts.forEach(function (pt, i) { var y = yAt(pt); if (i === 0) ctx.moveTo(pt.x, y); else ctx.lineTo(pt.x, y); });
-      ctx.strokeStyle = ROAS; ctx.lineWidth = 2.4; ctx.lineJoin = "round"; ctx.lineCap = "round";
-      ctx.shadowColor = "rgba(51,225,207,0.55)"; ctx.shadowBlur = p >= 1 ? 12 : 0;
+      ctx.strokeStyle = ROAS; ctx.lineWidth = 2.8; ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.shadowColor = ROAS_GLOW; ctx.shadowBlur = p >= 1 ? 16 : 6;
       ctx.stroke(); ctx.shadowBlur = 0;
-      if (p >= 0.98) {
-        pts.forEach(function (pt) {
-          var y = yAt(pt);
-          ctx.beginPath(); ctx.arc(pt.x, y, 3.2, 0, Math.PI * 2); ctx.fillStyle = "#0d0d0f"; ctx.fill();
-          ctx.beginPath(); ctx.arc(pt.x, y, 2.3, 0, Math.PI * 2); ctx.fillStyle = ROAS; ctx.fill();
+      if (p >= 0.98 && pts.length) {
+        pts.forEach(function (pt, i) {
+          var y = yAt(pt), ultimo = i === pts.length - 1;
+          if (ultimo) { ctx.save(); ctx.shadowColor = ROAS_GLOW; ctx.shadowBlur = 14; }
+          ctx.beginPath(); ctx.arc(pt.x, y, ultimo ? 4.6 : 3.2, 0, Math.PI * 2); ctx.fillStyle = "#0d0d0f"; ctx.fill();
+          ctx.beginPath(); ctx.arc(pt.x, y, ultimo ? 3.4 : 2.3, 0, Math.PI * 2); ctx.fillStyle = ROAS; ctx.fill();
+          if (ultimo) ctx.restore();
         });
       }
     }
@@ -3192,11 +3236,14 @@
   async function dibujarAdsDetailChart(campaignId) {
     if (!elements.adsDetailChart) return;
     var cuenta = activeMLId();
+    var cache = adsDatos(cuenta);
     if (elements.adsDetailChartMsg) elements.adsDetailChartMsg.textContent = "Cargando datos de la campaña…";
     var serie = await cargarAdsGraficoCampaign(cuenta, campaignId);
-    if (!serie || !serie.length) {
-      var cache = adsDatos(cuenta);
-      serie = serieDeCampaign(cache && cache.serieRaw, campaignId);
+    // Fallback 1: filtrar la serie agregada si trajera ids por campaña.
+    if (!serie || !serie.length) serie = serieDeCampaign(cache && cache.serieRaw, campaignId);
+    // Fallback 2: si hay UNA sola campaña, la serie agregada ES la de esta campaña.
+    if ((!serie || !serie.length) && (cache.campaigns || []).length <= 1 && cache.serie && cache.serie.length) {
+      serie = cache.serie;
     }
     // El titular pudo cambiar de campaña / cerrar el detalle mientras cargaba.
     if (!adsCampActual || String(adsCampActual.id) !== String(campaignId)) return;

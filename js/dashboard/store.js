@@ -613,6 +613,7 @@
     ventaProductoTitulo: document.getElementById("ventaProductoTitulo"),
     ventaVariacion: document.getElementById("ventaVariacion"),
     ventaUnidades: document.getElementById("ventaUnidades"),
+    ventaProductoExtra: document.getElementById("ventaProductoExtra"),
     ventaCobroEstado: document.getElementById("ventaCobroEstado"),
     ventaPagoId: document.getElementById("ventaPagoId"),
     ventaPrecio: document.getElementById("ventaPrecio"),

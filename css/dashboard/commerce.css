@@ -968,34 +968,41 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
   gap: 16px;
-  align-items: start;
+  align-items: stretch;   /* el card de producto se estira a la altura del desglose */
   margin-bottom: 18px;
 }
 @media (max-width: 720px) {
   .venta-detail-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* Card de producto: foto GRANDE arriba (rellena el alto) + detalles abajo */
 .venta-producto-card {
   display: flex;
-  gap: 16px;
+  flex-direction: column;
+  gap: 14px;
   padding: 16px;
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--panel);
 }
 .venta-foto-wrap {
-  flex: 0 0 auto;
-  width: 84px;
-  height: 84px;
-  border-radius: 12px;
+  width: 100%;
+  flex: 1 1 auto;          /* la foto crece y ocupa el espacio libre del card */
+  min-height: 160px;
+  border-radius: 14px;
   overflow: hidden;
-  background: var(--panel-soft);
+  background:
+    radial-gradient(120% 120% at 50% 0%, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0) 60%),
+    var(--panel-soft);
   display: grid;
   place-items: center;
 }
-.venta-foto { width: 84px; height: 84px; object-fit: cover; }
-.venta-producto-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.venta-producto-info b { color: var(--text); font-size: 14.5px; line-height: 1.35; }
+.venta-foto { width: 100%; height: 100%; object-fit: contain; padding: 12px; }
+.venta-producto-info { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.venta-producto-info b { color: var(--text); font-size: 16px; line-height: 1.35; }
+.venta-prod-extra { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--border); }
+.venta-prod-extra span { color: var(--muted); font-size: 12px; }
+.venta-prod-extra b { color: var(--text); font-weight: 600; font-size: 12px; }
 
 .venta-desglose {
   padding: 16px 18px;
@@ -1155,9 +1162,9 @@
 .ads-chart-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; color: var(--muted); font-size: 11.5px; }
 .ads-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .ads-dot { width: 9px; height: 9px; display: inline-block; border-radius: 2px; }
-.ads-dot-atr { background: #ff8a4c; }
-.ads-dot-otr { background: rgba(255, 196, 150, 0.85); }
-.ads-dot-roas { background: #33e1cf; border-radius: 50%; box-shadow: 0 0 6px rgba(51, 225, 207, 0.55); }
+.ads-dot-atr { background: #7c94ff; }
+.ads-dot-otr { background: rgba(170, 188, 255, 0.85); }
+.ads-dot-roas { background: #ff3d9a; border-radius: 50%; box-shadow: 0 0 7px rgba(255, 61, 154, 0.7); }
 /* KPIs por campaña (detalle): mismo grid que el agregado, un poco mas compacto */
 #adsDetailStats { margin: 4px 0 14px; }
 
