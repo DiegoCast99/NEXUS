@@ -41,6 +41,11 @@
 
 html {
   min-height: 100%;
+  /* Defensa: el <html> pinta el fondo del tema (no negro) por si el sistema
+     revela área fuera del viewport de layout (rebote/gestos). El zoom ya está
+     bloqueado en el meta viewport, así que no debería verse, pero por las dudas. */
+  background: var(--bg);
+  overscroll-behavior: none;
 }
 
 body {

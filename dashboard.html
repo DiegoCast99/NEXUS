@@ -2,7 +2,10 @@
 <html lang="es">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!-- Zoom bloqueado: la PWA se comporta como app nativa (no se puede alejar/acercar
+         con pellizco). Sin esto, al hacer zoom-out el contenido quedaba a ancho fijo y
+         aparecía un vacío negro a la derecha. minimum/maximum-scale=1 + user-scalable=no. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <!-- PWA (instalable + offline) -->
     <meta name="theme-color" content="#0b0b0d" />
     <link rel="manifest" href="/manifest.json" />
@@ -48,7 +51,7 @@
       @keyframes saleBootSpin { to { transform: rotate(360deg); } }
       html.booting-sale #saleBootSplash p { margin: 0; font-size: 14px; color: #9a9aa5; }
     </style>
-    <link rel="stylesheet" href="./css/dashboard/base.css?v=20260815-fix1" />
+    <link rel="stylesheet" href="./css/dashboard/base.css?v=20260820-fix24" />
     <link rel="stylesheet" href="./css/dashboard/layout.css?v=20260815-fix1" />
     <link rel="stylesheet" href="./css/dashboard/controls.css?v=20260813-redesign1" />
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260813-redesign1" />
