@@ -2886,13 +2886,27 @@
     var W = canvas.width = canvas.clientWidth || 900;
     var H = canvas.height = 240;
     ctx.clearRect(0, 0, W, H);
-    if (!serie || !serie.length) return;
+    if (!serie || !serie.length) { if (S.setChartTargets) S.setChartTargets(canvas, []); return; }
     var padL = 6, padR = 6, padT = 12, padB = 8;
     var plotW = W - padL - padR, plotH = H - padT - padB;
     var n = serie.length;
     var maxU = 1, maxR = 1;
     serie.forEach(function (d) { maxU = Math.max(maxU, d.atribuidas + d.otras); maxR = Math.max(maxR, d.roas); });
     var slot = plotW / n, barW = Math.max(2, slot * 0.55);
+
+    // Hover: monto (ingresos), unidades y ROAS de ese día (una banda por día).
+    if (S.setChartTargets) {
+      S.setChartTargets(canvas, serie.map(function (d, i) {
+        var dd = String(d.date || ""), lbl = dd.length >= 10 ? (dd.slice(8, 10) + "/" + dd.slice(5, 7)) : dd;
+        return {
+          x: padL + i * slot, y: padT, width: slot, height: plotH,
+          html: "<b>" + escapeHtml(lbl) + "</b>" +
+            "<span>Ingresos: " + moneyWithCents.format(Number(d.ingresos) || 0) + "</span>" +
+            "<span>Unidades: " + integerNumber.format((Number(d.atribuidas) || 0) + (Number(d.otras) || 0)) + "</span>" +
+            "<span>ROAS: " + (Number(d.roas) || 0).toFixed(2) + "x</span>"
+        };
+      }));
+    }
     var azul = "#ff6a3d", azulClaro = "rgba(245,166,35,0.5)", roasCol = "#34d399";
     var baseY = padT + plotH;
     // Barras (ventas) suben desde la base y la línea de ROAS se traza subiendo.

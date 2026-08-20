@@ -164,10 +164,20 @@
     ctx.restore();
   }
 
-  function showChartTooltip(canvas, event) {
+  // Muestra el tooltip compartido (#chartTooltip) con `html` cerca del cursor.
+  // Reutilizable por cualquier gráfica (canvas por hit-test, o SVG por índice).
+  function showTooltipAt(clientX, clientY, html) {
     const tooltip = elements.chartTooltip;
+    if (!tooltip) return;
+    tooltip.innerHTML = html;
+    tooltip.style.left = `${Math.min(window.innerWidth - 280, clientX + 16)}px`;
+    tooltip.style.top = `${Math.min(window.innerHeight - 130, clientY + 16)}px`;
+    tooltip.classList.add("is-visible");
+  }
+
+  function showChartTooltip(canvas, event) {
     const targets = chartTargets.get(canvas) || [];
-    if (!tooltip || !targets.length) return;
+    if (!elements.chartTooltip || !targets.length) return;
     const rect = canvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
@@ -177,14 +187,8 @@
     const hit = targets.find((target) => (
       x >= target.x - TOL && x <= target.x + target.width + TOL && y >= target.y - TOL && y <= target.y + target.height + TOL
     ));
-    if (!hit) {
-      tooltip.classList.remove("is-visible");
-      return;
-    }
-    tooltip.innerHTML = hit.html;
-    tooltip.style.left = `${Math.min(window.innerWidth - 280, event.clientX + 16)}px`;
-    tooltip.style.top = `${Math.min(window.innerHeight - 130, event.clientY + 16)}px`;
-    tooltip.classList.add("is-visible");
+    if (!hit) { hideChartTooltip(); return; }
+    showTooltipAt(event.clientX, event.clientY, hit.html);
   }
 
   function hideChartTooltip() {
@@ -607,6 +611,6 @@
     bumpChartGen, paintChart, runCanvasAnim, shouldAnimateChart: shouldAnimate, chartAnimGen: function () { return _chartGen; },
     applyChartMode, draw3DBar, drawCashflowChart, drawCategoryChart, drawCommerceCostsChart, drawCommerceTrendChart, drawMetaTrendChart,
     drawNoData, getMonthlySeries, hideChartTooltip, is3DMode, prefersReducedMotion, resizeCanvas,
-    roundedRect, setChartTargets, showChartTooltip,
+    roundedRect, setChartTargets, showChartTooltip, showTooltipAt,
   });
 })();

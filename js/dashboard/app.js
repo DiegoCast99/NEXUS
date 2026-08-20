@@ -56,7 +56,7 @@
       }
     });
 
-    const chartCanvases = [elements.cashflowChart, elements.categoryChart, elements.metaTrendChart, elements.commerceTrendChart];
+    const chartCanvases = [elements.cashflowChart, elements.categoryChart, elements.metaTrendChart, elements.commerceTrendChart, elements.adsChart, elements.adsDetailChart];
     chartCanvases.forEach((canvas) => {
       canvas?.addEventListener("mousemove", (event) => showChartTooltip(canvas, event));
       canvas?.addEventListener("mouseleave", hideChartTooltip);

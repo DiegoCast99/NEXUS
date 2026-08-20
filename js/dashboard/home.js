@@ -266,6 +266,13 @@
       xLabels += '<span class="hc-x" style="left:' + (x(i) / W * 100).toFixed(2) + '%">' + esc(lbl) + '</span>';
     });
 
+    // Geometría por punto (en coords del viewBox) para el hover: el monto de ese día.
+    var geomPts = pts.map(function (p, i) {
+      var d = String(p.date || "");
+      var lbl = d.length >= 10 ? (d.slice(8, 10) + "/" + d.slice(5, 7) + "/" + d.slice(0, 4)) : d;
+      return { cx: x(i), cy: y(p.revenue), revenue: Number(p.revenue) || 0, label: lbl };
+    });
+
     var anim = S.shouldAnimateChart ? S.shouldAnimateChart("home-sales", pts.map(function (p) { return Number(p.revenue) || 0; }).join(",")) : false;
     var svg =
       '<svg class="' + (anim ? "hn-anim" : "") + '" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" role="img" aria-label="Ingresos por dia">' +
@@ -277,8 +284,50 @@
       '</defs>' + grid +
       '<path class="hn-area" d="' + area + '" fill="url(#homeArea)"/>' +
       '<path class="hn-line" pathLength="1" d="' + line + '" fill="none" stroke="#ff7a45" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" filter="url(#homeLineGlow)"/>' +
-      '<g class="hn-dots" filter="url(#homeGlow)">' + dots + '</g></svg>';
+      '<g class="hn-dots" filter="url(#homeGlow)">' + dots + '</g>' +
+      // Capa de hover: guía vertical + punto resaltado (ocultos hasta pasar el mouse).
+      '<line class="hn-hover-line" x1="0" y1="' + padTop + '" x2="0" y2="' + baseY + '" stroke="rgba(255,255,255,0.28)" stroke-width="1" style="opacity:0"/>' +
+      '<circle class="hn-hover-dot" cx="0" cy="0" r="0" fill="url(#homeDotCore)" stroke="#fff" stroke-width="1.4"/>' +
+      '</svg>';
     box.innerHTML = '<div class="hc-chart">' + svg + yLabels + xLabels + '</div>';
+    wireSalesHover(box, geomPts);
+  }
+
+  // Hover de la gráfica SVG "Ingresos por día": al pasar el mouse (o tocar) muestra
+  // el monto de ese día en el tooltip compartido y resalta el punto + guía vertical.
+  function wireSalesHover(box, geomPts) {
+    var chart = box.querySelector(".hc-chart");
+    var svg = chart && chart.querySelector("svg");
+    if (!chart || !svg || !geomPts.length) return;
+    var dot = svg.querySelector(".hn-hover-dot");
+    var vline = svg.querySelector(".hn-hover-line");
+    var VBW = 720;   // ancho del viewBox
+    function nearest(clientX) {
+      var rect = svg.getBoundingClientRect();
+      if (!rect.width) return -1;
+      var vx = ((clientX - rect.left) / rect.width) * VBW;   // px pantalla -> unidades viewBox
+      var best = 0, bd = Infinity;
+      for (var i = 0; i < geomPts.length; i++) {
+        var dd = Math.abs(geomPts[i].cx - vx);
+        if (dd < bd) { bd = dd; best = i; }
+      }
+      return best;
+    }
+    function show(clientX, clientY) {
+      var i = nearest(clientX); if (i < 0) return;
+      var p = geomPts[i];
+      if (dot) { dot.setAttribute("cx", p.cx.toFixed(1)); dot.setAttribute("cy", p.cy.toFixed(1)); dot.setAttribute("r", "6"); }
+      if (vline) { vline.setAttribute("x1", p.cx.toFixed(1)); vline.setAttribute("x2", p.cx.toFixed(1)); vline.style.opacity = "1"; }
+      if (S.showTooltipAt) S.showTooltipAt(clientX, clientY, "<b>" + esc(p.label) + "</b><span>Ventas: " + cur(p.revenue) + "</span>");
+    }
+    function hide() {
+      if (dot) dot.setAttribute("r", "0");
+      if (vline) vline.style.opacity = "0";
+      if (S.hideChartTooltip) S.hideChartTooltip();
+    }
+    chart.addEventListener("mousemove", function (e) { show(e.clientX, e.clientY); });
+    chart.addEventListener("mouseleave", hide);
+    chart.addEventListener("pointerdown", function (e) { if (e.pointerType !== "mouse") show(e.clientX, e.clientY); });
   }
 
   // ---- Ventas por canal (dona SVG + leyenda con logos) ----
