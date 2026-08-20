@@ -646,6 +646,7 @@
     adsSaveBtn: document.getElementById("adsSaveBtn"),
     adsDeleteBtn: document.getElementById("adsDeleteBtn"),
     adsChart: document.getElementById("adsChart"),
+    adsDetailStats: document.getElementById("adsDetailStats"),
     adsDetailChart: document.getElementById("adsDetailChart"),
     adsDetailChartMsg: document.getElementById("adsDetailChartMsg"),
     adsCreateToggle: document.getElementById("adsCreateToggle"),

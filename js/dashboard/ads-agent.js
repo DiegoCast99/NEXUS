@@ -327,13 +327,18 @@
     if (!window.confirm("El agente va a aplicar " + pl.recs.length + " cambio(s) en tus campañas de Mercado Libre (pausar/ajustar presupuesto). ¿Confirmás?")) return;
     var btn = el("agentApplyAll");
     if (btn) { btn.textContent = "Aplicando…"; btn.disabled = true; }
-    var ok = 0, err = 0;
+    var ok = 0, err = 0, ultimoError = "";
     for (var i = 0; i < pl.recs.length; i++) {
-      try { await aplicarRec(pl.recs[i], true); ok++; } catch (e) { err++; }
+      try { await aplicarRec(pl.recs[i], true); ok++; }
+      catch (e) {
+        err++;
+        var st = (e && (e.mlStatus || e.httpStatus)) || 0;
+        ultimoError = ((e && e.message) ? e.message : "error") + (st ? " (" + st + ")" : "");
+      }
     }
     if (S.cargarAds) { try { await S.cargarAds(activeCuenta()); } catch (e) {} }
     renderAdsAgent();
-    window.alert("Listo: " + ok + " aplicado(s)" + (err ? ", " + err + " con error (revisá el endpoint de Mercado Ads)." : "."));
+    window.alert("Listo: " + ok + " aplicado(s)" + (err ? ", " + err + " con error" + (ultimoError ? ": " + ultimoError : ".") : "."));
   }
 
   function guardarTecho() {

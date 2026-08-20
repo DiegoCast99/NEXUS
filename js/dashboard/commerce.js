@@ -85,6 +85,11 @@
       commission: Number(order.commission ?? order.fee ?? 0) || 0,
       shipping: Number(order.shipping ?? order.shippingCost ?? 0) || 0,
       thumbnail: String(order.thumbnail || order.image || ""),
+      // Id de la publicacion ML: con el se baja la FOTO del producto. Debe ir
+      // EXPLICITO aca: createCommerceSnapshot re-normaliza cada orden con esta
+      // funcion y, si no se lista, se descarta -> se perdia el itemId y toda la
+      // cadena de fotos (enrich/precache/detalle) quedaba sin id y sin foto.
+      itemId: String(order.itemId || order.item_id || ""),
       stock: (order.stock === 0 || order.stock) ? Number(order.stock) : null,
       cancelled: Boolean(order.cancelled),
       refunded: Boolean(order.refunded),
@@ -1261,8 +1266,12 @@
     selectCommerceApp(accountId);
     window.NexusPlatformNav?.setSection("pedidos");
 
-    // 1) Si el sync ya la trajo (app caliente), detalle instantaneo.
-    if (ventaPorId(orderId)) { renderVentaDetail(orderId); return; }
+    // 1) Si el sync ya la trajo CON con qué mostrar la foto (thumbnail o itemId),
+    //    detalle instantaneo. Si la venta quedo en un snapshot viejo SIN itemId
+    //    (guardado antes del fix de fotos), NO cortamos aca: caemos al paso 2 para
+    //    traerla fresca de ML (que sí trae itemId) y poder mostrar la foto.
+    var enSnap = ventaPorId(orderId);
+    if (enSnap && (enSnap.thumbnail || enSnap.itemId)) { renderVentaDetail(orderId); return; }
 
     // 2) Camino rapido: abrir el detalle YA y traer SOLO esa orden directo de ML.
     mostrarVentaCargando(orderId);
@@ -2878,21 +2887,72 @@
     });
   }
 
+  // Serie diaria PROPIA de UNA campaña: pide las métricas de ESA campaña con
+  // aggregation_type=DAILY (endpoint por campaña), así el detalle muestra solo sus
+  // datos (no el agregado). Best-effort: si el endpoint falla o no trae días,
+  // devuelve [] y el llamador cae al filtro de la serie agregada.
+  async function cargarAdsGraficoCampaign(cuenta, campaignId) {
+    var cache = adsDatos(cuenta);
+    if (!cache.advertiserId || !campaignId) return [];
+    try {
+      var api = S.requireSecureApi();
+      var METRICS = "units_quantity,organic_units_quantity,cost,total_amount,roas,direct_items_quantity,indirect_items_quantity";
+      var url = adsMktBase(cache) + "/campaigns/" + encodeURIComponent(campaignId) +
+        "?date_from=" + adsDesdeISO(29) + "&date_to=" + hoyISO() +
+        "&metrics=" + METRICS + "&aggregation_type=DAILY";
+      var res = await api.mlApi(url, "GET", null, cuenta);
+      var p = res.payload || {};
+      // La respuesta puede venir como {metrics:[días]}, {results:[días]}, o un array.
+      var dias = Array.isArray(p) ? p
+        : Array.isArray(p.metrics) ? p.metrics
+        : Array.isArray(p.results) ? p.results
+        : (p.metrics && Array.isArray(p.metrics.results)) ? p.metrics.results
+        : [];
+      return adsSerieDiaria(dias);   // suma por fecha -> serie de ESTA campaña
+    } catch (e) { return []; }
+  }
+
+  // Barra con esquinas superiores redondeadas (para las barras de la gráfica de ads).
+  function adsBarraTop(ctx, x, y, w, h, r) {
+    r = Math.max(0, Math.min(r, w / 2, h));
+    ctx.beginPath();
+    ctx.moveTo(x, y + h);
+    ctx.lineTo(x, y + r);
+    ctx.arcTo(x, y, x + r, y, r);
+    ctx.lineTo(x + w - r, y);
+    ctx.arcTo(x + w, y, x + w, y + r, r);
+    ctx.lineTo(x + w, y + h);
+    ctx.closePath();
+  }
+
+  // Gráfica de Publicidad (barras ventas atribuidas+otras + línea ROAS). Diseño
+  // moderno: nítida en retina (DPR), barras con gradiente/glow/esquinas redondeadas
+  // y línea ROAS aqua con área y glow. Sirve para el agregado y el detalle de una
+  // campaña (mismo canvas/estilo, distinta serie).
   function drawAdsChart(serie, canvas, key) {
     canvas = canvas || elements.adsChart;
     key = key || "adschart";
     if (!canvas) return;
     var ctx = canvas.getContext("2d");
-    var W = canvas.width = canvas.clientWidth || 900;
-    var H = canvas.height = 240;
+    // Nitidez retina: dibujar en px de dispositivo, trabajar en px CSS.
+    var cssW = canvas.clientWidth || 900;
+    var cssH = canvas.clientHeight || Number(canvas.getAttribute("height")) || 240;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.max(1, Math.round(cssW * dpr));
+    canvas.height = Math.max(1, Math.round(cssH * dpr));
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    var W = cssW, H = cssH;
     ctx.clearRect(0, 0, W, H);
     if (!serie || !serie.length) { if (S.setChartTargets) S.setChartTargets(canvas, []); return; }
-    var padL = 6, padR = 6, padT = 12, padB = 8;
+
+    var padL = 10, padR = 10, padT = 16, padB = 18;
     var plotW = W - padL - padR, plotH = H - padT - padB;
     var n = serie.length;
     var maxU = 1, maxR = 1;
-    serie.forEach(function (d) { maxU = Math.max(maxU, d.atribuidas + d.otras); maxR = Math.max(maxR, d.roas); });
-    var slot = plotW / n, barW = Math.max(2, slot * 0.55);
+    serie.forEach(function (d) { maxU = Math.max(maxU, (d.atribuidas || 0) + (d.otras || 0)); maxR = Math.max(maxR, d.roas || 0); });
+    maxU *= 1.15; maxR *= 1.2;   // aire arriba para que el pico no toque el borde
+    var slot = plotW / n, barW = Math.min(26, Math.max(3, slot * 0.5));
+    var baseY = padT + plotH;
 
     // Hover: monto (ingresos), unidades y ROAS de ese día (una banda por día).
     if (S.setChartTargets) {
@@ -2907,30 +2967,66 @@
         };
       }));
     }
-    var azul = "#ff6a3d", azulClaro = "rgba(245,166,35,0.5)", roasCol = "#34d399";
-    var baseY = padT + plotH;
-    // Barras (ventas) suben desde la base y la línea de ROAS se traza subiendo.
+    var ROAS = "#33e1cf";   // aqua/cyan: contrasta con el naranja, look futurista
+    var rTop = Math.min(4, barW / 2);
+
     function paint(p) {
       ctx.clearRect(0, 0, W, H);
+      // Rejilla horizontal muy sutil.
+      ctx.strokeStyle = "rgba(255,255,255,0.05)"; ctx.lineWidth = 1;
+      for (var g = 0; g <= 4; g++) {
+        var gy = padT + (plotH / 4) * g;
+        ctx.beginPath(); ctx.moveTo(padL, gy); ctx.lineTo(W - padR, gy); ctx.stroke();
+      }
+      // Barras: atribuidas (naranja marca, con glow) + otras (durazno claro) arriba.
       serie.forEach(function (d, i) {
         var x = padL + i * slot + (slot - barW) / 2;
-        var hAtr = (d.atribuidas / maxU) * plotH * p;
-        var hOtr = (d.otras / maxU) * plotH * p;
-        ctx.fillStyle = azulClaro; ctx.fillRect(x, baseY - hAtr - hOtr, barW, hOtr);
-        ctx.fillStyle = azul; ctx.fillRect(x, baseY - hAtr, barW, hAtr);
+        var hAtr = ((d.atribuidas || 0) / maxU) * plotH * p;
+        var hOtr = ((d.otras || 0) / maxU) * plotH * p;
+        if (hOtr > 0.5) {
+          var yO = baseY - hAtr - hOtr;
+          var gO = ctx.createLinearGradient(0, yO, 0, baseY - hAtr);
+          gO.addColorStop(0, "rgba(255,196,150,0.85)"); gO.addColorStop(1, "rgba(255,176,130,0.14)");
+          ctx.fillStyle = gO; adsBarraTop(ctx, x, yO, barW, hOtr, Math.min(rTop, hOtr)); ctx.fill();
+        }
+        if (hAtr > 0.5) {
+          var yA = baseY - hAtr;
+          var gA = ctx.createLinearGradient(0, yA, 0, baseY);
+          gA.addColorStop(0, "rgba(255,138,76,0.98)"); gA.addColorStop(1, "rgba(255,106,61,0.10)");
+          ctx.save();
+          ctx.shadowColor = "rgba(255,106,61,0.45)"; ctx.shadowBlur = p >= 1 ? 10 : 0;
+          ctx.fillStyle = gA; adsBarraTop(ctx, x, yA, barW, hAtr, hOtr > 0.5 ? 0 : rTop); ctx.fill();
+          ctx.restore();
+        }
       });
+      // Línea ROAS: área + línea con glow + puntos.
+      var pts = serie.map(function (d, i) {
+        return { x: padL + i * slot + slot / 2, fy: baseY - ((d.roas || 0) / maxR) * plotH };
+      });
+      var yAt = function (pt) { return baseY - (baseY - pt.fy) * p; };
+      if (pts.length > 1) {
+        var area = ctx.createLinearGradient(0, padT, 0, baseY);
+        area.addColorStop(0, "rgba(51,225,207,0.22)"); area.addColorStop(1, "rgba(51,225,207,0)");
+        ctx.beginPath(); ctx.moveTo(pts[0].x, baseY);
+        pts.forEach(function (pt) { ctx.lineTo(pt.x, yAt(pt)); });
+        ctx.lineTo(pts[pts.length - 1].x, baseY); ctx.closePath();
+        ctx.fillStyle = area; ctx.fill();
+      }
       ctx.beginPath();
-      ctx.strokeStyle = roasCol; ctx.lineWidth = 2; ctx.lineJoin = "round";
-      serie.forEach(function (d, i) {
-        var x = padL + i * slot + slot / 2;
-        var fy = baseY - (d.roas / maxR) * plotH;
-        var y = baseY - (baseY - fy) * p;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      });
-      ctx.stroke();
+      pts.forEach(function (pt, i) { var y = yAt(pt); if (i === 0) ctx.moveTo(pt.x, y); else ctx.lineTo(pt.x, y); });
+      ctx.strokeStyle = ROAS; ctx.lineWidth = 2.4; ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.shadowColor = "rgba(51,225,207,0.55)"; ctx.shadowBlur = p >= 1 ? 12 : 0;
+      ctx.stroke(); ctx.shadowBlur = 0;
+      if (p >= 0.98) {
+        pts.forEach(function (pt) {
+          var y = yAt(pt);
+          ctx.beginPath(); ctx.arc(pt.x, y, 3.2, 0, Math.PI * 2); ctx.fillStyle = "#0d0d0f"; ctx.fill();
+          ctx.beginPath(); ctx.arc(pt.x, y, 2.3, 0, Math.PI * 2); ctx.fillStyle = ROAS; ctx.fill();
+        });
+      }
     }
     var sig = serie.map(function (d) { return (d.atribuidas + d.otras) + "/" + d.roas; }).join(",");
-    if (S.paintChart) S.paintChart(key, paint, 1700, sig); else paint(1);
+    if (S.paintChart) S.paintChart(key, paint, 1400, sig); else paint(1);
   }
 
   // Tiempo real: mientras la seccion Publicidad esta visible, refresca sola cada
@@ -3039,7 +3135,24 @@
     var api = S.requireSecureApi();
     var cache = adsDatos(cuenta);
     if (!cache.siteId || !cache.advertiserId) throw new Error("Recargá la sección de Publicidad primero.");
-    return api.mlApi(adsAdvBase(cache) + "/campaigns/" + campaignId, "PUT", patch, cuenta);
+    // La ESCRITURA (pausar / presupuesto / eliminar) usa la MISMA base marketplace
+    // que la lectura (con site_id) — es el endpoint vigente de la API de Mercado
+    // Ads. La base vieja `/advertising/advertisers/...` quedó como fallback por si
+    // alguna cuenta aún la usa. Pausar/ajustar/eliminar son idempotentes, así que
+    // reintentar en la otra base es seguro. Solo se reintenta cuando el endpoint no
+    // existe / método no permitido (404/405/501); cualquier otro error se muestra.
+    var bases = [adsMktBase(cache), adsAdvBase(cache)];
+    var lastErr = null;
+    for (var i = 0; i < bases.length; i++) {
+      try {
+        return await api.mlApi(bases[i] + "/campaigns/" + campaignId, "PUT", patch, cuenta);
+      } catch (e) {
+        lastErr = e;
+        var st = (e && (e.mlStatus || e.httpStatus)) || 0;
+        if (st !== 404 && st !== 405 && st !== 501) throw e;   // error real: no seguir probando
+      }
+    }
+    throw lastErr || new Error("No se pudo actualizar la campaña en Mercado Ads.");
   }
 
   function renderAdsDetail(campaignId) {
@@ -3054,6 +3167,17 @@
     // El input es el ROAS OBJETIVO (config), redondeado. Si la campaña no lo
     // trae, queda vacio para que el titular lo ponga.
     if (elements.adsRoasInput) elements.adsRoasInput.value = camp.roasTarget ? (Math.round(camp.roasTarget * 100) / 100) : "";
+    // KPIs SOLO de esta campaña (mismas 6 métricas que el agregado, con SUS datos).
+    if (elements.adsDetailStats) {
+      elements.adsDetailStats.innerHTML = [
+        tarjetaAds("Ventas atribuidas", integerNumber.format(camp.atribuidas || 0), "por tus anuncios", "ads-pos"),
+        tarjetaAds("Otras ventas", integerNumber.format(camp.otras || 0), "orgánicas", ""),
+        tarjetaAds("ROAS", (camp.roas ? camp.roas.toFixed(2) : "0") + "x", "ingresos / gasto", "ads-pos"),
+        tarjetaAds("Ingresos", moneyWithCents.format(camp.ingresos || 0), "por publicidad", ""),
+        tarjetaAds("ACOS", (camp.acos ? camp.acos.toFixed(2) : "0") + "%", "gasto / ingresos", "ads-neg"),
+        tarjetaAds("Clics", integerNumber.format(camp.clicks || 0), camp.prints ? integerNumber.format(camp.prints) + " impresiones" : "", "")
+      ].join("");
+    }
     setAdsDetailMsg("");
     if (elements.adsItemList) elements.adsItemList.innerHTML = '<li class="ads-item-empty">Cargando anuncios…</li>';
     elements.adsLista?.classList.add("is-hidden");
@@ -3063,11 +3187,19 @@
     window.setTimeout(function () { dibujarAdsDetailChart(campaignId); }, 40);
     cargarAdsItems(campaignId);
   }
-  // Dibuja la serie diaria de una campaña puntual en el canvas del detalle.
-  function dibujarAdsDetailChart(campaignId) {
+  // Dibuja la serie diaria SOLO de esta campaña en el canvas del detalle. Primero
+  // pide la serie propia de la campaña; si no viene, cae al filtro del agregado.
+  async function dibujarAdsDetailChart(campaignId) {
     if (!elements.adsDetailChart) return;
-    var cache = adsDatos(activeMLId());
-    var serie = serieDeCampaign(cache && cache.serieRaw, campaignId);
+    var cuenta = activeMLId();
+    if (elements.adsDetailChartMsg) elements.adsDetailChartMsg.textContent = "Cargando datos de la campaña…";
+    var serie = await cargarAdsGraficoCampaign(cuenta, campaignId);
+    if (!serie || !serie.length) {
+      var cache = adsDatos(cuenta);
+      serie = serieDeCampaign(cache && cache.serieRaw, campaignId);
+    }
+    // El titular pudo cambiar de campaña / cerrar el detalle mientras cargaba.
+    if (!adsCampActual || String(adsCampActual.id) !== String(campaignId)) return;
     if (serie && serie.length) {
       drawAdsChart(serie, elements.adsDetailChart, "adsdetail");
       if (elements.adsDetailChartMsg) elements.adsDetailChartMsg.textContent = "";

@@ -1146,7 +1146,7 @@
   border-radius: 14px;
   background: var(--panel);
 }
-.ads-chart-wrap canvas { width: 100%; display: block; }
+.ads-chart-wrap canvas { width: 100%; height: 240px; display: block; }
 /* Gráfica independiente por campaña (detalle) */
 .ads-detail-chart { margin: 4px 0 14px; }
 .ads-detail-chart .panel-heading { margin-bottom: 10px; }
@@ -1155,9 +1155,11 @@
 .ads-chart-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; color: var(--muted); font-size: 11.5px; }
 .ads-chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .ads-dot { width: 9px; height: 9px; display: inline-block; border-radius: 2px; }
-.ads-dot-atr { background: #ff6a3d; }
-.ads-dot-otr { background: rgba(245, 166, 35, 0.6); }
-.ads-dot-roas { background: #34d399; border-radius: 50%; }
+.ads-dot-atr { background: #ff8a4c; }
+.ads-dot-otr { background: rgba(255, 196, 150, 0.85); }
+.ads-dot-roas { background: #33e1cf; border-radius: 50%; box-shadow: 0 0 6px rgba(51, 225, 207, 0.55); }
+/* KPIs por campaña (detalle): mismo grid que el agregado, un poco mas compacto */
+#adsDetailStats { margin: 4px 0 14px; }
 
 /* Segunda fila de controles del detalle (pausar + eliminar) */
 .ads-controls-2 { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
