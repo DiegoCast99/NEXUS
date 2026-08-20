@@ -73,6 +73,18 @@ async function getAdvertiser(token) {
 }
 function mktBase(site, adv) { return "/marketplace/advertising/" + site + "/advertisers/" + adv + "/product_ads"; }
 function advBase(adv) { return "/advertising/advertisers/" + adv + "/product_ads"; }
+// Escritura de campaña: base marketplace (misma que la lectura) primero, con
+// fallback a la base advertising vieja solo si el endpoint no existe (404/405/501).
+// Pausar/ajustar es idempotente, así que reintentar en la otra base es seguro.
+async function putCampaign(token, av, campaignId, patch) {
+  var bases = [mktBase(av.siteId, av.advertiserId), advBase(av.advertiserId)];
+  var lastErr = null;
+  for (var i = 0; i < bases.length; i++) {
+    try { return await mlAds(token, bases[i] + "/campaigns/" + campaignId, "PUT", patch); }
+    catch (e) { lastErr = e; if (!/ 40[45]:| 501:/.test(String(e && e.message))) throw e; }
+  }
+  throw lastErr;
+}
 
 async function fetchCampaigns(token, site, adv) {
   var METRICS = "cost,total_amount,direct_amount,indirect_amount,roas,acos,clicks,prints";
@@ -120,7 +132,7 @@ async function runForUser(uid, opts) {
       for (var r of plan.recs) {
         var entry = { title: r.title, campaign: r.campaignName, patch: r.patch };
         if (mode === "real") {
-          try { await mlAds(token, advBase(av.advertiserId) + "/campaigns/" + r.campaignId, "PUT", r.patch); entry.applied = true; }
+          try { await putCampaign(token, av, r.campaignId, r.patch); entry.applied = true; }
           catch (e) { entry.applied = false; entry.error = e.message; }
         } else { entry.simulated = true; }
         actions.push(entry);
