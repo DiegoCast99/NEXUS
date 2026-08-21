@@ -341,9 +341,13 @@
       if (x.id === "mercadolivre") brRev += (x.revenue || 0);
       else uyRev += (x.revenue || 0);
     });
+    // Alpha Fitness (tienda propia): canal REAL (no "próximamente"). Su facturación
+    // la va a alimentar el conector de Alpha Fitness cuando se cablee; por ahora 0.
+    var alphaRev = Number(ml.alphaRevenue) || 0;
     var channels = [
       { name: "Mercado Libre", slug: "mercadolibre", value: uyRev, soon: false },
       { name: "Mercado Livre", slug: "mercadolivre", value: brRev, soon: false },
+      { name: "Alpha Fitness", slug: "alphafitness", value: alphaRev, soon: false },
       { name: "Amazon", slug: "amazon", value: 0, soon: true },
       { name: "Shopee", slug: "shopee", value: 0, soon: true }
     ];

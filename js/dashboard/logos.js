@@ -39,6 +39,15 @@
       bg: "linear-gradient(135deg,#33aaff,#1e6fd8)",
       svg: '<path d="M5 9.5 6.2 7h11.6L19 9.5v.6a2.1 2.1 0 0 1-4 .3 2.1 2.1 0 0 1-4 0 2.1 2.1 0 0 1-4 0 2.1 2.1 0 0 1-2-.9Z" fill="#fff"/><path d="M6.2 11.4V18h11.6v-6.6" fill="none" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 18v-3.4h4V18" fill="none" stroke="#fff" stroke-width="1.4"/>'
     },
+    // Alpha Fitness (tienda propia). PLACEHOLDER: ícono de mancuerna sobre tile
+    // oscuro. Para poner tu logo real, dejá el archivo en img/logos/alphafitness.png
+    // (o .svg y cambiá la extensión acá): se monta ARRIBA del ícono y, si no existe,
+    // queda el ícono de respaldo. No hay que tocar nada más.
+    alphafitness: {
+      asset: "img/logos/alphafitness.png",
+      bg: "linear-gradient(135deg,#ff6a3d,#c81e2e)",
+      svg: '<path d="M4 9.5v5M6.4 7.8v8.4M17.6 7.8v8.4M20 9.5v5M6.4 12h11.2" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/>'
+    },
     // ---- Campañas ----
     meta: {
       bg: "#0b1f4d",
@@ -65,6 +74,8 @@
     "mercado libre 1": "mercadolibre",
     "mercado libre 2": "mercadolibre",
     "tienda mia": "tiendamia",
+    "alpha fitness": "alphafitness",
+    alpha: "alphafitness",
     "meta ads": "meta",
     facebook: "meta",
     "google ads": "google",
