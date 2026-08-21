@@ -960,11 +960,15 @@
         var scope = String(config.tokenScope || "");
         var puedeEscribir = /\bwrite\b/.test(scope);
         if (scope) {
-          elements.mlConnectDesc.innerHTML = puedeEscribir
-            ? "Tu cuenta esta vinculada con permiso de <b>lectura y escritura</b>. Podes sincronizar, y el agente puede pausar/ajustar publicidad y stock."
-            : "Tu cuenta esta vinculada pero <b>SOLO con permiso de lectura</b>. Para que el agente pueda pausar/ajustar publicidad y cambiar stock, la app de Mercado Libre necesita el scope <b>write</b> habilitado (developers.mercadolibre.com &rarr; tu app &rarr; permisos). Luego reconecta.";
+          // Mostramos el string CRUDO de permisos que devolvió ML (dato de verdad
+          // para diagnosticar), + la interpretación lectura/escritura.
+          var base = puedeEscribir
+            ? "Vinculada con permiso de <b>lectura y escritura</b>."
+            : "Vinculada <b>SOLO con permiso de lectura</b> — la escritura (publicidad/stock) va a fallar.";
+          elements.mlConnectDesc.innerHTML = base +
+            ' <span style="opacity:.75">Permisos recibidos de Mercado Libre: <code>' + escapeHtml(scope) + '</code></span>';
         } else {
-          elements.mlConnectDesc.textContent = "Tu cuenta esta vinculada. Podes sincronizar ventas o desconectarla.";
+          elements.mlConnectDesc.textContent = "Tu cuenta esta vinculada. Reconecta (boton \"Reconectar (permisos)\") para ver que permisos entrego Mercado Libre.";
         }
       } else {
         elements.mlConnectDesc.textContent = "Conecta tu cuenta de " + nombreCuenta + " para sincronizar ventas, pedidos y productos.";
