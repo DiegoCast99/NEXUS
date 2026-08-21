@@ -454,6 +454,23 @@
     // La miniatura -I.jpg de ML es chica y a veces borrosa; -O/-V da mejor foto.
     return t;
   }
+  // Sube el "código de tamaño" de una URL de imagen de ML a uno grande (-O = original)
+  // para máxima nitidez. Deja el resto igual. Si no matchea, devuelve la URL tal cual.
+  function mlPhotoUpsize(u) {
+    if (!u) return "";
+    return String(u).replace(/-[A-Z](\.(?:jpg|jpeg|png|webp))(\?.*)?$/i, "-O$1$2");
+  }
+  // Foto de ALTA RESOLUCIÓN de una publicación (para el detalle de venta): usa la
+  // foto real del producto (pictures[].secure_url), NO la miniatura chica, y sube su
+  // tamaño a -O. Cae a la miniatura si no hay pictures.
+  function photoHDFromItemBody(b) {
+    if (!b) return "";
+    var t = "";
+    if (b.pictures && b.pictures[0]) t = b.pictures[0].secure_url || b.pictures[0].url || "";
+    if (!t) t = b.secure_thumbnail || b.thumbnail || "";
+    if (t && t.indexOf("http://") === 0) t = "https://" + t.slice(7);
+    return mlPhotoUpsize(t) || t;
+  }
 
   // Trae foto y stock (available_quantity) de las publicaciones vendidas y se los
   // pega a cada pedido. Multiget de ML (/items?ids=...), hasta 20 ids por llamada.
@@ -1080,20 +1097,40 @@
   // Cache de fotos por itemId (dura la sesión): una vez traída una foto, abrir el
   // detalle de esa venta la muestra al instante, sin volver a pegarle a ML.
   var _thumbCache = {};
+  var _photoHDCache = {};   // foto de alta resolución por itemId (para el detalle)
   function _precargar(url) { if (url) { try { var im = new Image(); im.decoding = "async"; im.src = url; } catch (e) {} } }
 
   // Foto de UNA publicacion, robusto: pide el item COMPLETO (/items/{id} sin
   // proyeccion de atributos, que a veces omitia la miniatura) y saca la mejor
-  // URL en https. Cachea.
+  // URL en https. Cachea la miniatura Y la foto HD (misma respuesta, sin pedir 2 veces).
   async function fetchOrderThumb(accountId, itemId) {
     if (!itemId) return "";
     itemId = String(itemId);
     if (_thumbCache[itemId]) return _thumbCache[itemId];
     try {
       var res = await S.requireSecureApi().mlApi("/items/" + itemId, "GET", null, accountId);
-      var url = thumbFromItemBody(res && res.payload);
+      var body = res && res.payload;
+      var url = thumbFromItemBody(body);
+      var hd = photoHDFromItemBody(body);
       if (url) { _thumbCache[itemId] = url; _precargar(url); }
+      if (hd) { _photoHDCache[itemId] = hd; }
       return url;
+    } catch (e) { return ""; }
+  }
+  // Foto de ALTA RESOLUCIÓN de una publicación (para el detalle). Usa el cache si ya
+  // se trajo el item; si no, lo pide una vez. Cae a la miniatura si no hay foto HD.
+  async function fetchOrderPhotoHD(accountId, itemId) {
+    if (!itemId) return "";
+    itemId = String(itemId);
+    if (_photoHDCache[itemId]) return _photoHDCache[itemId];
+    try {
+      var res = await S.requireSecureApi().mlApi("/items/" + itemId, "GET", null, accountId);
+      var body = res && res.payload;
+      var hd = photoHDFromItemBody(body);
+      var url = thumbFromItemBody(body);
+      if (url && !_thumbCache[itemId]) _thumbCache[itemId] = url;
+      if (hd) { _photoHDCache[itemId] = hd; _precargar(hd); }
+      return hd || _thumbCache[itemId] || "";
     } catch (e) { return ""; }
   }
 
@@ -1337,6 +1374,22 @@
             }
           });
         }
+      }
+      // Upgrade progresivo a ALTA RESOLUCIÓN: la miniatura se ve al instante y, cuando
+      // llega la foto grande del producto, la reemplaza (mucho más nítida a 150px).
+      if (o.itemId) {
+        fetchOrderPhotoHD(state.commerce.selectedApp, o.itemId).then(function (hd) {
+          if (!hd || !ventaActual || String(ventaActual.id) !== String(o.id) || !elements.ventaFoto) return;
+          if (elements.ventaFoto.src === hd) return;
+          var im = new Image();
+          im.onload = function () {
+            if (ventaActual && String(ventaActual.id) === String(o.id) && elements.ventaFoto) {
+              o.thumbnail = hd;
+              elements.ventaFoto.src = hd; elements.ventaFoto.style.display = "";
+            }
+          };
+          im.src = hd;   // recién swapea cuando la HD terminó de cargar (sin flash)
+        });
       }
     }
     txtVenta(elements.ventaProductoTitulo, o.product || "");
