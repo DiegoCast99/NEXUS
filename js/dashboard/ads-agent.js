@@ -312,16 +312,17 @@
     if (!silencioso && S.cargarAds) { await S.cargarAds(cuenta); }
   }
 
-  // Traduce el error crudo de ML a algo accionable. El 401 "does not have
-  // permission to write" = el token se emitió SOLO-LECTURA: hay que reconectar
-  // la cuenta (el nuevo flujo OAuth ya pide scope write).
+  // Muestra el error REAL de Mercado Libre (ya no asumimos "solo lectura": el token
+  // tiene ads:/read-write verificado). Un 401 acá suele ser un permiso a nivel de
+  // cuenta de anunciante en Mercado Ads, no del token.
   function msgError(e) {
     var st = (e && (e.mlStatus || e.httpStatus)) || 0;
     var raw = (e && e.message) ? String(e.message) : "error";
+    var base = raw + (st ? " (" + st + ")" : "");
     if (st === 401 || /permission to write/i.test(raw)) {
-      return "Tu cuenta de Mercado Libre está conectada solo para LECTURA. Andá a Configuración → Mercado Libre y reconectala (Conectar de nuevo) para habilitar la escritura. Al reconectar, aceptá los permisos de administración de publicidad.";
+      return base + " — Mercado Libre rechazó la escritura. Tu token SÍ tiene permiso de publicidad, así que suele ser un permiso a nivel de cuenta de anunciante en Mercado Ads. Pasale este texto a soporte de Nexus.";
     }
-    return raw + (st ? " (" + st + ")" : "");
+    return base;
   }
 
   async function aplicarUno(id) {

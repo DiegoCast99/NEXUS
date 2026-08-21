@@ -3303,18 +3303,17 @@
   function adsEsActiva(status) { return status === "active" || status === "enabled"; }
 
   // URLs candidatas para ESCRIBIR una campaña (pausar/activar/presupuesto/eliminar).
-  // OJO: el path de ESCRITURA de Mercado Ads NO lleva el segmento /advertisers/{adv}
-  // (a diferencia del /campaigns/search de LECTURA, que sí) y usa ?channel=marketplace.
-  // Doc vigente: PUT /marketplace/advertising/{siteId}/product_ads/campaigns/{id}.
-  // Probamos ese primero y caemos a las formas legacy (con /advertisers, y la vieja
-  // base /advertising/advertisers/...) solo si ML responde 404/405/501, porque los
-  // endpoints legacy quedan deprecados (devuelven 404) desde 2026.
+  // El token YA tiene ads:/read-write (verificado en vivo), así que un 401 acá NO es
+  // falta de permiso del token sino que la URL no es la correcta para escribir. Por
+  // eso probamos VARIAS formas. Ponemos PRIMERO la que replica la estructura de la
+  // LECTURA que sí funciona (con /advertisers/{adv}/), que es la más consistente.
   function adsCampWriteUrls(cache, campaignId) {
     var site = cache.siteId, adv = cache.advertiserId, id = campaignId;
     return [
+      "/marketplace/advertising/" + site + "/advertisers/" + adv + "/product_ads/campaigns/" + id + "?channel=marketplace",
+      "/marketplace/advertising/" + site + "/advertisers/" + adv + "/product_ads/campaigns/" + id,
       "/marketplace/advertising/" + site + "/product_ads/campaigns/" + id + "?channel=marketplace",
       "/marketplace/advertising/" + site + "/product_ads/campaigns/" + id,
-      "/marketplace/advertising/" + site + "/advertisers/" + adv + "/product_ads/campaigns/" + id,
       "/advertising/advertisers/" + adv + "/product_ads/campaigns/" + id
     ];
   }
@@ -3322,26 +3321,30 @@
   function adsCampCollectionUrls(cache) {
     var site = cache.siteId, adv = cache.advertiserId;
     return [
+      "/marketplace/advertising/" + site + "/advertisers/" + adv + "/product_ads/campaigns?channel=marketplace",
+      "/marketplace/advertising/" + site + "/advertisers/" + adv + "/product_ads/campaigns",
       "/marketplace/advertising/" + site + "/product_ads/campaigns?channel=marketplace",
       "/marketplace/advertising/" + site + "/product_ads/campaigns",
-      "/marketplace/advertising/" + site + "/advertisers/" + adv + "/product_ads/campaigns",
       "/advertising/advertisers/" + adv + "/product_ads/campaigns"
     ];
   }
-  // Anuncio (item) individual: PUT status / mover de campaña. Doc vigente:
-  // /marketplace/advertising/{site}/product_ads/ads/{itemId}?channel=marketplace.
+  // Anuncio (item) individual: PUT status / mover de campaña. Misma lógica de formas.
   function adsAdWriteUrls(cache, itemId) {
     var site = cache.siteId, adv = cache.advertiserId, id = itemId;
     return [
+      "/marketplace/advertising/" + site + "/advertisers/" + adv + "/product_ads/ads/" + id + "?channel=marketplace",
+      "/marketplace/advertising/" + site + "/advertisers/" + adv + "/product_ads/ads/" + id,
       "/marketplace/advertising/" + site + "/product_ads/ads/" + id + "?channel=marketplace",
       "/marketplace/advertising/" + site + "/product_ads/ads/" + id,
       "/marketplace/advertising/" + site + "/advertisers/" + adv + "/product_ads/items/" + id,
       "/advertising/advertisers/" + adv + "/product_ads/items/" + id
     ];
   }
-  // Corredor genérico de escritura: prueba las URLs candidatas en orden y solo
-  // reintenta cuando ML dice "no existe / método no permitido" (404/405/501).
-  // Cualquier otro error (403 permisos, 400 body inválido) se propaga sin reintentar.
+  // Corredor genérico de escritura: prueba las URLs candidatas en orden. Reintenta
+  // con la siguiente cuando ML dice "no existe / método no permitido" (404/405/501)
+  // Y TAMBIÉN ante 401: como el token ya tiene permiso de escritura, un 401 significa
+  // que ESA url no es la de escritura correcta → probar la siguiente forma. Solo un
+  // 403/400/otro (permiso real / body inválido) corta y se propaga.
   async function adsTryWrite(api, cuenta, urls, method, body) {
     var lastErr = null;
     for (var i = 0; i < urls.length; i++) {
@@ -3350,7 +3353,7 @@
       } catch (e) {
         lastErr = e;
         var st = (e && (e.mlStatus || e.httpStatus)) || 0;
-        if (st !== 404 && st !== 405 && st !== 501) throw e;
+        if (st !== 404 && st !== 405 && st !== 501 && st !== 401) throw e;
       }
     }
     throw lastErr || new Error("Endpoint de Mercado Ads no disponible.");

@@ -81,9 +81,10 @@ function advBase(adv) { return "/advertising/advertisers/" + adv + "/product_ads
 function campWriteUrls(av, id) {
   var site = av.siteId, adv = av.advertiserId;
   return [
+    "/marketplace/advertising/" + site + "/advertisers/" + adv + "/product_ads/campaigns/" + id + "?channel=marketplace",
+    "/marketplace/advertising/" + site + "/advertisers/" + adv + "/product_ads/campaigns/" + id,
     "/marketplace/advertising/" + site + "/product_ads/campaigns/" + id + "?channel=marketplace",
     "/marketplace/advertising/" + site + "/product_ads/campaigns/" + id,
-    "/marketplace/advertising/" + site + "/advertisers/" + adv + "/product_ads/campaigns/" + id,
     "/advertising/advertisers/" + adv + "/product_ads/campaigns/" + id
   ];
 }
@@ -91,8 +92,10 @@ async function putCampaign(token, av, campaignId, patch) {
   var urls = campWriteUrls(av, campaignId);
   var lastErr = null;
   for (var i = 0; i < urls.length; i++) {
+    // Reintenta con la siguiente forma ante 404/405/501 y TAMBIÉN 401 (el token ya
+    // tiene ads:/read-write, así que un 401 = url de escritura equivocada).
     try { return await mlAds(token, urls[i], "PUT", patch); }
-    catch (e) { lastErr = e; if (!/ 40[45]:| 501:/.test(String(e && e.message))) throw e; }
+    catch (e) { lastErr = e; if (!/ 40[145]:| 501:/.test(String(e && e.message))) throw e; }
   }
   throw lastErr;
 }
