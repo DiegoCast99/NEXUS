@@ -349,12 +349,22 @@
       else uyRev += (x.revenue || 0);
     });
     // Alpha Fitness (tienda propia): canal REAL (no "próximamente"). Su facturación
-    // la va a alimentar el conector de Alpha Fitness cuando se cablee; por ahora 0.
+    // la alimenta el conector de la tienda web ("alphaweb").
     var alphaRev = Number(ml.alphaRevenue) || 0;
+    // La foto del logo se sube por la UI bajo el id del app activo. Buscar dónde
+    // quedó (alphaweb = la tienda web, alfafitness = el contenedor, o el slug) para
+    // que el logo cargado aparezca en el canal.
+    var alphaPhotoId = "alphaweb";
+    if (S.marketplacePhoto) {
+      ["alphaweb", "alfafitness", "alphafitness"].some(function (cand) {
+        if (S.marketplacePhoto(cand)) { alphaPhotoId = cand; return true; }
+        return false;
+      });
+    }
     var channels = [
       { name: "Mercado Libre", slug: "mercadolibre", value: uyRev, soon: false },
       { name: "Mercado Livre", slug: "mercadolivre", value: brRev, soon: false },
-      { name: "Alpha Fitness", slug: "alphafitness", value: alphaRev, soon: false },
+      { name: "Alpha Fitness", slug: "alphafitness", photoId: alphaPhotoId, value: alphaRev, soon: false },
       { name: "Amazon", slug: "amazon", value: 0, soon: true },
       { name: "Shopee", slug: "shopee", value: 0, soon: true }
     ];
@@ -385,7 +395,7 @@
       var p = total > 0 ? Math.round((c.value / total) * 100) : 0;
       var right = c.soon ? '<span class="home-ch-soon">Proximamente</span>' : '<b>' + p + '%</b>';
       var dot = isReal ? '<i style="background:' + CH_COLORS[real.findIndex(function (r) { return r.slug === c.slug; }) % CH_COLORS.length] + '"></i>' : '';
-      return '<div class="home-ch' + (c.soon ? ' is-soon' : '') + '">' + bizLogo(c.slug, c.slug, 24) +
+      return '<div class="home-ch' + (c.soon ? ' is-soon' : '') + '">' + bizLogo(c.photoId || c.slug, c.slug, 24) +
         '<span class="home-ch-name">' + esc(c.name) + '</span>' + dot + right + '</div>';
     }).join("");
     box.innerHTML = donut + '<div class="home-ch-legend">' + legend + '</div>';

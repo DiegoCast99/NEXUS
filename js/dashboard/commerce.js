@@ -237,7 +237,10 @@
         : Array.isArray(payload.data)
           ? payload.data
           : [];
-    return rows.map(normalizeCommerceOrder);
+    // El feed puede traer métricas agregadas en `meta` (ej. visitas de la tienda).
+    const meta = (payload && payload.meta) || {};
+    const visits = (typeof meta.visitas === "number") ? meta.visitas : null;
+    return { orders: rows.map(normalizeCommerceOrder), visits: visits };
   }
 
   // ---- Mercado Libre: OAuth + fetch --------------------------
@@ -2456,8 +2459,9 @@
           saveConfig: saveCommerceConfigs,
           populateForm: populateCommerceConfigForm
         });
-        const orders = await fetchCommerceData(config);
-        state.commerce.snapshots[appId] = createCommerceSnapshot(orders, "live");
+        const fetched = await fetchCommerceData(config);
+        const orders = fetched.orders;
+        state.commerce.snapshots[appId] = createCommerceSnapshot(orders, "live", (fetched.visits != null ? { visits: fetched.visits } : undefined));
         saveCommerceSnapshots();
         return orders.length
           ? "Datos reales sincronizados correctamente."
