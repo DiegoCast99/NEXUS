@@ -22,6 +22,7 @@
   var invExpanded = {};   // mlbId -> desplegado (variantes NATIVAS de ML de esa publicación)
   var famExpanded = {};   // baseKey -> desplegado (FAMILIA de publicaciones sueltas por sabor)
   var listFilter = "all"; // filtro del listado: "all" | "synced" | "unsynced"
+  var compFiltro = "";    // filtro por COMPONENTE: productId → solo publicaciones que lo usan ("" = todas)
   var serverStock = {};   // Fase 4: stock por producto tal como se cargó del servidor
                           // (baseline para el merge 3-way al guardar).
   var currentTab = "productos"; // pestaña activa: "productos" | "publicaciones"
@@ -549,6 +550,16 @@
       mlbIds = mlbIds.filter(function (m) { return (cuentaDeListing(m) || cuentas[0]) === actual; });
     }
 
+    // Filtro por COMPONENTE: si hay un producto elegido, mostrar SOLO las
+    // publicaciones cuya composición lo usa (para encontrar rápido qué editar).
+    poblarCompFiltro();
+    if (compFiltro) {
+      var usaProd = {};
+      listingsDeProducto(compFiltro).forEach(function (m) { usaProd[m] = true; });
+      mlbIds = mlbIds.filter(function (m) { return usaProd[m]; });
+    }
+    actualizarCompFiltroUI(mlbIds.length);
+
     // Conteo por estado (a nivel publicación) para los botones del filtro.
     var syncedCount = 0;
     mlbIds.forEach(function (m) { if (esSincronizada(m)) syncedCount++; });
@@ -759,6 +770,41 @@
     });
     var setC = function (k, v) { var el = bar.querySelector('[data-count="' + k + '"]'); if (el) el.textContent = v; };
     setC("all", tot); setC("synced", synced); setC("unsynced", unsynced);
+  }
+
+  // --- Filtro por COMPONENTE (producto físico → publicaciones que lo usan) ---
+  // Rellena el <select> con los productos (orden alfabético), sin reconstruir si no
+  // cambió (para no perder foco ni pisar la selección).
+  function poblarCompFiltro() {
+    var sel = document.getElementById("invCompFilter");
+    if (!sel) return;
+    var ids = Object.keys(inv.products).sort(function (a, b) {
+      var na = (inv.products[a].name || inv.products[a].sku || a).toLowerCase();
+      var nb = (inv.products[b].name || inv.products[b].sku || b).toLowerCase();
+      return na < nb ? -1 : na > nb ? 1 : 0;
+    });
+    var firma = ids.map(function (id) { return id + ":" + (inv.products[id].name || inv.products[id].sku || ""); }).join("|") + "#" + compFiltro;
+    if (sel.getAttribute("data-firma") === firma) return;
+    sel.setAttribute("data-firma", firma);
+    var html = '<option value="">Todos los productos</option>';
+    ids.forEach(function (id) {
+      var p = inv.products[id], nom = p.name || p.sku || id;
+      html += '<option value="' + escapeHtml(id) + '"' + (id === compFiltro ? " selected" : "") + '>' + escapeHtml(nom) + "</option>";
+    });
+    sel.innerHTML = html;
+    sel.value = compFiltro;
+  }
+  function actualizarCompFiltroUI(n) {
+    var cnt = document.getElementById("invCompFilterCount");
+    var clr = document.getElementById("invCompFilterClear");
+    if (cnt) cnt.textContent = compFiltro ? (n + (n === 1 ? " publicación" : " publicaciones")) : "";
+    if (clr) clr.classList.toggle("is-hidden", !compFiltro);
+  }
+  function invSetCompFiltro(v) { compFiltro = v || ""; renderListings(); }
+  function invLimpiarCompFiltro() {
+    compFiltro = "";
+    var sel = document.getElementById("invCompFilter"); if (sel) sel.value = "";
+    renderListings();
   }
   function estadoPill(status, tieneComp, error) {
     if (!tieneComp) return '<span class="type-pill">—</span>';
@@ -1012,7 +1058,7 @@
     invAddProduct, invGuardarProductos, invDeleteProduct,
     invCargarPublicaciones, invResyncAll, invReintentarUno,
     invConfigurar, invComposeCancelar, invComposeAddComponent, invComposeQuitar, invComposeGuardar, invToggleExpand,
-    invToggleFamilia, invSetFilter,
+    invToggleFamilia, invSetFilter, invSetCompFiltro, invLimpiarCompFiltro,
     invRefiltrarPorCuenta
   });
 })();

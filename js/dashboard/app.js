@@ -244,7 +244,13 @@
       const tab = event.target.closest("[data-inv-tab]");
       if (tab) { S.invTab(tab.getAttribute("data-inv-tab"), true); return; }
       const flt = event.target.closest("[data-inv-filter]");
-      if (flt) S.invSetFilter(flt.getAttribute("data-inv-filter"));
+      if (flt) { S.invSetFilter(flt.getAttribute("data-inv-filter")); return; }
+      if (event.target.closest("#invCompFilterClear")) S.invLimpiarCompFiltro();
+    });
+    // Filtro por componente (select): filtra las publicaciones por producto físico.
+    elements.invPanel?.addEventListener("change", (event) => {
+      const sel = event.target.closest("#invCompFilter");
+      if (sel) S.invSetCompFiltro(sel.value);
     });
     elements.invReload?.addEventListener("click", () => S.abrirInventario());
     elements.invAddProd?.addEventListener("click", () => S.invAddProduct());

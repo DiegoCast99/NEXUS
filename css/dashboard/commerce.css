@@ -1274,8 +1274,28 @@
 
 /* Filtro rápido del listado (sincronizadas / sin sincronizar) */
 .inv-filter {
-  display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 14px;
+  display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px;
 }
+/* Filtro por componente (producto físico → publicaciones que lo usan) */
+.inv-compfilter {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 14px;
+}
+.inv-compfilter-label { color: var(--muted); font-size: 12px; font-weight: 600; }
+.inv-compfilter-select {
+  min-width: 220px; max-width: 360px;
+  padding: 8px 11px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--panel); color: var(--text);
+  font-size: 13px; font-family: inherit; cursor: pointer;
+}
+.inv-compfilter-select:focus { outline: none; border-color: var(--accent); }
+.inv-compfilter-count { color: var(--accent); font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.inv-compfilter-clear {
+  border: 1px solid var(--border); background: none; color: var(--muted);
+  padding: 5px 11px; border-radius: 999px; font-size: 12px; cursor: pointer; font-family: inherit;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.inv-compfilter-clear:hover { color: var(--text); border-color: rgba(245, 98, 58, 0.45); }
+.inv-compfilter-clear.is-hidden { display: none; }
 .inv-filter-btn {
   display: inline-flex; align-items: center; gap: 7px;
   padding: 7px 13px; border-radius: 999px;
