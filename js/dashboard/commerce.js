@@ -3232,28 +3232,66 @@
   }
   function adsEsActiva(status) { return status === "active" || status === "enabled"; }
 
+  // URLs candidatas para ESCRIBIR una campaña (pausar/activar/presupuesto/eliminar).
+  // OJO: el path de ESCRITURA de Mercado Ads NO lleva el segmento /advertisers/{adv}
+  // (a diferencia del /campaigns/search de LECTURA, que sí) y usa ?channel=marketplace.
+  // Doc vigente: PUT /marketplace/advertising/{siteId}/product_ads/campaigns/{id}.
+  // Probamos ese primero y caemos a las formas legacy (con /advertisers, y la vieja
+  // base /advertising/advertisers/...) solo si ML responde 404/405/501, porque los
+  // endpoints legacy quedan deprecados (devuelven 404) desde 2026.
+  function adsCampWriteUrls(cache, campaignId) {
+    var site = cache.siteId, adv = cache.advertiserId, id = campaignId;
+    return [
+      "/marketplace/advertising/" + site + "/product_ads/campaigns/" + id + "?channel=marketplace",
+      "/marketplace/advertising/" + site + "/product_ads/campaigns/" + id,
+      "/marketplace/advertising/" + site + "/advertisers/" + adv + "/product_ads/campaigns/" + id,
+      "/advertising/advertisers/" + adv + "/product_ads/campaigns/" + id
+    ];
+  }
+  // Colección de campañas (crear): POST. Mismo criterio de path que la escritura.
+  function adsCampCollectionUrls(cache) {
+    var site = cache.siteId, adv = cache.advertiserId;
+    return [
+      "/marketplace/advertising/" + site + "/product_ads/campaigns?channel=marketplace",
+      "/marketplace/advertising/" + site + "/product_ads/campaigns",
+      "/marketplace/advertising/" + site + "/advertisers/" + adv + "/product_ads/campaigns",
+      "/advertising/advertisers/" + adv + "/product_ads/campaigns"
+    ];
+  }
+  // Anuncio (item) individual: PUT status / mover de campaña. Doc vigente:
+  // /marketplace/advertising/{site}/product_ads/ads/{itemId}?channel=marketplace.
+  function adsAdWriteUrls(cache, itemId) {
+    var site = cache.siteId, adv = cache.advertiserId, id = itemId;
+    return [
+      "/marketplace/advertising/" + site + "/product_ads/ads/" + id + "?channel=marketplace",
+      "/marketplace/advertising/" + site + "/product_ads/ads/" + id,
+      "/marketplace/advertising/" + site + "/advertisers/" + adv + "/product_ads/items/" + id,
+      "/advertising/advertisers/" + adv + "/product_ads/items/" + id
+    ];
+  }
+  // Corredor genérico de escritura: prueba las URLs candidatas en orden y solo
+  // reintenta cuando ML dice "no existe / método no permitido" (404/405/501).
+  // Cualquier otro error (403 permisos, 400 body inválido) se propaga sin reintentar.
+  async function adsTryWrite(api, cuenta, urls, method, body) {
+    var lastErr = null;
+    for (var i = 0; i < urls.length; i++) {
+      try {
+        return await api.mlApi(urls[i], method, body, cuenta);
+      } catch (e) {
+        lastErr = e;
+        var st = (e && (e.mlStatus || e.httpStatus)) || 0;
+        if (st !== 404 && st !== 405 && st !== 501) throw e;
+      }
+    }
+    throw lastErr || new Error("Endpoint de Mercado Ads no disponible.");
+  }
+
   async function adsUpdateCampaign(cuenta, campaignId, patch) {
     var api = S.requireSecureApi();
     var cache = adsDatos(cuenta);
     if (!cache.siteId || !cache.advertiserId) throw new Error("Recargá la sección de Publicidad primero.");
-    // La ESCRITURA (pausar / presupuesto / eliminar) usa la MISMA base marketplace
-    // que la lectura (con site_id) — es el endpoint vigente de la API de Mercado
-    // Ads. La base vieja `/advertising/advertisers/...` quedó como fallback por si
-    // alguna cuenta aún la usa. Pausar/ajustar/eliminar son idempotentes, así que
-    // reintentar en la otra base es seguro. Solo se reintenta cuando el endpoint no
-    // existe / método no permitido (404/405/501); cualquier otro error se muestra.
-    var bases = [adsMktBase(cache), adsAdvBase(cache)];
-    var lastErr = null;
-    for (var i = 0; i < bases.length; i++) {
-      try {
-        return await api.mlApi(bases[i] + "/campaigns/" + campaignId, "PUT", patch, cuenta);
-      } catch (e) {
-        lastErr = e;
-        var st = (e && (e.mlStatus || e.httpStatus)) || 0;
-        if (st !== 404 && st !== 405 && st !== 501) throw e;   // error real: no seguir probando
-      }
-    }
-    throw lastErr || new Error("No se pudo actualizar la campaña en Mercado Ads.");
+    // Pausar/ajustar/eliminar son idempotentes, así que reintentar en otra URL es seguro.
+    return await adsTryWrite(api, cuenta, adsCampWriteUrls(cache, campaignId), "PUT", patch);
   }
 
   function renderAdsDetail(campaignId) {
@@ -3383,8 +3421,8 @@
     try {
       var api = S.requireSecureApi();
       var cache = adsDatos(cuenta);
-      if (!cache.advertiserId) throw new Error("Recargá la sección de Publicidad primero.");
-      await api.mlApi(adsAdvBase(cache) + "/campaigns", "POST", body, cuenta);
+      if (!cache.siteId || !cache.advertiserId) throw new Error("Recargá la sección de Publicidad primero.");
+      await adsTryWrite(api, cuenta, adsCampCollectionUrls(cache), "POST", body);
       if (elements.adsNewName) elements.adsNewName.value = "";
       if (elements.adsNewBudget) elements.adsNewBudget.value = "";
       if (elements.adsNewRoas) elements.adsNewRoas.value = "";
@@ -3444,7 +3482,7 @@
     try {
       var api = S.requireSecureApi();
       var cache = adsDatos(cuenta);
-      await api.mlApi(adsAdvBase(cache) + "/items/" + itemId, "PUT", { status: activar ? "active" : "paused" }, cuenta);
+      await adsTryWrite(api, cuenta, adsAdWriteUrls(cache, itemId), "PUT", { status: activar ? "active" : "paused" });
       setAdsDetailMsg("Anuncio actualizado.", "success");
       cargarAdsItems(campId);
     } catch (e) { setAdsDetailMsg("No se pudo actualizar el anuncio: " + adsErr(e), "error"); }
@@ -3459,7 +3497,16 @@
     try {
       var api = S.requireSecureApi();
       var cache = adsDatos(cuenta);
-      await api.mlApi(adsAdvBase(cache) + "/items", "POST", { campaign_id: campId, item_id: itemId }, cuenta);
+      if (!cache.siteId || !cache.advertiserId) throw new Error("Recargá la sección de Publicidad primero.");
+      // API vigente: mover un anuncio a una campaña = PUT al anuncio con {campaign_id}
+      // (si no trae status, ML lo deja activo). Fallback a la colección vieja (POST /items).
+      try {
+        await adsTryWrite(api, cuenta, adsAdWriteUrls(cache, itemId), "PUT", { campaign_id: campId });
+      } catch (ePut) {
+        var stp = (ePut && (ePut.mlStatus || ePut.httpStatus)) || 0;
+        if (stp !== 404 && stp !== 405 && stp !== 501) throw ePut;
+        await api.mlApi(adsAdvBase(cache) + "/items", "POST", { campaign_id: campId, item_id: itemId }, cuenta);
+      }
       if (elements.adsAddInput) elements.adsAddInput.value = "";
       setAdsDetailMsg("Anuncio agregado.", "success");
       cargarAdsItems(campId);

@@ -73,14 +73,25 @@ async function getAdvertiser(token) {
 }
 function mktBase(site, adv) { return "/marketplace/advertising/" + site + "/advertisers/" + adv + "/product_ads"; }
 function advBase(adv) { return "/advertising/advertisers/" + adv + "/product_ads"; }
-// Escritura de campaña: base marketplace (misma que la lectura) primero, con
-// fallback a la base advertising vieja solo si el endpoint no existe (404/405/501).
-// Pausar/ajustar es idempotente, así que reintentar en la otra base es seguro.
+// Escritura de campaña: el path de ESCRITURA de Mercado Ads NO lleva /advertisers/{adv}
+// (a diferencia del /campaigns/search de lectura) y usa ?channel=marketplace. Doc vigente:
+// PUT /marketplace/advertising/{site}/product_ads/campaigns/{id}. Probamos ese primero y
+// caemos a las formas legacy solo en 404/405/501 (legacy deprecado -> 404 desde 2026).
+// Pausar/ajustar es idempotente, así que reintentar en otra URL es seguro.
+function campWriteUrls(av, id) {
+  var site = av.siteId, adv = av.advertiserId;
+  return [
+    "/marketplace/advertising/" + site + "/product_ads/campaigns/" + id + "?channel=marketplace",
+    "/marketplace/advertising/" + site + "/product_ads/campaigns/" + id,
+    "/marketplace/advertising/" + site + "/advertisers/" + adv + "/product_ads/campaigns/" + id,
+    "/advertising/advertisers/" + adv + "/product_ads/campaigns/" + id
+  ];
+}
 async function putCampaign(token, av, campaignId, patch) {
-  var bases = [mktBase(av.siteId, av.advertiserId), advBase(av.advertiserId)];
+  var urls = campWriteUrls(av, campaignId);
   var lastErr = null;
-  for (var i = 0; i < bases.length; i++) {
-    try { return await mlAds(token, bases[i] + "/campaigns/" + campaignId, "PUT", patch); }
+  for (var i = 0; i < urls.length; i++) {
+    try { return await mlAds(token, urls[i], "PUT", patch); }
     catch (e) { lastErr = e; if (!/ 40[45]:| 501:/.test(String(e && e.message))) throw e; }
   }
   throw lastErr;

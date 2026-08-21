@@ -341,20 +341,29 @@
     var rows = [];
     (S.mlAccounts && S.mlAccounts() || []).forEach(function (acc) {
       var on = !!(S.getCommerceConfig && S.getCommerceConfig(acc.id).hasToken);
-      rows.push(connRow(acc.name, "Mercado Libre", "mercadolibre", on));
+      // La foto propia de ML se guarda bajo el id del marketplace (ML1 y ML2 la
+      // comparten bajo "mercadolibre"; ML Brasil tiene la suya, "mercadolivre").
+      var photoId = acc.id === "mercadolibre2" ? "mercadolibre" : acc.id;
+      rows.push(connRow(acc.name, "Mercado Libre", "mercadolibre", on, photoId));
     });
     (S.metaPlatforms || []).forEach(function (p) {
       var st = S.getMetaPlatformState && S.getMetaPlatformState(p.id);
       var on = !!(st && st.config && (st.config.accessToken || st.config.hasToken));
-      rows.push(connRow(p.name || p.id, "Meta Ads", "meta", on));
+      rows.push(connRow(p.name || p.id, "Meta Ads", "meta", on, p.id));
     });
-    rows.push(connRow("Amazon", "Marketplace · en evaluacion", "amazon", false));
-    rows.push(connRow("Tienda Mia", "Marketplace · pendiente", "tiendamia", false));
-    rows.push(connRow("Shopee", "Marketplace · pendiente", "shopee", false));
+    rows.push(connRow("Amazon", "Marketplace · en evaluacion", "amazon", false, "amazon"));
+    rows.push(connRow("Tienda Mia", "Marketplace · pendiente", "tiendamia", false, "tiendamia"));
+    rows.push(connRow("Shopee", "Marketplace · pendiente", "shopee", false, "shopee"));
     box.innerHTML = rows.join("");
   }
-  function connRow(name, sub, slug, on) {
-    var lg = S.platformLogo ? S.platformLogo(slug, 34) : '<span class="home-biz-logo">' + esc(String(name || "?").slice(0, 2).toUpperCase()) + "</span>";
+  // photoId = clave de la foto propia que cargó el titular (marketplacePhoto). Si
+  // hay foto la usamos (mismo criterio que el home / "Ventas por canal"); si no,
+  // cae al logo de marca generado.
+  function connRow(name, sub, slug, on, photoId) {
+    var url = (photoId && S.marketplacePhoto) ? S.marketplacePhoto(photoId) : "";
+    var lg = url
+      ? '<span class="pf-logo pf-photo" style="width:34px;height:34px;border-radius:9px"><img src="' + esc(url) + '" alt="" onerror="this.style.display=\'none\'"/></span>'
+      : (S.platformLogo ? S.platformLogo(slug, 34) : '<span class="home-biz-logo">' + esc(String(name || "?").slice(0, 2).toUpperCase()) + "</span>");
     return '<div class="settings-conn-row">' + lg +
       '<div><b>' + esc(name) + '</b><small>' + esc(sub) + '</small></div>' +
       '<span class="settings-conn-status ' + (on ? "on" : "off") + '">' + (on ? "Conectado" : "Sin conectar") + '</span></div>';
