@@ -250,10 +250,15 @@
     var mlState = crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2);
     sessionStorage.setItem("nexus_ml_state_expected", mlState);
     // El dominio depende del pais de la cuenta: Brasil no valida contra el de Uruguay.
+    // scope EXPLICITO: sin el, ML puede emitir un token SOLO-LECTURA -> las escrituras
+    // (pausar/ajustar campañas de Mercado Ads, cambiar stock, etc.) devuelven 401
+    // "User does not have permission to write". Pedimos offline_access (refresh) + read
+    // + write. Requiere RECONECTAR la cuenta para que el token nuevo traiga el write.
     return S.mlAuthUrl(activeMLId())
       + "?response_type=code"
       + "&client_id=" + encodeURIComponent(ML_APP_ID)
       + "&redirect_uri=" + encodeURIComponent(redirectUri)
+      + "&scope=" + encodeURIComponent("offline_access read write")
       + "&state=" + encodeURIComponent(mlState);
   }
 

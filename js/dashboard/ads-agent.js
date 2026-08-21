@@ -312,6 +312,18 @@
     if (!silencioso && S.cargarAds) { await S.cargarAds(cuenta); }
   }
 
+  // Traduce el error crudo de ML a algo accionable. El 401 "does not have
+  // permission to write" = el token se emitió SOLO-LECTURA: hay que reconectar
+  // la cuenta (el nuevo flujo OAuth ya pide scope write).
+  function msgError(e) {
+    var st = (e && (e.mlStatus || e.httpStatus)) || 0;
+    var raw = (e && e.message) ? String(e.message) : "error";
+    if (st === 401 || /permission to write/i.test(raw)) {
+      return "Tu cuenta de Mercado Libre está conectada solo para LECTURA. Andá a Configuración → Mercado Libre y reconectala (Conectar de nuevo) para habilitar la escritura. Al reconectar, aceptá los permisos de administración de publicidad.";
+    }
+    return raw + (st ? " (" + st + ")" : "");
+  }
+
   async function aplicarUno(id) {
     var r = recById(id);
     if (!r) return;
@@ -319,7 +331,7 @@
     var btn = document.querySelector('[data-apply="' + CSS.escape(id) + '"]');
     if (btn) { btn.textContent = "Aplicando…"; btn.disabled = true; }
     try { await aplicarRec(r); renderAdsAgent(); }
-    catch (e) { if (btn) { btn.textContent = "Reintentar"; btn.disabled = false; } window.alert("No se pudo aplicar: " + (e && e.message ? e.message : "error")); }
+    catch (e) { if (btn) { btn.textContent = "Reintentar"; btn.disabled = false; } window.alert("No se pudo aplicar: " + msgError(e)); }
   }
   async function aplicarTodo() {
     var pl = planActual();
@@ -332,8 +344,7 @@
       try { await aplicarRec(pl.recs[i], true); ok++; }
       catch (e) {
         err++;
-        var st = (e && (e.mlStatus || e.httpStatus)) || 0;
-        ultimoError = ((e && e.message) ? e.message : "error") + (st ? " (" + st + ")" : "");
+        ultimoError = msgError(e);
       }
     }
     if (S.cargarAds) { try { await S.cargarAds(activeCuenta()); } catch (e) {} }
