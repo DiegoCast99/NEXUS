@@ -318,11 +318,8 @@
   function msgError(e) {
     var st = (e && (e.mlStatus || e.httpStatus)) || 0;
     var raw = (e && e.message) ? String(e.message) : "error";
-    var base = raw + (st ? " (" + st + ")" : "");
-    if (st === 401 || /permission to write/i.test(raw)) {
-      return base + " — Mercado Libre rechazó la escritura. Tu token SÍ tiene permiso de publicidad, así que suele ser un permiso a nivel de cuenta de anunciante en Mercado Ads. Pasale este texto a soporte de Nexus.";
-    }
-    return base;
+    // El message ya trae el diagnóstico {adv+ch:.. | noadv:.. | ...} de adsTryWrite.
+    return raw + (st ? " (" + st + ")" : "");
   }
 
   async function aplicarUno(id) {

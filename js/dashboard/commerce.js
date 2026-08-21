@@ -3340,23 +3340,36 @@
       "/advertising/advertisers/" + adv + "/product_ads/items/" + id
     ];
   }
+  // Etiqueta corta de cada URL candidata, para el diagnóstico legible.
+  function adsUrlTag(url) {
+    if (url.indexOf("/advertising/advertisers/") === 0) return "legacy";
+    var t = url.indexOf("/advertisers/") !== -1 ? "adv" : "noadv";
+    if (url.indexOf("channel=marketplace") !== -1) t += "+ch";
+    return t;
+  }
   // Corredor genérico de escritura: prueba las URLs candidatas en orden. Reintenta
   // con la siguiente cuando ML dice "no existe / método no permitido" (404/405/501)
-  // Y TAMBIÉN ante 401: como el token ya tiene permiso de escritura, un 401 significa
-  // que ESA url no es la de escritura correcta → probar la siguiente forma. Solo un
-  // 403/400/otro (permiso real / body inválido) corta y se propaga.
+  // Y TAMBIÉN ante 401 (el token ya tiene ads write; un 401 en una url = esa no es
+  // la de escritura correcta). Solo un 403/400/otro (permiso real / body inválido)
+  // corta. Si NINGUNA anda, el error incluye el status de CADA forma (diagnóstico).
   async function adsTryWrite(api, cuenta, urls, method, body) {
-    var lastErr = null;
+    var lastErr = null, diag = [];
     for (var i = 0; i < urls.length; i++) {
       try {
         return await api.mlApi(urls[i], method, body, cuenta);
       } catch (e) {
         lastErr = e;
         var st = (e && (e.mlStatus || e.httpStatus)) || 0;
-        if (st !== 404 && st !== 405 && st !== 501 && st !== 401) throw e;
+        diag.push(adsUrlTag(urls[i]) + ":" + (st || "?"));
+        if (st !== 404 && st !== 405 && st !== 501 && st !== 401) {
+          e.message = (e.message || "error") + " {" + diag.join(" | ") + "}";
+          throw e;
+        }
       }
     }
-    throw lastErr || new Error("Endpoint de Mercado Ads no disponible.");
+    var err = lastErr || new Error("Endpoint de Mercado Ads no disponible.");
+    err.message = (err.message || "error") + " {" + diag.join(" | ") + "}";
+    throw err;
   }
 
   async function adsUpdateCampaign(cuenta, campaignId, patch) {
