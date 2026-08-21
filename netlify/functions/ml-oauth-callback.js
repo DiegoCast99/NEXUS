@@ -62,18 +62,21 @@ exports.handler = async (event) => {
     refresh_token: data.refresh_token,
     expires_in: data.expires_in || 10800,
     user_id: data.user_id,
+    scope: data.scope || "",
     obtained_at: Math.floor(Date.now() / 1000)
   });
 
   const encBundle = encrypt(bundle);
-  return bridgePage({ encBundle, state });
+  // El scope (ej. "offline_access read write") NO es sensible: lo pasamos al
+  // frontend para poder mostrar si la conexión quedó con permiso de escritura.
+  return bridgePage({ encBundle, state, scope: data.scope || "" });
 };
 
 function esc(s) {
   return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-function bridgePage({ error, encBundle, state }) {
+function bridgePage({ error, encBundle, state, scope }) {
   const body = error
     ? '<p class="err">' + esc(error) + '</p><p><a href="/dashboard.html#ecommerce" style="color:#ffe600">Volver al dashboard</a></p>'
     : '<div class="spin"></div><p>Conectando Mercado Libre...</p>'
@@ -81,6 +84,7 @@ function bridgePage({ error, encBundle, state }) {
       + 'try{'
       + 'sessionStorage.setItem("nexus_ml_enc",' + JSON.stringify(encBundle) + ');'
       + 'sessionStorage.setItem("nexus_ml_state",' + JSON.stringify(state || "") + ');'
+      + 'sessionStorage.setItem("nexus_ml_scope",' + JSON.stringify(scope || "") + ');'
       + 'window.location.replace("/dashboard.html#ml-connect");'
       + '}catch(e){document.querySelector(".box").innerHTML=\'<p class="err">\'+e.message+\'</p>\';}'
       + '</script>';

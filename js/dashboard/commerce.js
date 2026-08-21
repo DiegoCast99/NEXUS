@@ -290,8 +290,10 @@
   async function handleMlOAuthReturn() {
     var encBundle = sessionStorage.getItem("nexus_ml_enc");
     var returnedState = sessionStorage.getItem("nexus_ml_state");
+    var grantedScope = sessionStorage.getItem("nexus_ml_scope") || "";
     sessionStorage.removeItem("nexus_ml_enc");
     sessionStorage.removeItem("nexus_ml_state");
+    sessionStorage.removeItem("nexus_ml_scope");
 
     if (!encBundle) {
       // Volvimos del OAuth pero el token no llego. Caso tipico en la PWA
@@ -315,11 +317,18 @@
       var result = await api.mlSaveTokens(encBundle, cuenta);
       state.commerce.configs[cuenta] = Object.assign(
         state.commerce.configs[cuenta] || S.defaultCommerceConfig(),
-        { hasToken: true, mlUserId: (result && result.userId) || "" }
+        { hasToken: true, mlUserId: (result && result.userId) || "", tokenScope: grantedScope }
       );
       saveCommerceConfigs();
       selectCommerceApp(cuenta);
-      setMlMessage("Cuenta de Mercado Libre conectada exitosamente.", "success");
+      // Avisar si Mercado Libre NO otorgó escritura: sin ella, pausar/ajustar
+      // publicidad y cambiar stock fallan con 401. Suele ser porque la app de ML
+      // no tiene el scope "write" habilitado (no se arregla reconectando).
+      if (grantedScope && !/\bwrite\b/.test(grantedScope)) {
+        setMlMessage("Conectado, pero SOLO con permiso de lectura. Para pausar/ajustar publicidad y stock, la aplicación de Mercado Libre necesita el scope de escritura habilitado. Revisá los permisos de la app en developers.mercadolibre.com.", "error");
+      } else {
+        setMlMessage("Cuenta de Mercado Libre conectada exitosamente.", "success");
+      }
     } catch (err) {
       console.error("ML OAuth save error:", err);
       selectCommerceApp(mlConnectingAccount());
@@ -944,9 +953,22 @@
       elements.mlConnectTitle.textContent = connected ? nombreCuenta + " conectado" : "Conectar cuenta";
     }
     if (elements.mlConnectDesc) {
-      elements.mlConnectDesc.textContent = connected
-        ? "Tu cuenta esta vinculada. Podes sincronizar ventas o desconectarla."
-        : "Conecta tu cuenta de " + nombreCuenta + " para sincronizar ventas, pedidos y productos.";
+      if (connected) {
+        // Mostrar los permisos otorgados: si falta "write", pausar/ajustar
+        // publicidad y cambiar stock fallan (401). Se corrige habilitando el
+        // scope de escritura en la app de ML, no reconectando.
+        var scope = String(config.tokenScope || "");
+        var puedeEscribir = /\bwrite\b/.test(scope);
+        if (scope) {
+          elements.mlConnectDesc.innerHTML = puedeEscribir
+            ? "Tu cuenta esta vinculada con permiso de <b>lectura y escritura</b>. Podes sincronizar, y el agente puede pausar/ajustar publicidad y stock."
+            : "Tu cuenta esta vinculada pero <b>SOLO con permiso de lectura</b>. Para que el agente pueda pausar/ajustar publicidad y cambiar stock, la app de Mercado Libre necesita el scope <b>write</b> habilitado (developers.mercadolibre.com &rarr; tu app &rarr; permisos). Luego reconecta.";
+        } else {
+          elements.mlConnectDesc.textContent = "Tu cuenta esta vinculada. Podes sincronizar ventas o desconectarla.";
+        }
+      } else {
+        elements.mlConnectDesc.textContent = "Conecta tu cuenta de " + nombreCuenta + " para sincronizar ventas, pedidos y productos.";
+      }
     }
     if (elements.mlConnectButton) {
       elements.mlConnectButton.textContent = "Conectar con " + nombreCuenta;
