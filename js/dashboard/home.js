@@ -148,7 +148,14 @@
     var trend = Object.keys(trendMap).sort().map(function (d) { return { date: d, revenue: trendMap[d] }; });
     var topProducts = Object.keys(byName).map(function (k) { return byName[k]; }).sort(function (a, b) { return b.revenue - a.revenue; }).slice(0, 5);
     var accArr = Object.keys(perAccount).map(function (k) { return perAccount[k]; });
-    return { cur: cur, prev: prev, trend: trend, topProducts: topProducts, perAccount: accArr, hasData: cur.orders > 0 };
+    // Facturación de la tienda web Alpha Fitness (conector genérico) para el canal
+    // "Alpha Fitness" de "Ventas por canal". 0 hasta que se conecte/sincronice.
+    var alphaRevenue = 0;
+    try {
+      var asnap = S.getCommerceSnapshot ? S.getCommerceSnapshot("alphaweb") : null;
+      if (asnap && asnap.totals) alphaRevenue = Number(asnap.totals.revenue) || 0;
+    } catch (e) { alphaRevenue = 0; }
+    return { cur: cur, prev: prev, trend: trend, topProducts: topProducts, perAccount: accArr, alphaRevenue: alphaRevenue, hasData: cur.orders > 0 };
   }
 
   function metaTotals() {

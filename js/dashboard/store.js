@@ -342,7 +342,10 @@
     { id: "mercadolibre2", name: "MERCADO LIBRE 2", model: "Marketplace Uruguay", accent: "#ffe600", parent: "alfafitness", hidden: true },
     { id: "mercadolivre", name: "MERCADO LIVRE", model: "Marketplace Brasil", accent: "#ffe600", parent: "alfafitness" },
     { id: "amazon", name: "AMAZON", model: "Marketplace", accent: "#ff9900", parent: "alfafitness" },
-    { id: "shopee", name: "SHOPEE", model: "Marketplace", accent: "#ee4d2d", parent: "alfafitness" }
+    { id: "shopee", name: "SHOPEE", model: "Marketplace", accent: "#ee4d2d", parent: "alfafitness" },
+    // Tienda web propia (Firebase). Usa el conector GENÉRICO (commerce-fetch) contra
+    // el endpoint nexus-feed de Alpha. NO es Mercado Libre.
+    { id: "alphaweb", name: "ALPHA FITNESS WEB", model: "Tienda propia (Firebase)", accent: "#ff6a3d", parent: "alfafitness" }
   ];
 
   // Negocios de primer nivel (los que se ven al entrar a E-Commerce).
@@ -1096,7 +1099,9 @@
 
   function hasCommerceConnection(config = getCommerceConfig()) {
     if (isMLApp()) return Boolean(config.hasToken);
-    return Boolean(config.pixelId && config.apiUrl && (config.apiToken || config.hasToken));
+    // El Pixel es OPCIONAL (solo se usa para tracking/visitas). Para conectar una
+    // tienda alcanza con el endpoint de datos + su token.
+    return Boolean(config.apiUrl && (config.apiToken || config.hasToken));
   }
 
   function escapeHtml(value) {
