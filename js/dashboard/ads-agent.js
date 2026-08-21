@@ -318,7 +318,12 @@
   function msgError(e) {
     var st = (e && (e.mlStatus || e.httpStatus)) || 0;
     var raw = (e && e.message) ? String(e.message) : "error";
-    // El message ya trae el diagnóstico {adv+ch:.. | noadv:.. | ...} de adsTryWrite.
+    // Diagnóstico confirmado: el endpoint de escritura EXISTE (da 401, no 404) y el
+    // token tiene ads:/read-write. Un 401 acá = permiso a nivel de la cuenta de
+    // Mercado Ads (no del código ni del token). Mensaje accionable + detalle técnico.
+    if (st === 401 || /:401/.test(raw) || /permission to write/i.test(raw)) {
+      return "Mercado Libre rechaza la escritura de publicidad, aunque tu conexión tiene el permiso correcto (ads:/read-write) y el endpoint es el válido. Es un permiso a nivel de tu cuenta de Mercado Ads: revisá que tus campañas estén en modo Personalizado (no automático), o contactá a Mercado Ads para habilitar la gestión por API. Detalle técnico: " + raw + (st ? " (" + st + ")" : "");
+    }
     return raw + (st ? " (" + st + ")" : "");
   }
 
