@@ -540,6 +540,7 @@
     mlSyncButton: document.getElementById("mlSyncButton"),
     mlDemoButton: document.getElementById("mlDemoButton"),
     mlDisconnectButton: document.getElementById("mlDisconnectButton"),
+    mlReconnectButton: document.getElementById("mlReconnectButton"),
     mlMessage: document.getElementById("mlMessage"),
     mlRefreshField: document.getElementById("mlRefreshField"),
     mlRefreshInterval: document.getElementById("mlRefreshInterval"),

@@ -930,6 +930,7 @@
     elements.mlConnectButton?.classList.toggle("is-hidden", connected);
     elements.mlSyncButton?.classList.toggle("is-hidden", !connected);
     elements.mlDemoButton?.classList.toggle("is-hidden", connected);
+    elements.mlReconnectButton?.classList.toggle("is-hidden", !connected);
     elements.mlDisconnectButton?.classList.toggle("is-hidden", !connected);
 
     if (elements.mlConnectStatus) {

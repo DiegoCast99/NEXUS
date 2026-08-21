@@ -152,6 +152,13 @@
     });
     elements.mlConnectButton?.addEventListener("click", startMLOAuth);
     elements.mlSyncButton?.addEventListener("click", () => syncMercadoLibre());
+    // Reconectar = renovar el permiso (mismo flujo OAuth, ahora con scope de
+    // escritura) SIN desconectar: el callback pisa el token viejo por uno nuevo y
+    // NO borra snapshots ni inventario. Ideal para habilitar la escritura de
+    // publicidad/stock sin perder datos.
+    elements.mlReconnectButton?.addEventListener("click", () => {
+      if (window.confirm("Reconectar Mercado Libre para renovar permisos (habilita escritura de publicidad y stock)? No se pierde nada: tus ventas, inventario y sincronizaciones quedan igual. Vas a ver la pantalla de permisos de Mercado Libre.")) startMLOAuth();
+    });
     elements.mlDisconnectButton?.addEventListener("click", () => {
       if (window.confirm("Desconectar Mercado Libre? Se eliminan tokens y datos locales.")) disconnectML();
     });
