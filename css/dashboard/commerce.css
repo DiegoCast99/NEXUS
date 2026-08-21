@@ -122,6 +122,24 @@
   line-height: 1.55;
 }
 
+/* Fila del tooltip del home: monto (izq) + cantidad de ventas pegada a la derecha. */
+.chart-tooltip .hc-tip-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+}
+.chart-tooltip .hc-tip-row span { display: inline; }
+.chart-tooltip .hc-tip-row strong {
+  color: var(--accent);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .ml-connect-desc {
   margin: 0 0 16px;
   color: var(--muted);

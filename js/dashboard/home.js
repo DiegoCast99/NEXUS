@@ -162,7 +162,7 @@
     // Top productos + por cuenta + tendencia: TODO dentro de la ventana [curFrom, curTo).
     // La gráfica "Ingresos por día" ahora sigue el período elegido (antes 14 días
     // fijos): por eso al cambiar el período la gráfica cambia y se re-anima.
-    var trendMap = {}, byName = {}, perAccount = {};
+    var trendMap = {}, trendCount = {}, byName = {}, perAccount = {};
     (S.mlAccounts ? S.mlAccounts() : []).forEach(function (a) { perAccount[a.id] = { id: a.id, name: a.name, revenue: 0, orders: 0, connected: !!(S.getCommerceConfig && S.getCommerceConfig(a.id).hasToken) }; });
     items.forEach(function (it) {
       var t = orderTime(it.o);
@@ -174,6 +174,7 @@
       if (perAccount[it.acc]) { perAccount[it.acc].revenue += rev; perAccount[it.acc].orders += 1; }
       var dk = o.date || new Date(t || now).toISOString().slice(0, 10);
       trendMap[dk] = (trendMap[dk] || 0) + rev;
+      trendCount[dk] = (trendCount[dk] || 0) + 1;   // cantidad de ventas de ese día
     });
 
     // Fallback: sin allOrders pero con totals cacheados.
@@ -184,12 +185,12 @@
         cur.revenue += Number(tt.revenue) || 0; cur.margin += Number(tt.margin) || 0;
         cur.orders += Number(tt.orders) || 0; cur.units += Number(tt.units) || 0;
         if (perAccount[a.id]) { perAccount[a.id].revenue = Number(tt.revenue) || 0; perAccount[a.id].orders = Number(tt.orders) || 0; }
-        (snap.trend || []).forEach(function (p) { trendMap[p.date] = (trendMap[p.date] || 0) + (Number(p.revenue) || 0); });
+        (snap.trend || []).forEach(function (p) { trendMap[p.date] = (trendMap[p.date] || 0) + (Number(p.revenue) || 0); trendCount[p.date] = (trendCount[p.date] || 0) + (Number(p.orders) || 0); });
         (snap.products || []).forEach(function (p) { var nm = p.name || "Producto"; if (!byName[nm]) byName[nm] = { name: nm, revenue: 0, orders: 0, units: 0, thumbnail: "" }; byName[nm].revenue += Number(p.revenue) || 0; byName[nm].orders += Number(p.orders) || 0; });
       });
     }
 
-    var trend = Object.keys(trendMap).sort().map(function (d) { return { date: d, revenue: trendMap[d] }; });
+    var trend = Object.keys(trendMap).sort().map(function (d) { return { date: d, revenue: trendMap[d], count: trendCount[d] || 0 }; });
     var topProducts = Object.keys(byName).map(function (k) { return byName[k]; }).sort(function (a, b) { return b.revenue - a.revenue; }).slice(0, 5);
     var accArr = Object.keys(perAccount).map(function (k) { return perAccount[k]; });
     // Facturación de la tienda web Alpha Fitness (conector genérico) para el canal
@@ -318,11 +319,11 @@
       xLabels += '<span class="hc-x" style="left:' + (x(i) / W * 100).toFixed(2) + '%">' + esc(lbl) + '</span>';
     });
 
-    // Geometría por punto (en coords del viewBox) para el hover: el monto de ese día.
+    // Geometría por punto (en coords del viewBox) para el hover: monto + cantidad de ese día.
     var geomPts = pts.map(function (p, i) {
       var d = String(p.date || "");
       var lbl = d.length >= 10 ? (d.slice(8, 10) + "/" + d.slice(5, 7) + "/" + d.slice(0, 4)) : d;
-      return { cx: x(i), cy: y(p.revenue), revenue: Number(p.revenue) || 0, label: lbl };
+      return { cx: x(i), cy: y(p.revenue), revenue: Number(p.revenue) || 0, count: Number(p.count) || 0, label: lbl };
     });
 
     var anim = S.shouldAnimateChart ? S.shouldAnimateChart("home-sales", pts.map(function (p) { return Number(p.revenue) || 0; }).join(",")) : false;
@@ -370,7 +371,12 @@
       var p = geomPts[i];
       if (dot) { dot.setAttribute("cx", p.cx.toFixed(1)); dot.setAttribute("cy", p.cy.toFixed(1)); dot.setAttribute("r", "6"); }
       if (vline) { vline.setAttribute("x1", p.cx.toFixed(1)); vline.setAttribute("x2", p.cx.toFixed(1)); vline.style.opacity = "1"; }
-      if (S.showTooltipAt) S.showTooltipAt(clientX, clientY, "<b>" + esc(p.label) + "</b><span>Ventas: " + cur(p.revenue) + "</span>");
+      // Fila: monto a la izquierda + CANTIDAD de ventas de ese día pegada al borde derecho.
+      var n = Number(p.count) || 0;
+      var cntTxt = n === 1 ? "1 venta" : intn(n) + " ventas";
+      if (S.showTooltipAt) S.showTooltipAt(clientX, clientY,
+        "<b>" + esc(p.label) + "</b>" +
+        '<div class="hc-tip-row"><span>Ventas: ' + cur(p.revenue) + '</span><strong>' + esc(cntTxt) + '</strong></div>');
     }
     function hide() {
       if (dot) dot.setAttribute("r", "0");
