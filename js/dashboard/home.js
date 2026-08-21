@@ -115,6 +115,17 @@
     var cur = aggWindow(items, curFrom, curTo);
     var prev = aggWindow(items, curFrom - span, curFrom);
 
+    // VISITAS de Mercado Libre: los pedidos no las traen; vienen agregadas en el
+    // snapshot de cada cuenta ML (totals.sessions, de fetchMLVisits). Se suman de ahí.
+    // ML no da visitas del período anterior, así que prev queda en 0 (delta = "nuevo").
+    var visitas = 0;
+    (S.mlAccounts ? S.mlAccounts() : []).forEach(function (a) {
+      var snap = S.getCommerceSnapshot && S.getCommerceSnapshot(a.id);
+      var tt = snap && snap.totals;
+      if (tt && typeof tt.sessions === "number") visitas += tt.sessions;
+    });
+    cur.visitas = visitas; prev.visitas = 0;
+
     // Top productos + por cuenta + tendencia: TODO dentro de la ventana [curFrom, curTo).
     // La gráfica "Ingresos por día" ahora sigue el período elegido (antes 14 días
     // fijos): por eso al cambiar el período la gráfica cambia y se re-anima.
@@ -206,7 +217,8 @@
     bag: '<path d="M6 8h12l-1 11H7L6 8Z"/><path d="M9 8a3 3 0 0 1 6 0"/>',
     users: '<circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 6a3 3 0 0 1 0 6"/><path d="M20.5 19a5.5 5.5 0 0 0-3-4.9"/>',
     coin: '<circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10a2.5 2 0 0 1 5 0c0 2.5-5 1.5-5 4a2.5 2 0 0 0 5 0"/>',
-    pie: '<path d="M12 3a9 9 0 1 0 9 9h-9Z"/><path d="M12 3v9h9A9 9 0 0 0 12 3Z"/>'
+    pie: '<path d="M12 3a9 9 0 1 0 9 9h-9Z"/><path d="M12 3v9h9A9 9 0 0 0 12 3Z"/>',
+    eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>'
   };
 
   function kpiCard(label, value, icon, delta) {
@@ -230,7 +242,7 @@
     box.innerHTML =
       kpiCard("Ventas totales", curK(c.revenue), IC.money, deltaObj(c.revenue, p.revenue)) +
       kpiCard("Pedidos", intn(c.orders), IC.bag, deltaObj(c.orders, p.orders)) +
-      kpiCard("Clientes", intn(c.customers), IC.users, deltaObj(c.customers, p.customers)) +
+      kpiCard("Visitas", intn(c.visitas || 0), IC.eye, deltaObj(c.visitas || 0, p.visitas || 0)) +
       kpiCard("Ganancias", curK(c.margin), IC.coin, deltaObj(c.margin, p.margin)) +
       kpiCard("Margen", margenPct.toFixed(1) + "%", IC.pie,
         margenPrevPct > 0 ? { dir: margenPct >= margenPrevPct ? "up" : "down", good: margenPct >= margenPrevPct, text: (margenPct >= margenPrevPct ? "+" : "") + (margenPct - margenPrevPct).toFixed(1) + "pts" } : null);
