@@ -215,6 +215,7 @@
       allOrders: normalizedOrders,                                   // superset traído
       fetchedRange: info.range || null,                             // rango de allOrders
       visits: (typeof info.visits === "number") ? info.visits : 0,
+      visitsByDay: info.visitsByDay || null,                        // serie diaria de visitas (para cortar por período)
       range: null, orders: [], totals: {}, products: [], trend: []
     };
     aplicarVistaComercio(snap, info.viewRange || info.range || null);
@@ -826,6 +827,42 @@
     } catch (e) {
       console.warn("No se pudieron traer las visitas de ML:", e && e.message);
       return 0;
+    }
+  }
+
+  // Visitas DIARIAS a las publicaciones del vendedor. A diferencia de fetchMLVisits
+  // (un solo total), esto trae la SERIE por día (endpoint time_window de ML) para
+  // poder cortar por período en el navegador — igual que las ventas. Devuelve
+  // { total, byDay:{ "YYYY-MM-DD": n } }. Si la serie falla, cae al total simple.
+  async function fetchMLVisitsDaily(range) {
+    var r = range || getPeriodRange();
+    var byDay = {}, total = 0;
+    try {
+      var api = S.requireSecureApi();
+      var userId = await getMLUserId(api);
+      // Cantidad de días del rango (incluye el "hasta"); ML topea en 150.
+      var d1 = new Date(r.from + "T12:00:00"), d2 = new Date(r.to + "T12:00:00");
+      var dias = Math.round((d2 - d1) / 86400000) + 1;
+      if (!(dias > 0)) dias = 30;
+      if (dias > 150) dias = 150;
+      var endpoint = "/users/" + userId + "/items_visits/time_window" +
+        "?last=" + dias + "&unit=day&ending=" + encodeURIComponent(r.to);
+      var result = await api.mlApi(endpoint, "GET", null, activeMLId());
+      var payload = result.payload || {};
+      var arr = Array.isArray(payload.results) ? payload.results : [];
+      arr.forEach(function (row) {
+        var dstr = String(row.date || row.date_from || "").slice(0, 10);
+        var n = Number(row.total != null ? row.total : row.visits) || 0;
+        if (dstr) { byDay[dstr] = (byDay[dstr] || 0) + n; total += n; }
+      });
+      if (arr.length) return { total: total, byDay: byDay };
+      // La respuesta no trajo serie: usar el total agregado si vino.
+      return { total: Number(payload.total_visits) || 0, byDay: byDay };
+    } catch (e) {
+      // Fallback: total simple por rango (sin serie diaria). fetchMLVisits ya
+      // atrapa sus propios errores y devuelve 0.
+      var t = await fetchMLVisits(r);
+      return { total: t, byDay: {} };
     }
   }
 
@@ -2550,14 +2587,15 @@
         // Ventana AMPLIA (30 días) para poder cambiar de periodo sin re-pedir.
         var fetchRange = getFetchRange();
         // Las visitas van en paralelo: es otra API y no debe demorar las ventas.
-        var [orders, visits] = await Promise.all([
+        // Traemos la SERIE DIARIA para poder cortar por período (hoy/7/15/30/custom).
+        var [orders, visitsDaily] = await Promise.all([
           fetchMLOrders(fetchRange),
-          fetchMLVisits(fetchRange)
+          fetchMLVisitsDaily(fetchRange)
         ]);
         // Snapshot + primer render YA, con los datos crudos (facturación, cantidad,
         // gráfica). El enriquecido (fotos + costo de envío real) va DESPUÉS en
         // segundo plano, para no demorar el render — corrige margen/envío al llegar.
-        var next = createCommerceSnapshot(orders, "live", { visits: visits, range: fetchRange, viewRange: getPeriodRange() });
+        var next = createCommerceSnapshot(orders, "live", { visits: visitsDaily.total, visitsByDay: visitsDaily.byDay, range: fetchRange, viewRange: getPeriodRange() });
         var mlId = activeMLId();
         var prev = state.commerce.snapshots[mlId];
         state.commerce.snapshots[mlId] = next;

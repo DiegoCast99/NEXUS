@@ -105,6 +105,32 @@
     return agg;
   }
 
+  // ¿Algún snapshot ML trae la serie diaria de visitas? (los viejos no la tienen).
+  function hayVisitasDiarias() {
+    var accounts = (S.mlAccounts && S.mlAccounts()) || [];
+    for (var i = 0; i < accounts.length; i++) {
+      var snap = S.getCommerceSnapshot && S.getCommerceSnapshot(accounts[i].id);
+      if (snap && snap.visitsByDay && Object.keys(snap.visitsByDay).length) return true;
+    }
+    return false;
+  }
+  // Suma las visitas (serie diaria de todas las cuentas ML) cuyos días caen en
+  // [fromTs, toTs). Cada día es "YYYY-MM-DD" → se ubica al inicio de ese día local.
+  function sumVisitas(fromTs, toTs) {
+    var total = 0;
+    (S.mlAccounts ? S.mlAccounts() : []).forEach(function (a) {
+      var snap = S.getCommerceSnapshot && S.getCommerceSnapshot(a.id);
+      var byDay = snap && snap.visitsByDay;
+      if (!byDay) return;
+      Object.keys(byDay).forEach(function (dstr) {
+        var t = startOfDayTs(dstr);
+        if (t == null) return;
+        if (t >= fromTs && t < toTs) total += Number(byDay[dstr]) || 0;
+      });
+    });
+    return total;
+  }
+
   function mlData() {
     var items = collectOrders();
     var hasOrders = items.length > 0;
@@ -115,16 +141,23 @@
     var cur = aggWindow(items, curFrom, curTo);
     var prev = aggWindow(items, curFrom - span, curFrom);
 
-    // VISITAS de Mercado Libre: los pedidos no las traen; vienen agregadas en el
-    // snapshot de cada cuenta ML (totals.sessions, de fetchMLVisits). Se suman de ahí.
-    // ML no da visitas del período anterior, así que prev queda en 0 (delta = "nuevo").
-    var visitas = 0;
-    (S.mlAccounts ? S.mlAccounts() : []).forEach(function (a) {
-      var snap = S.getCommerceSnapshot && S.getCommerceSnapshot(a.id);
-      var tt = snap && snap.totals;
-      if (tt && typeof tt.sessions === "number") visitas += tt.sessions;
-    });
-    cur.visitas = visitas; prev.visitas = 0;
+    // VISITAS de Mercado Libre: los pedidos no las traen; vienen como SERIE DIARIA
+    // en el snapshot de cada cuenta ML (visitsByDay, de fetchMLVisitsDaily). Se
+    // suman por día dentro de la ventana del período elegido — igual que las ventas
+    // — así "Visitas" sigue Hoy/7/15/30/personalizado y tiene delta real vs. previo.
+    if (hayVisitasDiarias()) {
+      cur.visitas = sumVisitas(curFrom, curTo);
+      prev.visitas = sumVisitas(curFrom - span, curFrom);
+    } else {
+      // Snapshot viejo (sin serie diaria) o ML no la dio: total agregado, sin delta.
+      var vtot = 0;
+      (S.mlAccounts ? S.mlAccounts() : []).forEach(function (a) {
+        var snap = S.getCommerceSnapshot && S.getCommerceSnapshot(a.id);
+        var tt = snap && snap.totals;
+        if (tt && typeof tt.sessions === "number") vtot += tt.sessions;
+      });
+      cur.visitas = vtot; prev.visitas = 0;
+    }
 
     // Top productos + por cuenta + tendencia: TODO dentro de la ventana [curFrom, curTo).
     // La gráfica "Ingresos por día" ahora sigue el período elegido (antes 14 días
