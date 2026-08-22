@@ -2605,6 +2605,7 @@
     await S.runIntegrationSync({
       slice: () => state.commerce,
       silent: silent,
+      label: "Mercado Libre",
       setMessage: setMlMessage,
       syncingMessage: "Sincronizando Mercado Libre...",
       render: renderCommerceDashboard,

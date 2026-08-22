@@ -4,7 +4,11 @@
 
 [build]
   publish = "."
-  command = ""
+  # Cache-busting automático por contenido (hashea css/js y setea el SW). Es
+  # zero-dep (solo Node nativo). Si algún día falla, el deploy no rompe el sitio
+  # vivo (Netlify mantiene la versión anterior); se puede correr a mano con
+  # `node build-cache.js` antes de un drag-and-drop.
+  command = "node build-cache.js"
 
 # El escaneo de secretos de Netlify marca la apiKey de Firebase (AIza...) como
 # "likely secret" y frena el build. Es un FALSO POSITIVO: la config web de

@@ -154,11 +154,12 @@
 
   // ---- Popovers de la topbar ----
   function closePops(except) {
-    ["notifPop", "profilePop", "helpPop"].forEach(function (id) {
+    ["notifPop", "profilePop", "helpPop", "syncPop"].forEach(function (id) {
       var n = el(id); if (n && id !== except) n.hidden = true;
     });
     if (except !== "profilePop") el("profileChip")?.setAttribute("aria-expanded", "false");
     if (except !== "notifPop") el("notifBell")?.setAttribute("aria-expanded", "false");
+    if (except !== "syncPop") el("syncPill")?.setAttribute("aria-expanded", "false");
   }
   function togglePop(id, anchorBtn) {
     var pop = el(id);
@@ -167,6 +168,7 @@
     closePops(willOpen ? id : null);
     pop.hidden = !willOpen;
     if (anchorBtn) anchorBtn.setAttribute("aria-expanded", String(willOpen));
+    if (willOpen && id === "syncPop") { renderSyncPop(); }
     if (willOpen && id === "notifPop") {
       renderNotifs();  // pinta lo cacheado al instante
       // Refresca las ventas recientes de TODAS las cuentas (no solo la activa) y
@@ -374,10 +376,91 @@
     if (b) b.click();
   }
 
+  // ---- Estado de sincronización: frescura del dato + salud de conexiones ----
+  function tiempoDesde(ts) {
+    if (!ts) return "sin datos";
+    var s = Math.max(0, Math.round((Date.now() - ts) / 1000));
+    if (s < 45) return "recién";
+    if (s < 90) return "hace 1 min";
+    var m = Math.round(s / 60);
+    if (m < 60) return "hace " + m + " min";
+    var h = Math.round(m / 60);
+    if (h < 24) return "hace " + h + " h";
+    return "hace " + Math.round(h / 24) + " d";
+  }
+  function syncStatusData() {
+    var accounts = (S.mlAccounts && S.mlAccounts()) || [];
+    var items = [], newest = 0, connected = 0;
+    accounts.forEach(function (a) {
+      var cfg = S.getCommerceConfig ? S.getCommerceConfig(a.id) : {};
+      var conn = !!(cfg && cfg.hasToken);
+      var snap = S.getCommerceSnapshot ? S.getCommerceSnapshot(a.id) : null;
+      var ts = (snap && snap.fetchedAt) ? new Date(snap.fetchedAt).getTime() : 0;
+      if (conn) { connected++; if (ts && ts > newest) newest = ts; }
+      items.push({ id: a.id, name: a.name, connected: conn, ts: ts });
+    });
+    var c = (S.state && S.state.commerce) || {};
+    var failing = (c.failCount || 0) > 0;
+    var syncing = !!c.syncing;
+    var stale = !newest || (Date.now() - newest) > 6 * 60 * 1000;
+    var health = !connected ? "off" : (failing ? "err" : (newest && !stale ? "ok" : "warn"));
+    return { items: items, newest: newest, failing: failing, syncing: syncing, health: health, connected: connected };
+  }
+  function renderSyncStatus() {
+    var pill = el("syncPill"); if (!pill) return;
+    var d = syncStatusData();
+    pill.hidden = d.connected === 0;   // sin cuentas conectadas: no molesta
+    var dot = el("syncPillDot"), txt = el("syncPillTxt");
+    if (dot) dot.className = "sync-pill-dot is-" + d.health;
+    if (txt) txt.textContent = d.syncing ? "Sincronizando…" : (d.failing ? "Error de sync" : tiempoDesde(d.newest));
+    pill.classList.toggle("is-err", d.health === "err");
+    var pop = el("syncPop");
+    if (pop && !pop.hidden) renderSyncPop();
+  }
+  function ensureSyncPop() {
+    var pop = el("syncPop"); if (pop) return pop;
+    var host = document.querySelector(".topbar"); if (!host) return null;
+    pop = document.createElement("div");
+    pop.className = "topbar-pop sync-pop"; pop.id = "syncPop";
+    pop.setAttribute("role", "dialog"); pop.hidden = true;
+    host.appendChild(pop);
+    return pop;
+  }
+  function renderSyncPop() {
+    var pop = ensureSyncPop(); if (!pop) return;
+    var d = syncStatusData();
+    var rows = d.items.map(function (it) {
+      var st = !it.connected
+        ? '<span class="sync-row-st off">Sin conectar</span>'
+        : (d.failing ? '<span class="sync-row-st err">Error</span>' : '<span class="sync-row-st ok">' + esc(tiempoDesde(it.ts)) + '</span>');
+      return '<div class="sync-row"><span class="sync-row-name">' + esc(it.name) + '</span>' + st + '</div>';
+    }).join("");
+    pop.innerHTML =
+      '<div class="topbar-pop-head"><b>Sincronización</b>' +
+      '<button class="topbar-pop-x" type="button" data-pop-close aria-label="Cerrar">&#10005;</button></div>' +
+      '<div class="notif-pop-body">' +
+      '<div class="sync-sum">Datos actualizados: <b>' + esc(d.syncing ? "sincronizando…" : tiempoDesde(d.newest)) + '</b></div>' +
+      rows +
+      (d.failing ? '<div class="sync-warn">Hubo un error al sincronizar. Revisá la conexión de Mercado Libre.</div>' : '') +
+      '<button class="ghost-button sync-now" type="button" id="syncNowBtn">' + (d.syncing ? "Sincronizando…" : "Sincronizar ahora") + '</button>' +
+      '</div>';
+  }
+  function syncAhora() {
+    if (!S.syncMercadoLibre) return;
+    try { S.toast && S.toast("Sincronizando Mercado Libre…", "info", { ttl: 2000 }); } catch (e) {}
+    Promise.resolve(S.syncMercadoLibre({ silent: false })).then(function () {
+      renderSyncStatus();
+    }).catch(function () { renderSyncStatus(); });
+  }
+
   // ---- Init ----
   function initShell() {
-    if (initShell._done) { renderProfileChrome(); return; }
+    if (initShell._done) { renderProfileChrome(); renderSyncStatus(); return; }
     initShell._done = true;
+
+    // Indicador de sincronización: pintar ya y refrescar el "hace X min" cada 30s.
+    renderSyncStatus();
+    if (!initShell._syncTimer) initShell._syncTimer = window.setInterval(renderSyncStatus, 30000);
 
     el("avatarInput")?.addEventListener("change", onAvatarFile);
     document.addEventListener("click", function (e) {
@@ -417,12 +500,14 @@
     el("profileChip")?.addEventListener("click", function () { togglePop("profilePop", el("profileChip")); });
     el("sideUser")?.addEventListener("click", function () { if (S.setView) S.setView("settings"); });
     el("helpBtn")?.addEventListener("click", function () { ensureHelpPop(); togglePop("helpPop", el("helpBtn")); });
+    el("syncPill")?.addEventListener("click", function () { togglePop("syncPop", el("syncPill")); });
     // Mobile: la hamburguesa de la topbar abre la hoja "Mas" (perfil/respaldo/sesion).
     el("mMenuBtn")?.addEventListener("click", function () { document.querySelector("#moduleNav [data-more]")?.click(); });
 
     // Cerrar popovers al elegir una opcion, con la X, click afuera o Escape
     document.addEventListener("click", function (e) {
       if (e.target.closest("[data-pop-close]")) { closePops(null); return; }
+      if (e.target.closest("#syncNowBtn")) { syncAhora(); return; }
       var saleBtn = e.target.closest("[data-notif-sale]");
       if (saleBtn) {
         var acc = saleBtn.getAttribute("data-notif-acc");
@@ -440,7 +525,7 @@
         return;
       }
       if (e.target.closest("#profilePop [data-view], #profilePop [data-avatar-pick]")) { closePops(null); return; }
-      var inTop = e.target.closest(".topbar-pop, #notifBell, #profileChip, #helpBtn");
+      var inTop = e.target.closest(".topbar-pop, #notifBell, #profileChip, #helpBtn, #syncPill");
       if (!inTop) closePops(null);
     });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape") { closePops(null); var sr = el("globalSearchResults"); if (sr) sr.hidden = true; } });
@@ -473,7 +558,7 @@
     }, 2500);
   }
 
-  Object.assign(S, { initShell: initShell, renderProfileChrome: renderProfileChrome, renderSettings: renderSettings, updateNotifDot: updateNotifDot, profileName: profileName, marketplacePhoto: marketplacePhoto, renderMarketplacePhotoConfig: renderMarketplacePhotoConfig });
+  Object.assign(S, { initShell: initShell, renderProfileChrome: renderProfileChrome, renderSettings: renderSettings, updateNotifDot: updateNotifDot, profileName: profileName, marketplacePhoto: marketplacePhoto, renderMarketplacePhotoConfig: renderMarketplacePhotoConfig, renderSyncStatus: renderSyncStatus });
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", initShell);
   else initShell();

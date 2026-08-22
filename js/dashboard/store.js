@@ -189,6 +189,41 @@
     }, 1900);
   }
 
+  // ---- Toasts globales: avisos VISIBLES de error/éxito, también de syncs en 2º
+  //      plano (antes esos fallos solo iban a console.warn → invisibles). ----
+  function toast(message, type, opts) {
+    opts = opts || {};
+    const host = document.getElementById("nexusToasts");
+    const msg = String(message == null ? "" : message).trim();
+    if (!host || !msg) return function () {};
+    // Dedupe: no apilar un aviso idéntico al que ya está visible (evita spam de ticks).
+    const nodes = host.querySelectorAll(".nexus-toast");
+    for (let i = 0; i < nodes.length; i++) {
+      if (nodes[i].getAttribute("data-msg") === msg) return function () {};
+    }
+    const t = type || "info";
+    const box = document.createElement("div");
+    box.className = "nexus-toast is-" + t;
+    box.setAttribute("role", t === "error" ? "alert" : "status");
+    box.setAttribute("data-msg", msg);
+    const ic = document.createElement("span"); ic.className = "nexus-toast-ic"; ic.setAttribute("aria-hidden", "true");
+    const m = document.createElement("span"); m.className = "nexus-toast-msg"; m.textContent = msg;
+    const x = document.createElement("button"); x.type = "button"; x.className = "nexus-toast-x"; x.setAttribute("aria-label", "Cerrar"); x.innerHTML = "&#10005;";
+    box.appendChild(ic); box.appendChild(m); box.appendChild(x);
+    host.appendChild(box);
+    requestAnimationFrame(function () { box.classList.add("is-in"); });
+    let timer = 0;
+    function dismiss() {
+      window.clearTimeout(timer);
+      box.classList.remove("is-in"); box.classList.add("is-out");
+      window.setTimeout(function () { if (box.parentNode) box.parentNode.removeChild(box); }, 240);
+    }
+    x.addEventListener("click", dismiss);
+    const ttl = opts.ttl != null ? opts.ttl : (t === "error" ? 8000 : 3500);
+    if (ttl > 0) timer = window.setTimeout(dismiss, ttl);
+    return dismiss;
+  }
+
   // Moneda: peso uruguayo (UYU) mostrado con símbolo "$" (narrowSymbol).
   const currency = new Intl.NumberFormat("es-419", {
     style: "currency",
@@ -1245,7 +1280,7 @@
     movementMonth, normalizeAdAccountId, normalizeApiVersion, persistActiveMetaPlatform, runDashboardReveal, safeSetItem,
     sampleMovements, saveCommerceConfigs, saveCommerceSnapshots, saveMetaConfig, saveMetaPlatforms, saveMetaSnapshot,
     saveMovements, shiftMonth, state, summarize, toDateInput, updateTopbarForView,
-    rehydrateState, flushCloudSync, hasPendingCloudSync, isCloudSyncKey,
+    rehydrateState, flushCloudSync, hasPendingCloudSync, isCloudSyncKey, toast,
     financeMoney, setFinanceCurrency, financeCurrency, setGbpUyuRate, gbpUyuRate, FINANCE_CCY_KEY,
     setMonthRange,
   });

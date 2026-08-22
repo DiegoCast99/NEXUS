@@ -1054,3 +1054,78 @@
   .home-donut svg + .home-donut-c { opacity: 1 !important; animation: none !important; }
   .home-gastos-chart svg .hn-bar { transform: none !important; animation: none !important; }
 }
+
+/* ============================================================
+   ESTADO DE SINCRONIZACIÓN (pill del topbar) + TOASTS GLOBALES
+   ============================================================ */
+/* Pill de frescura del dato: punto de estado + "hace X min". */
+.sync-pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 34px; padding: 0 11px;
+  border: 1px solid var(--border); border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04); color: var(--muted);
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  white-space: nowrap;
+}
+.sync-pill:hover { color: var(--text); border-color: rgba(255, 255, 255, 0.2); }
+.sync-pill[hidden] { display: none; }
+.sync-pill.is-err { border-color: rgba(255, 90, 90, 0.4); color: var(--danger); }
+.sync-pill-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--muted); }
+.sync-pill-dot.is-ok { background: var(--good); box-shadow: 0 0 8px rgba(52, 211, 153, 0.6); }
+.sync-pill-dot.is-warn { background: var(--warn); box-shadow: 0 0 8px rgba(245, 166, 35, 0.55); }
+.sync-pill-dot.is-err { background: var(--danger); box-shadow: 0 0 8px rgba(255, 90, 90, 0.6); animation: syncDotPulse 1.6s ease-in-out infinite; }
+.sync-pill-dot.is-off { background: rgba(255, 255, 255, 0.28); box-shadow: none; }
+@keyframes syncDotPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* Popover de detalle por conexión. */
+.sync-pop .sync-sum { font-size: 12.5px; color: var(--muted); margin: 2px 4px 10px; }
+.sync-pop .sync-sum b { color: var(--text); font-variant-numeric: tabular-nums; }
+.sync-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 9px; }
+.sync-row + .sync-row { margin-top: 2px; }
+.sync-row:nth-child(even) { background: rgba(255, 255, 255, 0.02); }
+.sync-row-name { font-size: 13px; color: var(--text); }
+.sync-row-st { font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.sync-row-st.ok { color: var(--good); }
+.sync-row-st.err { color: var(--danger); }
+.sync-row-st.off { color: var(--muted); }
+.sync-warn { margin: 8px 4px 2px; font-size: 12px; color: var(--danger); line-height: 1.5; }
+.sync-pop .sync-now { width: 100%; margin-top: 12px; justify-content: center; }
+
+/* Toasts flotantes (abajo a la derecha). */
+.nexus-toasts {
+  position: fixed; right: 18px; bottom: 18px; z-index: 9998;
+  display: flex; flex-direction: column; gap: 10px; align-items: flex-end;
+  pointer-events: none; max-width: min(380px, calc(100vw - 36px));
+}
+.nexus-toast {
+  pointer-events: auto;
+  display: flex; align-items: flex-start; gap: 10px;
+  width: 100%; padding: 12px 12px 12px 14px;
+  border: 1px solid var(--border); border-left: 3px solid var(--muted);
+  border-radius: 12px;
+  background: rgba(20, 20, 24, 0.92);
+  backdrop-filter: blur(18px) saturate(1.3); -webkit-backdrop-filter: blur(18px) saturate(1.3);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
+  color: var(--text); font-size: 13px; line-height: 1.45;
+  opacity: 0; transform: translate3d(24px, 0, 0);
+  transition: opacity 0.24s ease, transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.nexus-toast.is-in { opacity: 1; transform: none; }
+.nexus-toast.is-out { opacity: 0; transform: translate3d(24px, 0, 0); }
+.nexus-toast.is-error { border-left-color: var(--danger); }
+.nexus-toast.is-success { border-left-color: var(--good); }
+.nexus-toast.is-info { border-left-color: var(--accent); }
+.nexus-toast-ic { width: 8px; height: 8px; margin-top: 5px; border-radius: 50%; flex: none; background: currentColor; }
+.nexus-toast.is-error .nexus-toast-ic { color: var(--danger); }
+.nexus-toast.is-success .nexus-toast-ic { color: var(--good); }
+.nexus-toast.is-info .nexus-toast-ic { color: var(--accent); }
+.nexus-toast-msg { flex: 1; min-width: 0; }
+.nexus-toast-x {
+  flex: none; border: 0; background: none; color: var(--muted);
+  font-size: 13px; line-height: 1; cursor: pointer; padding: 2px 2px 0; margin-left: 2px;
+}
+.nexus-toast-x:hover { color: var(--text); }
+@media (max-width: 620px) {
+  .nexus-toasts { right: 12px; left: 12px; bottom: 12px; max-width: none; align-items: stretch; }
+}

@@ -60,18 +60,18 @@
       @keyframes saleBootSpin { to { transform: rotate(360deg); } }
       html.booting-sale #saleBootSplash p { margin: 0; font-size: 14px; color: #9a9aa5; }
     </style>
-    <link rel="stylesheet" href="./css/dashboard/base.css?v=20260821-grad1" />
-    <link rel="stylesheet" href="./css/dashboard/layout.css?v=20260815-fix1" />
-    <link rel="stylesheet" href="./css/dashboard/controls.css?v=20260821-grad1" />
-    <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260813-redesign1" />
-    <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260813-redesign2" />
-    <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260813-redesign1" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260821-invbtns1" />
-    <link rel="stylesheet" href="./css/dashboard/tools.css?v=20260813-redesign1" />
-    <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260813-redesign1" />
-    <link rel="stylesheet" href="./css/dashboard/redesign.css?v=20260821-grad1" />
-    <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260724-adapt1" />
-    <link rel="stylesheet" href="./css/dashboard/mobile.css?v=20260813-logos1" />
+    <link rel="stylesheet" href="./css/dashboard/base.css?v=e32a768bab" />
+    <link rel="stylesheet" href="./css/dashboard/layout.css?v=c1bd3ebce7" />
+    <link rel="stylesheet" href="./css/dashboard/controls.css?v=0ba1d79147" />
+    <link rel="stylesheet" href="./css/dashboard/welcome.css?v=e17d2d321c" />
+    <link rel="stylesheet" href="./css/dashboard/finance.css?v=b4cb91aa09" />
+    <link rel="stylesheet" href="./css/dashboard/meta.css?v=6d84225452" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=4f4486b60a" />
+    <link rel="stylesheet" href="./css/dashboard/tools.css?v=56092e9282" />
+    <link rel="stylesheet" href="./css/dashboard/integrations.css?v=4fdb501d32" />
+    <link rel="stylesheet" href="./css/dashboard/redesign.css?v=4033de0cca" />
+    <link rel="stylesheet" href="./css/dashboard/responsive.css?v=73c6b2778a" />
+    <link rel="stylesheet" href="./css/dashboard/mobile.css?v=58e05223f5" />
   </head>
   <body>
     <!-- Splash del deep-link de venta: tapa la portada hasta que aparece el detalle. -->
@@ -257,6 +257,11 @@
               <div class="search-results" id="globalSearchResults" role="listbox" hidden></div>
             </label>
             <div class="topbar-tools">
+              <!-- Estado de sincronización: frescura del dato + salud de conexiones -->
+              <button class="sync-pill" type="button" id="syncPill" aria-label="Estado de sincronización" aria-haspopup="dialog" aria-expanded="false" hidden>
+                <span class="sync-pill-dot" id="syncPillDot"></span>
+                <span class="sync-pill-txt" id="syncPillTxt">—</span>
+              </button>
               <button class="icon-btn" type="button" id="notifBell" aria-label="Notificaciones" aria-haspopup="dialog" aria-expanded="false">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16l-2-2Z" /><path d="M10 20a2 2 0 0 0 4 0" /></svg>
                 <span class="bell-dot" id="notifDot" hidden></span>
@@ -1724,35 +1729,38 @@
 
     <div class="chart-tooltip" id="chartTooltip" role="status" aria-live="polite"></div>
 
+    <!-- Avisos flotantes (errores/éxitos visibles, incluso de syncs en segundo plano) -->
+    <div class="nexus-toasts" id="nexusToasts" aria-live="polite" aria-atomic="false"></div>
+
     <!-- Firebase SDK (CDN, builds compat para la API namespaced) -->
     <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore-compat.js"></script>
     <!-- Nexus Firebase config + auth + db + proxy seguro -->
-    <script src="./js/firebase/config.js?v=20260709-ola1c"></script>
-    <script src="./js/firebase/auth.js?v=20260709-ola1"></script>
-    <script src="./js/firebase/db.js?v=20260727-mob6"></script>
-    <script src="./js/firebase/secure-api.js?v=20260814-agente2"></script>
+    <script src="./js/firebase/config.js?v=69d619bec8"></script>
+    <script src="./js/firebase/auth.js?v=5b6891dfee"></script>
+    <script src="./js/firebase/db.js?v=cda46990df"></script>
+    <script src="./js/firebase/secure-api.js?v=eabc044110"></script>
     <!-- Dashboard modules -->
-    <script src="./js/core/auth.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/store.js?v=20260821-premium1"></script>
-    <script src="./js/dashboard/integration-core.js?v=20260716-live1"></script>
-    <script src="./js/dashboard/charts.js?v=20260821-metchart1"></script>
-    <script src="./js/dashboard/finance.js?v=20260727-rev2"></script>
-    <script src="./js/dashboard/revolut.js?v=20260727-rev1"></script>
-    <script src="./js/dashboard/meta.js?v=20260716-nav1"></script>
-    <script src="./js/dashboard/commerce.js?v=20260821-adsdiag4"></script>
-    <script src="./js/dashboard/ads-agent.js?v=20260821-adsmsg5"></script>
-    <script src="./js/dashboard/inventory.js?v=20260821-invbtns1"></script>
-    <script src="./js/dashboard/notifications.js?v=20260717-acct4"></script>
-    <script src="./js/dashboard/tools.js?v=20260727-mob5"></script>
-    <script src="./js/dashboard/platform-nav.js?v=20260815-fix1"></script>
-    <script src="./js/dashboard/router.js?v=20260815-fix1"></script>
-    <script src="./js/dashboard/logos.js?v=20260820-fix25"></script>
-    <script src="./js/dashboard/home.js?v=20260821-premium1"></script>
-    <script src="./js/dashboard/shell.js?v=20260821-logos1"></script>
-    <script src="./js/dashboard/app.js?v=20260821-invbtns1"></script>
-    <script src="./js/dashboard/mobile-tables.js?v=20260727-mob3"></script>
-    <script src="./js/pwa.js?v=20260711-push1" defer></script>
+    <script src="./js/core/auth.js?v=a4b48152db"></script>
+    <script src="./js/dashboard/store.js?v=b298969b83"></script>
+    <script src="./js/dashboard/integration-core.js?v=5d3ff73791"></script>
+    <script src="./js/dashboard/charts.js?v=a27c1c35ee"></script>
+    <script src="./js/dashboard/finance.js?v=bd6e1f030e"></script>
+    <script src="./js/dashboard/revolut.js?v=26156f3206"></script>
+    <script src="./js/dashboard/meta.js?v=ed9747f9f6"></script>
+    <script src="./js/dashboard/commerce.js?v=f3d19b9bdf"></script>
+    <script src="./js/dashboard/ads-agent.js?v=0d6508662f"></script>
+    <script src="./js/dashboard/inventory.js?v=cfbd501252"></script>
+    <script src="./js/dashboard/notifications.js?v=a69e274803"></script>
+    <script src="./js/dashboard/tools.js?v=bcada13fc2"></script>
+    <script src="./js/dashboard/platform-nav.js?v=653cc91b6b"></script>
+    <script src="./js/dashboard/router.js?v=8a30aebdd9"></script>
+    <script src="./js/dashboard/logos.js?v=eac391f0f3"></script>
+    <script src="./js/dashboard/home.js?v=af88bc4fbe"></script>
+    <script src="./js/dashboard/shell.js?v=bae32a368e"></script>
+    <script src="./js/dashboard/app.js?v=a76c16a114"></script>
+    <script src="./js/dashboard/mobile-tables.js?v=acd7212400"></script>
+    <script src="./js/pwa.js?v=7087eb1afe" defer></script>
   </body>
 </html>

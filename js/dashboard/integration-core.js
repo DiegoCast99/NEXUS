@@ -76,14 +76,20 @@
     } catch (error) {
       slice.failCount = (slice.failCount || 0) + 1;
       const text = (error && error.message) || hooks.errorFallback;
-      // Silencioso: no repetir el mismo banner rojo en cada tick.
-      if (!hooks.silent || slice.messageType !== "error") {
-        hooks.setMessage(text, "error");
-      }
+      // Primer fallo de la racha (no repetir el mismo aviso en cada tick).
+      const firstOfStreak = (!hooks.silent || slice.messageType !== "error");
+      if (firstOfStreak) hooks.setMessage(text, "error");
       if (hooks.silent) console.warn("sync silencioso fallo:", text);
+      // Error VISIBLE aun en sync de segundo plano: un toast una vez por racha, así
+      // no queda invisible (antes solo iba a console.warn).
+      if (firstOfStreak && root.NexusDash && root.NexusDash.toast) {
+        root.NexusDash.toast((hooks.label ? hooks.label + ": " : "") + text, "error");
+      }
     } finally {
       slice.syncing = false;
       hooks.render();
+      // Refresca el indicador de frescura/estado del topbar tras cada intento.
+      if (root.NexusDash && root.NexusDash.renderSyncStatus) root.NexusDash.renderSyncStatus();
       if (hooks.after) hooks.after();
     }
   }
