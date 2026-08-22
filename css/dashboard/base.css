@@ -78,6 +78,20 @@ html.nexus-dashboard-reveal-pending {
   overflow: hidden;
 }
 
+/* Entrada PREMIUM: cada tarjeta ENTRA DESDE LA IZQUIERDA (slide) + fade + micro-zoom,
+   con easing suave (easeOutExpo). Es una ANIMACIÓN (no transición): se dispara sola
+   apenas la tarjeta se crea con la clase de reveal puesta — así se ve SIEMPRE, aunque
+   el Inicio se pinte unos ms después (sin carreras de timing). El orden izquierda→
+   derecha lo da animation-delay (más abajo). */
+@keyframes nexusRevealIn {
+  from { opacity: 0; transform: translate3d(-54px, 0, 0) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes nexusRevealFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 html.nexus-dashboard-reveal-pending .app-brand,
 html.nexus-dashboard-reveal-pending .module-link,
 html.nexus-dashboard-reveal-pending .sidebar-status,
@@ -91,89 +105,63 @@ html.nexus-dashboard-reveal-pending .view-panel.is-active .panel,
 html.nexus-dashboard-reveal-pending .view-panel.is-active .welcome-card,
 html.nexus-dashboard-reveal-pending .view-panel.is-active .meta-platform-card,
 html.nexus-dashboard-reveal-pending .view-panel.is-active .platform-back-button {
-  /* Entrada: SLIDE de derecha a izquierda (translateX) + fade. Compositado en GPU
-     (transform/opacity) para que sea fluido y no trabe la carga de las gráficas. */
-  opacity: 0;
-  transform: translate3d(30px, 0, 0);
-  transition: opacity 520ms cubic-bezier(0.22, 1, 0.36, 1), transform 560ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: nexusRevealIn 660ms cubic-bezier(0.16, 1, 0.3, 1) both;
   will-change: transform, opacity;
   backface-visibility: hidden;
 }
 
-html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .app-brand,
-html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .module-link,
-html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .sidebar-status,
-html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .landing-link,
-html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .logout-button,
-html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .data-tools,
-html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .topbar > div,
-html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .view-panel.is-active .metric-card,
-html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .view-panel.is-active .integration-hero,
-html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .view-panel.is-active .panel,
-html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .view-panel.is-active .welcome-card,
-html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .view-panel.is-active .meta-platform-card,
-html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .view-panel.is-active .platform-back-button {
-  opacity: 1;
-  transform: translate3d(0, 0, 0);
-}
-
 /* Las tarjetas CON gráficas (Ingresos por día, Ventas por canal, Gastos del mes) NO
-   se deslizan: solo aparecen con un fade suave, para que el "dibujado" de la gráfica
-   adentro no compita con el slide. Arrancan a la par que el resto → todo sincronizado. */
+   se deslizan: solo fade, para que el "dibujado" de la gráfica no compita con el slide.
+   Entran a la par que el resto. */
 html.nexus-dashboard-reveal-pending .view-panel.is-active .home-panel:has(.home-linechart),
 html.nexus-dashboard-reveal-pending .view-panel.is-active .home-panel:has(.home-channels),
 html.nexus-dashboard-reveal-pending .view-panel.is-active .home-panel:has(.home-gastos-chart) {
-  transform: none;
-  transition: opacity 560ms ease;
-}
-html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .view-panel.is-active .home-panel:has(.home-linechart),
-html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .view-panel.is-active .home-panel:has(.home-channels),
-html.nexus-dashboard-reveal-pending.nexus-dashboard-reveal-active .view-panel.is-active .home-panel:has(.home-gastos-chart) {
-  transform: none;
+  animation: nexusRevealFade 660ms ease both;
 }
 
-/* ---- Stagger COMPACTO y sincronizado (entra todo casi a la vez, en cascada
-   corta) para que la entrada sea fluida y rápida, no lenta. Los delays terminan
-   ~300ms → con la transición de ~540ms, todo aparece dentro de ~850ms. ---- */
-html.nexus-dashboard-reveal-pending .app-brand { transition-delay: 40ms; }
-html.nexus-dashboard-reveal-pending .module-link:nth-of-type(1) { transition-delay: 70ms; }
-html.nexus-dashboard-reveal-pending .module-link:nth-of-type(2) { transition-delay: 105ms; }
-html.nexus-dashboard-reveal-pending .module-link:nth-of-type(3) { transition-delay: 140ms; }
-html.nexus-dashboard-reveal-pending .module-link:nth-of-type(4) { transition-delay: 175ms; }
-html.nexus-dashboard-reveal-pending .module-link:nth-of-type(5) { transition-delay: 210ms; }
-html.nexus-dashboard-reveal-pending .sidebar-status { transition-delay: 245ms; }
-html.nexus-dashboard-reveal-pending .landing-link { transition-delay: 280ms; }
-html.nexus-dashboard-reveal-pending .logout-button { transition-delay: 300ms; }
-html.nexus-dashboard-reveal-pending .data-tools { transition-delay: 270ms; }
+/* ---- Stagger en CASCADA visible de IZQUIERDA → DERECHA. Cada tarjeta arranca un
+   toque después que la anterior (~85ms) para que se aprecie la entrada, sin que
+   se sienta lenta. Se usa animation-delay (la entrada es una @keyframes). ---- */
+html.nexus-dashboard-reveal-pending .app-brand { animation-delay: 30ms; }
+html.nexus-dashboard-reveal-pending .module-link:nth-of-type(1) { animation-delay: 90ms; }
+html.nexus-dashboard-reveal-pending .module-link:nth-of-type(2) { animation-delay: 140ms; }
+html.nexus-dashboard-reveal-pending .module-link:nth-of-type(3) { animation-delay: 190ms; }
+html.nexus-dashboard-reveal-pending .module-link:nth-of-type(4) { animation-delay: 240ms; }
+html.nexus-dashboard-reveal-pending .module-link:nth-of-type(5) { animation-delay: 290ms; }
+html.nexus-dashboard-reveal-pending .sidebar-status { animation-delay: 340ms; }
+html.nexus-dashboard-reveal-pending .landing-link { animation-delay: 380ms; }
+html.nexus-dashboard-reveal-pending .logout-button { animation-delay: 410ms; }
+html.nexus-dashboard-reveal-pending .data-tools { animation-delay: 360ms; }
 
-html.nexus-dashboard-reveal-pending .topbar > div:first-child { transition-delay: 40ms; }
-html.nexus-dashboard-reveal-pending .topbar > div:last-child { transition-delay: 90ms; }
+html.nexus-dashboard-reveal-pending .topbar > div:first-child { animation-delay: 40ms; }
+html.nexus-dashboard-reveal-pending .topbar > div:last-child { animation-delay: 110ms; }
 
-html.nexus-dashboard-reveal-pending .view-panel.is-active .metric-card:nth-child(1) { transition-delay: 70ms; }
-html.nexus-dashboard-reveal-pending .view-panel.is-active .metric-card:nth-child(2) { transition-delay: 115ms; }
-html.nexus-dashboard-reveal-pending .view-panel.is-active .metric-card:nth-child(3) { transition-delay: 160ms; }
-html.nexus-dashboard-reveal-pending .view-panel.is-active .metric-card:nth-child(4) { transition-delay: 205ms; }
-html.nexus-dashboard-reveal-pending .view-panel.is-active .metric-card:nth-child(5) { transition-delay: 250ms; }
-html.nexus-dashboard-reveal-pending .view-panel.is-active .metric-card:nth-child(6) { transition-delay: 295ms; }
+/* KPIs del Inicio: cascada clara de izquierda a derecha (85ms entre cada una). */
+html.nexus-dashboard-reveal-pending .view-panel.is-active .metric-card:nth-child(1) { animation-delay: 120ms; }
+html.nexus-dashboard-reveal-pending .view-panel.is-active .metric-card:nth-child(2) { animation-delay: 205ms; }
+html.nexus-dashboard-reveal-pending .view-panel.is-active .metric-card:nth-child(3) { animation-delay: 290ms; }
+html.nexus-dashboard-reveal-pending .view-panel.is-active .metric-card:nth-child(4) { animation-delay: 375ms; }
+html.nexus-dashboard-reveal-pending .view-panel.is-active .metric-card:nth-child(5) { animation-delay: 460ms; }
+html.nexus-dashboard-reveal-pending .view-panel.is-active .metric-card:nth-child(6) { animation-delay: 545ms; }
 
-html.nexus-dashboard-reveal-pending .view-panel.is-active .integration-hero { transition-delay: 70ms; }
+html.nexus-dashboard-reveal-pending .view-panel.is-active .integration-hero { animation-delay: 120ms; }
 
-html.nexus-dashboard-reveal-pending .view-panel.is-active .panel:nth-of-type(1) { transition-delay: 170ms; }
-html.nexus-dashboard-reveal-pending .view-panel.is-active .panel:nth-of-type(2) { transition-delay: 215ms; }
-html.nexus-dashboard-reveal-pending .view-panel.is-active .panel:nth-of-type(3) { transition-delay: 260ms; }
-html.nexus-dashboard-reveal-pending .view-panel.is-active .panel:nth-of-type(4) { transition-delay: 305ms; }
+html.nexus-dashboard-reveal-pending .view-panel.is-active .panel:nth-of-type(1) { animation-delay: 300ms; }
+html.nexus-dashboard-reveal-pending .view-panel.is-active .panel:nth-of-type(2) { animation-delay: 370ms; }
+html.nexus-dashboard-reveal-pending .view-panel.is-active .panel:nth-of-type(3) { animation-delay: 440ms; }
+html.nexus-dashboard-reveal-pending .view-panel.is-active .panel:nth-of-type(4) { animation-delay: 510ms; }
 
-html.nexus-dashboard-reveal-pending .finance-layout .panel:nth-child(1) { transition-delay: 170ms; }
-html.nexus-dashboard-reveal-pending .finance-layout .panel:nth-child(2) { transition-delay: 215ms; }
-html.nexus-dashboard-reveal-pending .finance-layout .panel:nth-child(3) { transition-delay: 260ms; }
-html.nexus-dashboard-reveal-pending .finance-layout .panel:nth-child(4) { transition-delay: 305ms; }
+html.nexus-dashboard-reveal-pending .finance-layout .panel:nth-child(1) { animation-delay: 200ms; }
+html.nexus-dashboard-reveal-pending .finance-layout .panel:nth-child(2) { animation-delay: 270ms; }
+html.nexus-dashboard-reveal-pending .finance-layout .panel:nth-child(3) { animation-delay: 340ms; }
+html.nexus-dashboard-reveal-pending .finance-layout .panel:nth-child(4) { animation-delay: 410ms; }
 
 html.nexus-dashboard-reveal-pending .view-panel.is-active .welcome-card:nth-child(1),
-html.nexus-dashboard-reveal-pending .view-panel.is-active .meta-platform-card:nth-child(1) { transition-delay: 90ms; }
+html.nexus-dashboard-reveal-pending .view-panel.is-active .meta-platform-card:nth-child(1) { animation-delay: 120ms; }
 html.nexus-dashboard-reveal-pending .view-panel.is-active .welcome-card:nth-child(2),
-html.nexus-dashboard-reveal-pending .view-panel.is-active .meta-platform-card:nth-child(2) { transition-delay: 140ms; }
+html.nexus-dashboard-reveal-pending .view-panel.is-active .meta-platform-card:nth-child(2) { animation-delay: 200ms; }
 html.nexus-dashboard-reveal-pending .view-panel.is-active .welcome-card:nth-child(3),
-html.nexus-dashboard-reveal-pending .view-panel.is-active .meta-platform-card:nth-child(3) { transition-delay: 190ms; }
+html.nexus-dashboard-reveal-pending .view-panel.is-active .meta-platform-card:nth-child(3) { animation-delay: 280ms; }
 
 /* Accesibilidad: si el usuario pidió menos movimiento, sin slide — aparece directo. */
 @media (prefers-reduced-motion: reduce) {
@@ -189,10 +177,11 @@ html.nexus-dashboard-reveal-pending .view-panel.is-active .meta-platform-card:nt
   html.nexus-dashboard-reveal-pending .view-panel.is-active .panel,
   html.nexus-dashboard-reveal-pending .view-panel.is-active .welcome-card,
   html.nexus-dashboard-reveal-pending .view-panel.is-active .meta-platform-card,
-  html.nexus-dashboard-reveal-pending .view-panel.is-active .platform-back-button {
+  html.nexus-dashboard-reveal-pending .view-panel.is-active .platform-back-button,
+  html.nexus-dashboard-reveal-pending .view-panel.is-active .home-panel {
     opacity: 1 !important;
     transform: none !important;
-    transition: none !important;
+    animation: none !important;
   }
 }
 

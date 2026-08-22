@@ -33,11 +33,12 @@
             // las tarjetas entran con un slide desde la derecha. Se agrega ANTES del
             // primer paint para no ver el estado final y después animar.
             document.documentElement.classList.add("nexus-dashboard-reveal-pending");
-            // Failsafe: si el JS no llega a correr el reveal, revelar igual (nunca
-            // dejar la pantalla en blanco).
+            // Failsafe de último recurso: si el JS nunca corre el reveal, revelar
+            // igual (nunca dejar la pantalla en blanco). La limpieza normal la hace
+            // runDashboardReveal ~1.9s después de init.
             setTimeout(function () {
               document.documentElement.classList.remove("nexus-dashboard-reveal-pending", "nexus-dashboard-reveal-active");
-            }, 2400);
+            }, 4000);
           }
         } catch (error) {}
       })();
@@ -59,7 +60,7 @@
       @keyframes saleBootSpin { to { transform: rotate(360deg); } }
       html.booting-sale #saleBootSplash p { margin: 0; font-size: 14px; color: #9a9aa5; }
     </style>
-    <link rel="stylesheet" href="./css/dashboard/base.css?v=20260821-anim1" />
+    <link rel="stylesheet" href="./css/dashboard/base.css?v=20260821-premium1" />
     <link rel="stylesheet" href="./css/dashboard/layout.css?v=20260815-fix1" />
     <link rel="stylesheet" href="./css/dashboard/controls.css?v=20260813-redesign1" />
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260813-redesign1" />
@@ -1734,7 +1735,7 @@
     <script src="./js/firebase/secure-api.js?v=20260814-agente2"></script>
     <!-- Dashboard modules -->
     <script src="./js/core/auth.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/store.js?v=20260821-anim1"></script>
+    <script src="./js/dashboard/store.js?v=20260821-premium1"></script>
     <script src="./js/dashboard/integration-core.js?v=20260716-live1"></script>
     <script src="./js/dashboard/charts.js?v=20260821-metchart1"></script>
     <script src="./js/dashboard/finance.js?v=20260727-rev2"></script>
@@ -1748,7 +1749,7 @@
     <script src="./js/dashboard/platform-nav.js?v=20260815-fix1"></script>
     <script src="./js/dashboard/router.js?v=20260815-fix1"></script>
     <script src="./js/dashboard/logos.js?v=20260820-fix25"></script>
-    <script src="./js/dashboard/home.js?v=20260821-anim1"></script>
+    <script src="./js/dashboard/home.js?v=20260821-premium1"></script>
     <script src="./js/dashboard/shell.js?v=20260821-logos1"></script>
     <script src="./js/dashboard/app.js?v=20260821-invbtns1"></script>
     <script src="./js/dashboard/mobile-tables.js?v=20260727-mob3"></script>

@@ -392,13 +392,10 @@
   var CH_COLORS = ["#ff6a3d", "#f5a623", "#ff3d2e", "#b24dff", "#52e1ff"];
   function renderChannels(ml) {
     var box = el("homeChannels"); if (!box) return;
-    // Uruguay (ML1+ML2) y Brasil (Mercado Livre) van como canales SEPARADOS, igual
-    // que las tarjetas de "Tus negocios". Amazon/Shopee: placeholders sin conectar.
-    var uyRev = 0, brRev = 0;
-    ml.perAccount.forEach(function (x) {
-      if (x.id === "mercadolivre") brRev += (x.revenue || 0);
-      else uyRev += (x.revenue || 0);
-    });
+    // Cada cuenta de Mercado Libre es su PROPIO canal (ML1, ML2 y ML Brasil por
+    // separado). Facturación por cuenta para que la dona refleje cada una.
+    var rev = {};
+    ml.perAccount.forEach(function (x) { rev[x.id] = (rev[x.id] || 0) + (Number(x.revenue) || 0); });
     // Alpha Fitness (tienda propia): canal REAL (no "próximamente"). Su facturación
     // la alimenta el conector de la tienda web ("alphaweb").
     var alphaRev = Number(ml.alphaRevenue) || 0;
@@ -412,12 +409,16 @@
         return false;
       });
     }
+    // Orden pedido: Mercado Libre 1, Mercado Libre 2, Mercado Livre, luego el resto.
+    // `id` ÚNICO por canal (no el slug): ML1 y ML2 comparten slug "mercadolibre"
+    // pero deben tener color de dona/leyenda propio.
     var channels = [
-      { name: "Mercado Libre", slug: "mercadolibre", value: uyRev, soon: false },
-      { name: "Mercado Livre", slug: "mercadolivre", value: brRev, soon: false },
-      { name: "Alpha Fitness", slug: "alphafitness", photoId: alphaPhotoId, value: alphaRev, soon: false },
-      { name: "Amazon", slug: "amazon", value: 0, soon: true },
-      { name: "Shopee", slug: "shopee", value: 0, soon: true }
+      { id: "mercadolibre",  name: "Mercado Libre 1", slug: "mercadolibre", value: rev["mercadolibre"] || 0, soon: false },
+      { id: "mercadolibre2", name: "Mercado Libre 2", slug: "mercadolibre", value: rev["mercadolibre2"] || 0, soon: false },
+      { id: "mercadolivre",  name: "Mercado Livre",   slug: "mercadolivre", value: rev["mercadolivre"] || 0, soon: false },
+      { id: "alphaweb",      name: "Alpha Fitness",   slug: "alphafitness", photoId: alphaPhotoId, value: alphaRev, soon: false },
+      { id: "amazon",        name: "Amazon",          slug: "amazon", value: 0, soon: true },
+      { id: "shopee",        name: "Shopee",          slug: "shopee", value: 0, soon: true }
     ];
     var total = channels.reduce(function (a, c) { return a + c.value; }, 0);
     var real = channels.filter(function (c) { return c.value > 0; });
@@ -445,7 +446,7 @@
       var isReal = !c.soon && c.value > 0;   // punto de color solo si aporta a la dona
       var p = total > 0 ? Math.round((c.value / total) * 100) : 0;
       var right = c.soon ? '<span class="home-ch-soon">Proximamente</span>' : '<b>' + p + '%</b>';
-      var dot = isReal ? '<i style="background:' + CH_COLORS[real.findIndex(function (r) { return r.slug === c.slug; }) % CH_COLORS.length] + '"></i>' : '';
+      var dot = isReal ? '<i style="background:' + CH_COLORS[real.findIndex(function (r) { return r.id === c.id; }) % CH_COLORS.length] + '"></i>' : '';
       return '<div class="home-ch' + (c.soon ? ' is-soon' : '') + '">' + bizLogo(c.photoId || c.slug, c.slug, 24) +
         '<span class="home-ch-name">' + esc(c.name) + '</span>' + dot + right + '</div>';
     }).join("");
