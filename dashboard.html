@@ -65,7 +65,7 @@
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260813-redesign1" />
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=20260813-redesign2" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=20260813-redesign1" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260821-invalign1" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260821-invbtns1" />
     <link rel="stylesheet" href="./css/dashboard/tools.css?v=20260813-redesign1" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260813-redesign1" />
     <link rel="stylesheet" href="./css/dashboard/redesign.css?v=20260821-anim1" />
@@ -1205,10 +1205,17 @@
               </div>
               <p class="meta-message" id="invMessage"></p>
 
-              <!-- Pestañas: separar CREAR productos de ENLAZAR publicaciones -->
-              <div class="inv-tabs" role="tablist">
-                <button class="inv-tab is-active" type="button" data-inv-tab="productos">Lista de productos</button>
-                <button class="inv-tab" type="button" data-inv-tab="publicaciones">Publicaciones y enlaces</button>
+              <!-- Pestañas (izq) + acciones de publicaciones (der, bajo "Actualizar") -->
+              <div class="inv-tabs-row">
+                <div class="inv-tabs" role="tablist">
+                  <button class="inv-tab is-active" type="button" data-inv-tab="productos">Lista de productos</button>
+                  <button class="inv-tab" type="button" data-inv-tab="publicaciones">Publicaciones y enlaces</button>
+                </div>
+                <!-- Solo aplican a la pestaña "Publicaciones y enlaces": invTab las muestra/oculta -->
+                <div class="inv-pub-actions is-hidden" id="invPubActions">
+                  <button class="ghost-button" type="button" id="invLoadListings">Cargar publicaciones de ML</button>
+                  <button class="primary-button" type="button" id="invResync">Sincronizar todo</button>
+                </div>
               </div>
 
               <!-- Vista 1: LISTA DE PRODUCTOS (crear los físicos) -->
@@ -1238,10 +1245,6 @@
                    superior (ML1 / ML2 / Mercado Livre). El stock físico (Lista de
                    productos) es único y central para las tres cuentas. -->
               <div class="inv-view is-hidden" data-inv-view="publicaciones">
-                <div class="inv-actions">
-                  <button class="ghost-button" type="button" id="invLoadListings">Cargar publicaciones de ML</button>
-                  <button class="primary-button" type="button" id="invResync">Sincronizar todo</button>
-                </div>
                 <!-- Filtro rápido: ver sincronizadas / sin sincronizar sin bajar toda la lista -->
                 <div class="inv-filter" id="invListingFilter" role="group" aria-label="Filtrar publicaciones">
                   <button class="inv-filter-btn is-active" type="button" data-inv-filter="all">Todas <span class="inv-filter-count" data-count="all">0</span></button>
@@ -1739,7 +1742,7 @@
     <script src="./js/dashboard/meta.js?v=20260716-nav1"></script>
     <script src="./js/dashboard/commerce.js?v=20260821-adsdiag4"></script>
     <script src="./js/dashboard/ads-agent.js?v=20260821-adsmsg5"></script>
-    <script src="./js/dashboard/inventory.js?v=20260821-fix30"></script>
+    <script src="./js/dashboard/inventory.js?v=20260821-invbtns1"></script>
     <script src="./js/dashboard/notifications.js?v=20260717-acct4"></script>
     <script src="./js/dashboard/tools.js?v=20260727-mob5"></script>
     <script src="./js/dashboard/platform-nav.js?v=20260815-fix1"></script>
@@ -1747,7 +1750,7 @@
     <script src="./js/dashboard/logos.js?v=20260820-fix25"></script>
     <script src="./js/dashboard/home.js?v=20260821-anim1"></script>
     <script src="./js/dashboard/shell.js?v=20260821-logos1"></script>
-    <script src="./js/dashboard/app.js?v=20260821-anim1"></script>
+    <script src="./js/dashboard/app.js?v=20260821-invbtns1"></script>
     <script src="./js/dashboard/mobile-tables.js?v=20260727-mob3"></script>
     <script src="./js/pwa.js?v=20260711-push1" defer></script>
   </body>

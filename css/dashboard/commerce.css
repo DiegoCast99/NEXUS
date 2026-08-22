@@ -1424,11 +1424,25 @@
 }
 
 /* Pestañas del Inventario: Lista de productos / Publicaciones y enlaces */
+/* Fila de pestañas: tabs a la izquierda, acciones de publicaciones a la derecha
+   (quedan bajo el botón "Actualizar"). El borde inferior va en la fila para que
+   el subrayado de la pestaña activa lo cruce a todo el ancho. */
+.inv-tabs-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px 16px;
+  flex-wrap: wrap;
+  margin: 4px 0 18px;
+  border-bottom: 1px solid var(--border);
+}
+.inv-pub-actions { display: flex; gap: 10px; flex-wrap: wrap; padding-bottom: 8px; }
+.inv-pub-actions.is-hidden { display: none; }
 .inv-tabs {
   display: flex;
   gap: 6px;
-  margin: 4px 0 18px;
-  border-bottom: 1px solid var(--border);
+  margin: 0;
+  border-bottom: 0;
   flex-wrap: wrap;
 }
 .inv-tab {

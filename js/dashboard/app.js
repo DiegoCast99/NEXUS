@@ -259,7 +259,7 @@
       const sel = event.target.closest("#invCompFilter");
       if (sel) S.invSetCompFiltro(sel.value);
     });
-    elements.invReload?.addEventListener("click", () => S.abrirInventario());
+    elements.invReload?.addEventListener("click", () => S.invActualizar());
     elements.invAddProd?.addEventListener("click", () => S.invAddProduct());
     elements.invSaveProds?.addEventListener("click", () => S.invGuardarProductos());
     elements.invLoadListings?.addEventListener("click", () => S.invCargarPublicaciones());

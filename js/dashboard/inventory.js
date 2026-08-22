@@ -44,6 +44,10 @@
     panel.querySelectorAll("[data-inv-tab]").forEach(function (b) {
       b.classList.toggle("is-active", b.getAttribute("data-inv-tab") === currentTab);
     });
+    // Las acciones "Cargar publicaciones / Sincronizar todo" solo aplican a la
+    // pestaña Publicaciones: se muestran/ocultan según la pestaña activa.
+    var acts = panel.querySelector("#invPubActions");
+    if (acts) acts.classList.toggle("is-hidden", currentTab !== "publicaciones");
   }
 
   function activeML() { return S.state.commerce.selectedApp || S.state.commerce.activeApp || "mercadolibre"; }
@@ -1053,8 +1057,33 @@
     } catch (e) { setInvMsg("No se pudo cargar el inventario: " + ((e && e.message) || "error"), "error"); }
   }
 
+  // Botón "Actualizar": refresco MANUAL y con feedback claro. Vuelve a bajar el
+  // inventario del servidor Y re-consulta las publicaciones + stock de ML (fuerza
+  // el re-pull), muestra el botón en "Actualizando…" y confirma al terminar. Antes
+  // reusaba abrirInventario, que pintaba del cache al instante y refrescaba en
+  // silencio → parecía "que no hacía nada".
+  async function invActualizar() {
+    if (!elements.invPanel) return;
+    if (composeSel) { setInvMsg("Cerrá el editor de composición para actualizar.", "error"); return; }
+    var btn = elements.invReload, prev = btn ? btn.textContent : "";
+    if (btn) { btn.disabled = true; btn.textContent = "Actualizando…"; }
+    setInvMsg("Actualizando inventario y publicaciones…");
+    try {
+      catalogoCargado = false;          // fuerza el re-pull real desde ML
+      await invLoad();                  // stock físico + composiciones (servidor)
+      await cargarCatalogo();           // publicaciones + stock ML fresco
+      renderInventory();
+      setInvMsg("Inventario actualizado.", "success");
+      setTimeout(function () { setInvMsg(""); }, 2500);
+    } catch (e) {
+      setInvMsg("No se pudo actualizar: " + ((e && e.message) || "error"), "error");
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = prev || "Actualizar"; }
+    }
+  }
+
   Object.assign(S, {
-    abrirInventario, renderInventory, invTab, detenerInvTiempoReal,
+    abrirInventario, invActualizar, renderInventory, invTab, detenerInvTiempoReal,
     invAddProduct, invGuardarProductos, invDeleteProduct,
     invCargarPublicaciones, invResyncAll, invReintentarUno,
     invConfigurar, invComposeCancelar, invComposeAddComponent, invComposeQuitar, invComposeGuardar, invToggleExpand,
