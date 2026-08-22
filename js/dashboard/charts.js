@@ -281,6 +281,20 @@
     ctx.closePath();
   }
 
+  // Barra con esquinas SUPERIORES redondeadas y base recta (estilo dashboards de
+  // ads): la barra "crece" desde la base. Usada por la gráfica de Métricas.
+  function barTop(ctx, x, y, width, height, radius) {
+    const r = Math.max(0, Math.min(radius, width / 2, height));
+    ctx.beginPath();
+    ctx.moveTo(x, y + height);
+    ctx.lineTo(x, y + r);
+    ctx.arcTo(x, y, x + r, y, r);
+    ctx.lineTo(x + width - r, y);
+    ctx.arcTo(x + width, y, x + width, y + r, r);
+    ctx.lineTo(x + width, y + height);
+    ctx.closePath();
+  }
+
   function drawCategoryChart() {
     if (!elements.categoryChart) return;
     const size = resizeCanvas(elements.categoryChart);
@@ -531,40 +545,60 @@
 
     const labelStep = Math.max(1, Math.ceil(trend.length / 10));
 
+    // Estilo dashboard de ads (igual que Publicidad): barras índigo frías con top
+    // redondeado + glow (ingresos), y línea ROSA NEÓN protagonista con área
+    // degradada + glow + puntos (pedidos). Retina lo maneja resizeCanvas.
+    const LINE = "#ff3d9a", LINE_GLOW = "rgba(255,61,154,0.60)";
     function pintar(progress) {
       ctx.clearRect(0, 0, width, height);
       ctx.save();
-      ctx.strokeStyle = "rgba(255,255,255,0.075)";
+      // Rejilla horizontal muy sutil.
+      ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 1;
       for (let i = 0; i <= 4; i += 1) {
         const y = padding.top + (chartH / 4) * i;
         ctx.beginPath(); ctx.moveTo(padding.left, y); ctx.lineTo(width - padding.right, y); ctx.stroke();
       }
-      // Barras: suben desde la base.
+      // Barras (ingresos): índigo con top redondeado + glow suave, crecen desde la base.
       trend.forEach((item, index) => {
         const h = barFullH[index] * progress;
+        if (h <= 0.5) return;
         const x = barX[index], bw = barW[index], y = baseline - h;
-        if (use3D) {
-          draw3DBar(ctx, x, y, bw, h, 5, "rgba(52,211,153,0.9)", "rgba(52,211,153,0.08)", 9);
-        } else {
-          const gradient = ctx.createLinearGradient(0, y, 0, baseline);
-          gradient.addColorStop(0, "rgba(52,211,153,0.82)");
-          gradient.addColorStop(1, "rgba(52,211,153,0.08)");
-          ctx.fillStyle = gradient;
-          roundedRect(ctx, x, y, bw, Math.max(0, h), 5);
-          ctx.fill();
-        }
+        const gA = ctx.createLinearGradient(0, y, 0, baseline);
+        gA.addColorStop(0, "rgba(124,148,255,0.90)");
+        gA.addColorStop(1, "rgba(110,130,255,0.06)");
+        ctx.save();
+        ctx.shadowColor = "rgba(120,140,255,0.40)"; ctx.shadowBlur = progress >= 1 ? 8 : 0;
+        ctx.fillStyle = gA;
+        barTop(ctx, x, y, bw, h, Math.min(4, bw / 2));
+        ctx.fill();
+        ctx.restore();
       });
-      // Línea: se traza subiendo desde la base junto con las barras.
+      // Línea (pedidos): ÁREA rosa neón + línea gruesa con glow + puntos (protagonista).
       const points = trend.map((item, index) => ({ x: lineX[index], y: baseline - (baseline - lineFullY[index]) * progress }));
+      if (points.length > 1) {
+        const area = ctx.createLinearGradient(0, padding.top, 0, baseline);
+        area.addColorStop(0, "rgba(255,61,154,0.34)");
+        area.addColorStop(0.55, "rgba(255,61,154,0.12)");
+        area.addColorStop(1, "rgba(255,61,154,0)");
+        ctx.beginPath(); ctx.moveTo(points[0].x, baseline);
+        points.forEach((pt) => ctx.lineTo(pt.x, pt.y));
+        ctx.lineTo(points[points.length - 1].x, baseline); ctx.closePath();
+        ctx.fillStyle = area; ctx.fill();
+      }
       ctx.beginPath();
       points.forEach((point, index) => { if (index === 0) ctx.moveTo(point.x, point.y); else ctx.lineTo(point.x, point.y); });
-      ctx.strokeStyle = "rgba(245,166,35,0.94)";
-      ctx.lineWidth = 3;
-      ctx.shadowColor = "rgba(245,166,35,0.42)";
-      ctx.shadowBlur = progress >= 1 ? 14 : 0;
-      ctx.stroke();
-      ctx.shadowBlur = 0;
-      points.forEach((point) => { ctx.fillStyle = "#f5a623"; ctx.beginPath(); ctx.arc(point.x, point.y, 4, 0, Math.PI * 2); ctx.fill(); });
+      ctx.strokeStyle = LINE; ctx.lineWidth = 2.8; ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.shadowColor = LINE_GLOW; ctx.shadowBlur = progress >= 1 ? 16 : 6;
+      ctx.stroke(); ctx.shadowBlur = 0;
+      if (progress >= 0.98) {
+        points.forEach((point, i) => {
+          const ultimo = i === points.length - 1;
+          if (ultimo) { ctx.save(); ctx.shadowColor = LINE_GLOW; ctx.shadowBlur = 14; }
+          ctx.beginPath(); ctx.arc(point.x, point.y, ultimo ? 4.6 : 3.2, 0, Math.PI * 2); ctx.fillStyle = "#0d0d0f"; ctx.fill();
+          ctx.beginPath(); ctx.arc(point.x, point.y, ultimo ? 3.4 : 2.3, 0, Math.PI * 2); ctx.fillStyle = LINE; ctx.fill();
+          if (ultimo) ctx.restore();
+        });
+      }
       // Etiquetas de fecha (~10 repartidas + la última).
       ctx.fillStyle = "rgba(244,244,246,0.48)";
       ctx.font = "10px ui-monospace, SFMono-Regular, Menlo, monospace";
