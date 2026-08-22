@@ -213,8 +213,8 @@
       const pitch = -0.22;
 
       const glow = ctx.createRadialGradient(cx, cy, radius * 0.2, cx, cy, radius * 1.75);
-      glow.addColorStop(0, "rgba(255,26,157,0.09)");
-      glow.addColorStop(0.45, "rgba(82,225,255,0.035)");
+      glow.addColorStop(0, "rgba(255,106,61,0.09)");
+      glow.addColorStop(0.45, "rgba(245,166,35,0.045)");
       glow.addColorStop(1, "rgba(255,255,255,0)");
       ctx.fillStyle = glow;
       ctx.beginPath();
@@ -225,7 +225,7 @@
       ctx.globalCompositeOperation = "screen";
       rings.forEach((ring) => {
         const phase = ring.phase + time * ring.speed;
-        ctx.strokeStyle = ring.accent ? "rgba(255,26,157,0.26)" : "rgba(235,245,248,0.12)";
+        ctx.strokeStyle = ring.accent ? "rgba(255,106,61,0.26)" : "rgba(235,245,248,0.12)";
         ctx.lineWidth = ring.accent ? 1.2 : 0.8;
         ctx.beginPath();
         for (let i = 0; i <= 120; i += 1) {
@@ -261,7 +261,7 @@
       const rim = ctx.createRadialGradient(cx, cy, radius * 0.8, cx, cy, radius * 1.04);
       rim.addColorStop(0, "rgba(255,255,255,0)");
       rim.addColorStop(0.82, "rgba(255,255,255,0.1)");
-      rim.addColorStop(1, "rgba(255,26,157,0)");
+      rim.addColorStop(1, "rgba(255,106,61,0)");
       ctx.fillStyle = rim;
       ctx.beginPath();
       ctx.arc(cx, cy, radius * 1.05, 0, Math.PI * 2);

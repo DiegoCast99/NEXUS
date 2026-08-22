@@ -516,6 +516,7 @@
     const active = document.activeElement;
     const typing = !!active && /^(INPUT|SELECT|TEXTAREA)$/.test(active.tagName || "");
     try { S.renderAll(); } catch (e) {}
+    try { if (S.renderHome) S.renderHome(); } catch (e) {}   // Inicio: KPIs + gráficas con datos frescos de la nube
     try { S.renderMetaDashboard(); } catch (e) {}
     if (!typing) { try { S.renderCommerceDashboard(); } catch (e) {} }
   }
@@ -526,20 +527,35 @@
       if (user) {
         if (!started) {
           started = true;
-          // Bajar los datos del usuario desde Firestore ANTES de renderizar,
-          // para que el dashboard muestre lo que hay en la nube (multi-dispositivo).
-          if (window.NexusFirestore) {
-            const loaded = await window.NexusFirestore.loadUserData(user.uid);
-            // Si bajó datos, re-hidratar el state (se armó con el localStorage
-            // vacío en un dispositivo nuevo) antes de renderizar.
-            if (loaded) S.rehydrateState();
-          }
+          // CARGA FLUIDA: renderizamos YA desde el cache local (el state ya se
+          // hidrató con localStorage al cargar los módulos). En recargas del mismo
+          // dispositivo el dashboard aparece al instante, sin esperar a la red.
           init();
-          // Suscribirse EN VIVO: a partir de aca, cualquier cambio hecho en otro
-          // dispositivo (o pestaña) se refleja solo, sin recargar. Es lo que
-          // faltaba para el "si modifico en el celular se ve en la PC y viceversa".
+          // La nube llega por la suscripción EN VIVO: su primer snapshot trae los
+          // datos actuales de Firestore y applyRemoteData re-renderiza si algo
+          // difiere (cubre multi-dispositivo y el dispositivo nuevo con cache
+          // vacío). Reemplaza al await bloqueante que antes demoraba el primer paint.
           if (window.NexusFirestore && window.NexusFirestore.watchUserData) {
-            window.NexusFirestore.watchUserData(user.uid, applyRemoteData);
+            let primerCloud = true;
+            window.NexusFirestore.watchUserData(user.uid, function (blobs) {
+              applyRemoteData(blobs);
+              // Dispositivo nuevo: si la nube recién trajo la conexión de ML y no
+              // hay snapshot local, arrancar el "en vivo" (init no pudo, no había token).
+              if (primerCloud) {
+                primerCloud = false;
+                try {
+                  if (S.getCommerceConfig && S.getCommerceConfig("mercadolibre").hasToken &&
+                      S.getCommerceSnapshot && !S.getCommerceSnapshot("mercadolibre")) {
+                    syncMercadoLibre({ silent: true });
+                  }
+                } catch (e) {}
+              }
+            });
+          } else if (window.NexusFirestore) {
+            // Sin suscripción en vivo: bajar una vez y refrescar (fallback).
+            window.NexusFirestore.loadUserData(user.uid).then(function (loaded) {
+              if (loaded) { S.rehydrateState(); try { S.renderAll(); S.renderMetaDashboard(); S.renderCommerceDashboard(); } catch (e) {} }
+            }).catch(function () {});
           }
         }
       } else {

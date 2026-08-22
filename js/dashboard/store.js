@@ -175,24 +175,26 @@
   ];
 
   function runDashboardReveal() {
-    let shouldReveal = false;
-    try {
-      shouldReveal = sessionStorage.getItem(DASHBOARD_REVEAL_KEY) === "soft";
-      sessionStorage.removeItem(DASHBOARD_REVEAL_KEY);
-    } catch (error) {
-      shouldReveal = document.documentElement.classList.contains("nexus-dashboard-reveal-pending");
-    }
+    // El head ya decidió si corre la entrada: agrega .nexus-dashboard-reveal-pending
+    // en cada carga/recarga (salvo el deep-link de venta). Si no está, no animamos.
+    try { sessionStorage.removeItem(DASHBOARD_REVEAL_KEY); } catch (error) {}
+    const root = document.documentElement;
+    if (!root.classList.contains("nexus-dashboard-reveal-pending")) return;
 
-    if (!shouldReveal) return;
-
-    document.documentElement.classList.add("nexus-dashboard-reveal-pending");
-    requestAnimationFrame(() => {
-      document.documentElement.classList.add("nexus-dashboard-reveal-active");
-    });
-
+    // El Inicio (KPIs + gráficas) se renderiza ~30ms DESPUÉS (setView lo difiere),
+    // así que esperamos un toque antes de activar: así esas tarjetas recién creadas
+    // ya existen en estado "oculto" y también entran con el slide (no aparecen de
+    // golpe). El rAF final asegura que el estado inicial se pintó antes de animar.
     window.setTimeout(() => {
-      document.documentElement.classList.remove("nexus-dashboard-reveal-pending", "nexus-dashboard-reveal-active");
-    }, 1950);
+      requestAnimationFrame(() => {
+        root.classList.add("nexus-dashboard-reveal-active");
+      });
+    }, 80);
+
+    // Limpieza: 80ms de espera + delays ≤305ms + transición ~560ms ≈ 945ms.
+    window.setTimeout(() => {
+      root.classList.remove("nexus-dashboard-reveal-pending", "nexus-dashboard-reveal-active");
+    }, 1450);
   }
 
   // Moneda: peso uruguayo (UYU) mostrado con símbolo "$" (narrowSymbol).

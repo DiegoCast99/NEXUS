@@ -432,7 +432,7 @@
         var frac = c.value / total, len = frac * C, gap = C - len;
         // Barrido: cada arco "se dibuja" (dasharray 0→len) en su tramo del giro.
         var cls = animD ? ' class="hn-arc"' : "";
-        var av = animD ? ' style="--dlen:' + len.toFixed(2) + ';--dgap:' + gap.toFixed(2) + ';--ddur:' + Math.max(450, Math.round((len / C) * 1700)) + 'ms;--ddelay:' + Math.round((off / C) * 1700) + 'ms"' : "";
+        var av = animD ? ' style="--dlen:' + len.toFixed(2) + ';--dgap:' + gap.toFixed(2) + ';--ddur:' + Math.max(360, Math.round((len / C) * 1050)) + 'ms;--ddelay:' + Math.round((off / C) * 1050) + 'ms"' : "";
         segs += '<circle' + cls + av + ' cx="21" cy="21" r="15.9155" fill="none" stroke="' + CH_COLORS[i % CH_COLORS.length] + '" stroke-width="5" stroke-dasharray="' + len.toFixed(2) + ' ' + gap.toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" stroke-linecap="butt" transform="rotate(-90 21 21)"/>';
         off += len;
       });

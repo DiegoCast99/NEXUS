@@ -23,13 +23,21 @@
     <script>
       (() => {
         try {
-          if (sessionStorage.getItem("nexus.dashboard.reveal.v1") === "soft") {
-            document.documentElement.classList.add("nexus-dashboard-reveal-pending");
-          }
+          var esVenta = /^#venta-/.test(location.hash || "");
           // Deep-link de venta (#venta-...): tapar la portada con un splash para ir
           // DIRECTO al detalle, sin que se vea el selector de módulos mientras carga.
-          if (/^#venta-/.test(location.hash || "")) {
+          if (esVenta) {
             document.documentElement.classList.add("booting-sale");
+          } else {
+            // Animación de ENTRADA en cada carga/recarga (no solo al venir del login):
+            // las tarjetas entran con un slide desde la derecha. Se agrega ANTES del
+            // primer paint para no ver el estado final y después animar.
+            document.documentElement.classList.add("nexus-dashboard-reveal-pending");
+            // Failsafe: si el JS no llega a correr el reveal, revelar igual (nunca
+            // dejar la pantalla en blanco).
+            setTimeout(function () {
+              document.documentElement.classList.remove("nexus-dashboard-reveal-pending", "nexus-dashboard-reveal-active");
+            }, 2400);
           }
         } catch (error) {}
       })();
@@ -45,13 +53,13 @@
       }
       html.booting-sale .sale-boot-spinner {
         width: 40px; height: 40px; border-radius: 50%;
-        border: 3px solid rgba(255, 255, 255, 0.14); border-top-color: #ff1a9d;
+        border: 3px solid rgba(255, 255, 255, 0.14); border-top-color: #ff6a3d;
         animation: saleBootSpin 0.8s linear infinite;
       }
       @keyframes saleBootSpin { to { transform: rotate(360deg); } }
       html.booting-sale #saleBootSplash p { margin: 0; font-size: 14px; color: #9a9aa5; }
     </style>
-    <link rel="stylesheet" href="./css/dashboard/base.css?v=20260820-fix24" />
+    <link rel="stylesheet" href="./css/dashboard/base.css?v=20260821-anim1" />
     <link rel="stylesheet" href="./css/dashboard/layout.css?v=20260815-fix1" />
     <link rel="stylesheet" href="./css/dashboard/controls.css?v=20260813-redesign1" />
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=20260813-redesign1" />
@@ -60,7 +68,7 @@
     <link rel="stylesheet" href="./css/dashboard/commerce.css?v=20260821-tooltip1" />
     <link rel="stylesheet" href="./css/dashboard/tools.css?v=20260813-redesign1" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=20260813-redesign1" />
-    <link rel="stylesheet" href="./css/dashboard/redesign.css?v=20260821-glass1" />
+    <link rel="stylesheet" href="./css/dashboard/redesign.css?v=20260821-anim1" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=20260724-adapt1" />
     <link rel="stylesheet" href="./css/dashboard/mobile.css?v=20260813-logos1" />
   </head>
@@ -1723,7 +1731,7 @@
     <script src="./js/firebase/secure-api.js?v=20260814-agente2"></script>
     <!-- Dashboard modules -->
     <script src="./js/core/auth.js?v=20260709-ola0mod"></script>
-    <script src="./js/dashboard/store.js?v=20260821-reconnect1"></script>
+    <script src="./js/dashboard/store.js?v=20260821-anim1"></script>
     <script src="./js/dashboard/integration-core.js?v=20260716-live1"></script>
     <script src="./js/dashboard/charts.js?v=20260820-fix19"></script>
     <script src="./js/dashboard/finance.js?v=20260727-rev2"></script>
@@ -1737,9 +1745,9 @@
     <script src="./js/dashboard/platform-nav.js?v=20260815-fix1"></script>
     <script src="./js/dashboard/router.js?v=20260815-fix1"></script>
     <script src="./js/dashboard/logos.js?v=20260820-fix25"></script>
-    <script src="./js/dashboard/home.js?v=20260821-tooltip1"></script>
+    <script src="./js/dashboard/home.js?v=20260821-anim1"></script>
     <script src="./js/dashboard/shell.js?v=20260821-logos1"></script>
-    <script src="./js/dashboard/app.js?v=20260821-reconnect1"></script>
+    <script src="./js/dashboard/app.js?v=20260821-anim1"></script>
     <script src="./js/dashboard/mobile-tables.js?v=20260727-mob3"></script>
     <script src="./js/pwa.js?v=20260711-push1" defer></script>
   </body>
