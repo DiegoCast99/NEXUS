@@ -18,6 +18,10 @@
   --accent: #f5623a;
   --accent-2: #e0472a;
   --accent-rgb: 245, 98, 58;
+  /* Degradé de acento REFINADO para botones/pestañas activas: naranja cálido →
+     terracota quemado (sin el rojo neón de antes), para que se vea moderno y no
+     "chillón". Un gloss sutil arriba lo termina de dar el propio botón. */
+  --accent-grad: linear-gradient(135deg, #ff7d4d 0%, #ee5c2f 52%, #d0451f 100%);
 
   /* Series de gráficos + semánticos (se mantienen los nombres para no romper). */
   --violet: #b24dff;

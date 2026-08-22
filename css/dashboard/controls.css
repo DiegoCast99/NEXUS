@@ -175,13 +175,14 @@ select option {
 }
 
 .primary-button {
-  border-color: rgba(255, 106, 61, 0.52);
+  border-color: rgba(255, 255, 255, 0.16);
+  /* Gloss sutil arriba + degradé de acento refinado (naranja → terracota). */
   background:
-    linear-gradient(135deg, rgba(255, 106, 61, 0.98), rgba(255, 61, 46, 0.72)),
-    var(--accent);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 46%),
+    var(--accent-grad);
   color: white;
   font-weight: 700;
-  box-shadow: 0 16px 34px rgba(255, 106, 61, 0.18);
+  box-shadow: 0 8px 22px rgba(208, 69, 31, 0.30), inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .primary-button:disabled {
