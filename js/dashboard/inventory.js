@@ -434,6 +434,7 @@
         "<td><input class='inv-in' data-f='sku' value='" + escapeHtml(p.sku || "") + "' placeholder='SKU (opcional)' /></td>" +
         "<td><input class='inv-in' data-f='name' value='" + escapeHtml(p.name || "") + "' placeholder='Ej: Creatina 1kg Growth' /></td>" +
         "<td class='num'><input class='inv-in inv-stock' data-f='stock' inputmode='numeric' value='" + escapeHtml(String(p.stock != null ? p.stock : 0)) + "' /></td>" +
+        "<td class='num'><input class='inv-in inv-cost' data-f='cost' inputmode='decimal' value='" + escapeHtml(p.cost != null && p.cost !== "" ? String(p.cost) : "") + "' placeholder='$0' title='Costo unitario (lo que te cuesta a vos). Se usa para calcular la rentabilidad.' /></td>" +
         "<td class='num'>" + listingsDeProducto(id).length + "</td>" +
         "<td><button class='table-action delete-action' type='button' data-inv-del='" + escapeHtml(id) + "'>Borrar</button></td>" +
       "</tr>";
@@ -892,7 +893,7 @@
   function invAddProduct() {
     invTab("productos", true);         // asegura estar en la Lista de productos
     var id = nuevoProductId();
-    inv.products[id] = { sku: "", name: "", stock: 0 };
+    inv.products[id] = { sku: "", name: "", stock: 0, cost: 0 };
     renderProductos();
     // Enfoca el campo Nombre de la fila nueva para escribir al toque.
     var fila = elements.invProdBody?.querySelector("tr[data-prod='" + id + "'] input[data-f='name']");
@@ -911,7 +912,10 @@
       var sku = (tr.querySelector("[data-f='sku']") || {}).value || "";
       var name = (tr.querySelector("[data-f='name']") || {}).value || "";
       var stock = Math.max(0, Math.floor(Number((tr.querySelector("[data-f='stock']") || {}).value) || 0));
-      inv.products[id] = { sku: sku.trim(), name: name.trim(), stock: stock };
+      // Costo unitario (COGS) para la vista de Rentabilidad. Vacío = sin costo (0).
+      var costRaw = (tr.querySelector("[data-f='cost']") || {}).value;
+      var cost = Math.max(0, Number(String(costRaw == null ? "" : costRaw).replace(",", ".")) || 0);
+      inv.products[id] = { sku: sku.trim(), name: name.trim(), stock: stock, cost: cost };
       if ((Number(prev.stock) || 0) !== stock) cambiaronStock.push(id);
     });
     setInvMsg("Guardando y sincronizando…");
@@ -1082,8 +1086,39 @@
     }
   }
 
+  // ---- API para la vista de Rentabilidad ----
+  // Costo unitario (COGS) de una publicación/variación: suma qty*costo de su
+  // composición. null si no hay composición o si ningún componente tiene costo
+  // cargado (la vista lo marca como "falta costo"). Reusa inv.compositions/products.
+  function cogsUnit(mlbId, varId) {
+    var comps = inv.compositions || {};
+    var comp = null;
+    if (varId != null && varId !== "") {
+      var k = String(mlbId) + "::" + String(varId);
+      if (Array.isArray(comps[k]) && comps[k].length) comp = comps[k];
+    }
+    if (!comp) comp = (Array.isArray(comps[mlbId]) && comps[mlbId].length) ? comps[mlbId] : null;
+    if (!comp || !comp.length) return null;
+    var total = 0, hayCosto = false;
+    for (var i = 0; i < comp.length; i++) {
+      var p = inv.products[comp[i].productId];
+      var qty = Number(comp[i].qty) || 1;
+      if (!p) continue;
+      var c = Number(p.cost) || 0;
+      if (c > 0) hayCosto = true;
+      total += c * qty;
+    }
+    return hayCosto ? total : null;
+  }
+  function getInventory() { return inv; }
+  async function ensureInventoryLoaded() {
+    if (cargado) return true;
+    try { await invLoad(); return true; } catch (e) { return false; }
+  }
+
   Object.assign(S, {
     abrirInventario, invActualizar, renderInventory, invTab, detenerInvTiempoReal,
+    cogsUnit: cogsUnit, getInventory: getInventory, ensureInventoryLoaded: ensureInventoryLoaded,
     invAddProduct, invGuardarProductos, invDeleteProduct,
     invCargarPublicaciones, invResyncAll, invReintentarUno,
     invConfigurar, invComposeCancelar, invComposeAddComponent, invComposeQuitar, invComposeGuardar, invToggleExpand,

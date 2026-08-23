@@ -230,7 +230,7 @@
     function paint(p) {
       ctx.clearRect(0, 0, width, height);
       ctx.save();
-      ctx.strokeStyle = "rgba(255,255,255,0.075)";
+      ctx.strokeStyle = "rgba(255,255,255,0.06)";
       ctx.lineWidth = 1;
       for (let i = 0; i <= 4; i += 1) {
         const y = padding.top + (chartH / 4) * i;
@@ -246,22 +246,23 @@
           draw3DBar(ctx, x + 3, baseY - expenseH, barW, expenseH, 5, "rgba(255,106,61,0.95)", "rgba(255,106,61,0.12)", 8);
         } else {
           const ig = ctx.createLinearGradient(0, baseY - incomeH, 0, baseY);
-          ig.addColorStop(0, "rgba(52,211,153,0.95)"); ig.addColorStop(1, "rgba(52,211,153,0.12)");
-          ctx.fillStyle = ig; roundedRect(ctx, x - barW - 3, baseY - incomeH, barW, incomeH, 5); ctx.fill();
+          ig.addColorStop(0, "rgba(52,211,153,0.95)"); ig.addColorStop(1, "rgba(52,211,153,0.10)");
+          ctx.fillStyle = ig; barTop(ctx, x - barW - 3, baseY - incomeH, barW, incomeH, 4); ctx.fill();
           const eg = ctx.createLinearGradient(0, baseY - expenseH, 0, baseY);
-          eg.addColorStop(0, "rgba(255,106,61,0.95)"); eg.addColorStop(1, "rgba(255,106,61,0.12)");
-          ctx.fillStyle = eg; roundedRect(ctx, x + 3, baseY - expenseH, barW, expenseH, 5); ctx.fill();
+          eg.addColorStop(0, "rgba(255,106,61,0.92)"); eg.addColorStop(1, "rgba(255,106,61,0.08)");
+          ctx.fillStyle = eg; barTop(ctx, x + 3, baseY - expenseH, barW, expenseH, 4); ctx.fill();
         }
         expensePoints.push({ x: x + barW / 2, y: baseY - expenseH });
-        ctx.fillStyle = "rgba(244,244,246,0.5)";
+        ctx.fillStyle = "rgba(244,244,246,0.48)";
         ctx.font = "10px ui-monospace, SFMono-Regular, Menlo, monospace";
         ctx.textAlign = "center";
         ctx.fillText(labelMonth(item.month).slice(0, 3), x, height - 14);
       });
       ctx.beginPath();
       expensePoints.forEach((point, index) => { if (index === 0) ctx.moveTo(point.x, point.y); else ctx.lineTo(point.x, point.y); });
-      ctx.strokeStyle = "rgba(255,138,90,0.88)";
-      ctx.lineWidth = 2; ctx.shadowColor = "rgba(255,106,61,0.45)"; ctx.shadowBlur = p >= 1 ? 12 : 0; ctx.stroke();
+      ctx.strokeStyle = "rgba(255,138,90,0.94)";
+      ctx.lineWidth = 2.8; ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.shadowColor = "rgba(255,106,61,0.55)"; ctx.shadowBlur = p >= 1 ? 16 : 0; ctx.stroke(); ctx.shadowBlur = 0;
       ctx.restore();
     }
     paintChart("cashflow", paint, 1800, series.map(function (s) { return s.income + "/" + s.expense; }).join(","));
@@ -457,7 +458,7 @@
     function paint(p) {
       ctx.clearRect(0, 0, width, height);
       ctx.save();
-      ctx.strokeStyle = "rgba(255,255,255,0.075)";
+      ctx.strokeStyle = "rgba(255,255,255,0.06)";
       for (let i = 0; i <= 4; i += 1) {
         const y = padding.top + (chartH / 4) * i;
         ctx.beginPath(); ctx.moveTo(padding.left, y); ctx.lineTo(width - padding.right, y); ctx.stroke();
@@ -470,18 +471,35 @@
           draw3DBar(ctx, x, y, barW, h, 5, "rgba(245,166,35,0.72)", "rgba(245,166,35,0.07)", 9);
         } else {
           const g = ctx.createLinearGradient(0, y, 0, baseY);
-          g.addColorStop(0, "rgba(245,166,35,0.58)"); g.addColorStop(1, "rgba(245,166,35,0.06)");
-          ctx.fillStyle = g; roundedRect(ctx, x, y, barW, h, 5); ctx.fill();
+          g.addColorStop(0, "rgba(245,166,35,0.62)"); g.addColorStop(1, "rgba(245,166,35,0.05)");
+          ctx.fillStyle = g; barTop(ctx, x, y, barW, h, 4); ctx.fill();
         }
       });
       const points = trend.map((item, index) => ({
         x: trend.length > 1 ? padding.left + index * step : padding.left + chartW / 2,
         fy: baseY - (item.roas / maxRoas) * chartH
       }));
+      const yAt = (pt) => baseY - (baseY - pt.fy) * p;
+      // Área degradada bajo la línea de ROAS (protagonista), como en Métricas/Ads.
+      if (points.length > 1) {
+        const area = ctx.createLinearGradient(0, padding.top, 0, baseY);
+        area.addColorStop(0, "rgba(255,106,61,0.26)"); area.addColorStop(0.6, "rgba(255,106,61,0.08)"); area.addColorStop(1, "rgba(255,106,61,0)");
+        ctx.beginPath(); ctx.moveTo(points[0].x, baseY);
+        points.forEach((pt) => ctx.lineTo(pt.x, yAt(pt)));
+        ctx.lineTo(points[points.length - 1].x, baseY); ctx.closePath();
+        ctx.fillStyle = area; ctx.fill();
+      }
       ctx.beginPath();
-      points.forEach((pt, index) => { const y = baseY - (baseY - pt.fy) * p; if (index === 0) ctx.moveTo(pt.x, y); else ctx.lineTo(pt.x, y); });
-      ctx.strokeStyle = "rgba(255,138,90,0.96)"; ctx.lineWidth = 3; ctx.shadowColor = "rgba(255,106,61,0.58)"; ctx.shadowBlur = p >= 1 ? 16 : 0; ctx.stroke(); ctx.shadowBlur = 0;
-      points.forEach((pt) => { const y = baseY - (baseY - pt.fy) * p; ctx.fillStyle = "#ff6a3d"; ctx.beginPath(); ctx.arc(pt.x, y, 4, 0, Math.PI * 2); ctx.fill(); });
+      points.forEach((pt, index) => { const y = yAt(pt); if (index === 0) ctx.moveTo(pt.x, y); else ctx.lineTo(pt.x, y); });
+      ctx.strokeStyle = "#ff6a3d"; ctx.lineWidth = 2.8; ctx.lineJoin = "round"; ctx.lineCap = "round";
+      ctx.shadowColor = "rgba(255,106,61,0.58)"; ctx.shadowBlur = p >= 1 ? 16 : 0; ctx.stroke(); ctx.shadowBlur = 0;
+      if (p >= 0.98) {
+        points.forEach((pt) => {
+          const y = yAt(pt);
+          ctx.beginPath(); ctx.arc(pt.x, y, 3.2, 0, Math.PI * 2); ctx.fillStyle = "#0d0d0f"; ctx.fill();
+          ctx.beginPath(); ctx.arc(pt.x, y, 2.3, 0, Math.PI * 2); ctx.fillStyle = "#ff6a3d"; ctx.fill();
+        });
+      }
       trend.forEach((item, index) => {
         const x = trend.length > 1 ? padding.left + index * step : padding.left + chartW / 2;
         const label = item.date === "Periodo" ? "Periodo" : item.date.slice(5).replace("-", "/");

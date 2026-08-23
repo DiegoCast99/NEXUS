@@ -25,6 +25,8 @@
     // commerceApp => setView cae al selector.
     if (view === "ventas") return { view: "ecommerce", metaPlatform: null, nav: "ventas" };
     if (view === "productos") return { view: "ecommerce", metaPlatform: null, commerceApp: "mercadolibre", section: "inventario", nav: "productos" };
+    if (view === "publicidad") return { view: "ecommerce", metaPlatform: null, commerceApp: "mercadolibre", section: "publicidad", nav: "publicidad" };
+    if (view === "rentabilidad") return { view: "ecommerce", metaPlatform: null, commerceApp: "mercadolibre", section: "rentabilidad", nav: "rentabilidad" };
     if (view === "finance" || view === "finanzas" || view === "finanzas-personales") return { view: "finance", metaPlatform: null };
     // Deep-link a una herramienta: #herramientas-<tool> (ej: #herramientas-publicador).
     const toolMatch = view.match(/^(?:tools|herramientas)-([a-z0-9]+)$/);

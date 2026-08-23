@@ -252,7 +252,9 @@
     users: '<circle cx="9" cy="8" r="3"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0"/><path d="M16 6a3 3 0 0 1 0 6"/><path d="M20.5 19a5.5 5.5 0 0 0-3-4.9"/>',
     coin: '<circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10a2.5 2 0 0 1 5 0c0 2.5-5 1.5-5 4a2.5 2 0 0 0 5 0"/>',
     pie: '<path d="M12 3a9 9 0 1 0 9 9h-9Z"/><path d="M12 3v9h9A9 9 0 0 0 12 3Z"/>',
-    eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>'
+    eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>',
+    box: '<path d="M3 7l9-4 9 4-9 4-9-4Z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/>',
+    warn: '<path d="M12 3 2 20h20L12 3Z"/><path d="M12 10v4"/><path d="M12 17.5h.01"/>'
   };
 
   function kpiCard(label, value, icon, delta) {
@@ -507,6 +509,52 @@
     }).join("");
   }
 
+  // ---- "Requiere atención": franja operativa arriba del Inicio ----
+  // Surface lo accionable HOY: error de sync, faltantes/stock bajo, publicaciones
+  // con error. Cada tarjeta lleva a la sección donde se resuelve. Oculta si no hay
+  // nada (atención-first: solo aparece cuando importa). Reusa invAlertsCache.
+  function attSvg(path) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + path + '</svg>'; }
+  function renderAttention() {
+    var box = el("homeAttention"); if (!box) return;
+    var items = [];
+    var failing = !!(S.state && S.state.commerce && (S.state.commerce.failCount || 0) > 0);
+    if (failing) items.push({ sev: "danger", ic: IC.warn, title: "Sincronización con error", sub: "Revisá tu conexión de Mercado Libre", go: "ventas" });
+    var a = invAlertsCache;
+    if (a && a !== true) {
+      var out = (a.out || []).length, low = (a.low || []).length, errs = (a.errors || []).length;
+      if (out) items.push({ sev: "danger", ic: IC.box, title: out + (out === 1 ? " producto sin stock" : " productos sin stock"), sub: "Reponé o pausá para no vender sin stock", go: "productos" });
+      if (errs) items.push({ sev: "danger", ic: IC.warn, title: errs + (errs === 1 ? " publicación con error de sync" : " publicaciones con error de sync"), sub: "No se pudo actualizar el stock en ML", go: "productos" });
+      if (low) items.push({ sev: "warn", ic: IC.box, title: low + (low === 1 ? " producto con stock bajo" : " productos con stock bajo"), sub: "Quedan pocas unidades", go: "productos" });
+    }
+    // Publicidad: si ya hay campañas cargadas (visitaste Publicidad), avisar cuántas
+    // pierden plata (gastan sin vender o ROAS<1). Best-effort: no dispara carga.
+    try {
+      var adsLosers = 0;
+      (S.mlAccounts ? S.mlAccounts() : []).forEach(function (acc) {
+        var d = S.adsDatos ? S.adsDatos(acc.id) : null;
+        var camps = d && d.campaigns;
+        if (!Array.isArray(camps)) return;
+        camps.forEach(function (c) {
+          var st = String(c.status || "").toLowerCase();
+          var act = st === "active" || st === "enabled";
+          var gasto = Number(c.gasto) || 0, ingresos = Number(c.ingresos) || 0, roas = Number(c.roas) || 0;
+          if (act && gasto > 0 && (ingresos <= 0 || (roas > 0 && roas < 1))) adsLosers++;
+        });
+      });
+      if (adsLosers) items.push({ sev: "warn", ic: IC.warn, title: adsLosers + (adsLosers === 1 ? " campaña pierde plata" : " campañas pierden plata"), sub: "Gastan más de lo que venden — revisá el agente", go: "publicidad" });
+    } catch (e) { /* ads no cargados */ }
+    if (!items.length) { box.hidden = true; box.innerHTML = ""; return; }
+    box.hidden = false;
+    box.innerHTML =
+      '<div class="home-att-head"><span class="home-att-dot"></span>Requiere atención</div>' +
+      '<div class="home-att-items">' + items.map(function (it) {
+        return '<button class="home-att-card sev-' + it.sev + '" type="button" data-att-go="' + esc(it.go) + '">' +
+          '<span class="home-att-ic">' + attSvg(it.ic || "") + '</span>' +
+          '<span class="home-att-txt"><b>' + esc(it.title) + '</b><small>' + esc(it.sub) + '</small></span>' +
+          '<span class="home-att-arrow" aria-hidden="true">&rsaquo;</span></button>';
+      }).join("") + '</div>';
+  }
+
   // ---- Alertas (stock + campañas) ----
   function renderAlerts() {
     var box = el("homeAlerts"); if (!box) return;
@@ -532,8 +580,8 @@
       Object.keys(products).forEach(function (k) { var p = products[k]; var st = Number(p.stock); if (st === 0) out.push({ name: p.name || p.sku || k, stock: 0 }); else if (st > 0 && st <= 3) low.push({ name: p.name || p.sku || k, stock: st }); });
       var errors = []; var ls = inv.listingState || {};
       Object.keys(ls).forEach(function (m) { if (ls[m] && ls[m].status === "error") errors.push(m); });
-      invAlertsCache = { out: out, low: low, errors: errors }; renderAlerts();
-    }).catch(function () { invAlertsCache = false; renderAlerts(); });
+      invAlertsCache = { out: out, low: low, errors: errors }; renderAlerts(); renderAttention();
+    }).catch(function () { invAlertsCache = false; renderAlerts(); renderAttention(); });
   }
 
   // ---- Gastos del mes (barras) ----
@@ -583,6 +631,7 @@
     var meta = metaTotals();
     var finance = financeMonth();
     renderKpis(ml);
+    renderAttention();
     renderSalesChart(ml.trend);
     renderChannels(ml);
     renderBiz(ml);
@@ -637,6 +686,12 @@
     if (biz && !biz.dataset.bound) {
       biz.dataset.bound = "1";
       biz.addEventListener("click", function (e) { var card = e.target.closest(".home-biz-card[data-view]"); if (card && S.setView) S.setView(card.getAttribute("data-view")); });
+    }
+    // "Requiere atención": cada tarjeta lleva a la sección donde se resuelve.
+    var att = el("homeAttention");
+    if (att && !att.dataset.bound) {
+      att.dataset.bound = "1";
+      att.addEventListener("click", function (e) { var c = e.target.closest("[data-att-go]"); if (c && S.setView) S.setView(c.getAttribute("data-att-go")); });
       biz.addEventListener("keydown", function (e) { var card = e.target.closest(".home-biz-card[data-view]"); if (card && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); card.click(); } });
     }
   }

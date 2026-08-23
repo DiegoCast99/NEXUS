@@ -66,10 +66,10 @@
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=e17d2d321c" />
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=b4cb91aa09" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=6d84225452" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=4f4486b60a" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=4b7ff6b60c" />
     <link rel="stylesheet" href="./css/dashboard/tools.css?v=56092e9282" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=4fdb501d32" />
-    <link rel="stylesheet" href="./css/dashboard/redesign.css?v=4033de0cca" />
+    <link rel="stylesheet" href="./css/dashboard/redesign.css?v=0ae4f2bbba" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=73c6b2778a" />
     <link rel="stylesheet" href="./css/dashboard/mobile.css?v=58e05223f5" />
   </head>
@@ -350,8 +350,13 @@
               </div>
             </div>
 
-            <!-- KPIs (los puebla home.js con datos reales) -->
-            <div class="home-kpis" id="homeKpis" aria-live="polite"></div>
+            <!-- Requiere atención (atención-first): lo poblá home.js; oculto si no hay nada -->
+            <div class="home-attention" id="homeAttention" hidden></div>
+
+            <!-- KPIs (los puebla home.js con datos reales; skeleton hasta que rendericen) -->
+            <div class="home-kpis" id="homeKpis" aria-live="polite">
+              <div class="skel-kpi"></div><div class="skel-kpi"></div><div class="skel-kpi"></div><div class="skel-kpi"></div><div class="skel-kpi"></div>
+            </div>
 
             <!-- Fila 2: ventas por dia + ventas por canal -->
             <div class="home-row2">
@@ -363,7 +368,7 @@
                   </div>
                   <span class="home-chip" id="homeSalesTotal"></span>
                 </div>
-                <div class="home-linechart" id="homeSalesChart"></div>
+                <div class="home-linechart" id="homeSalesChart"><div class="skel-block skel-chart"></div></div>
               </section>
               <section class="panel home-panel">
                 <div class="panel-heading">
@@ -372,7 +377,7 @@
                     <h2>Ventas por canal</h2>
                   </div>
                 </div>
-                <div class="home-channels" id="homeChannels"></div>
+                <div class="home-channels" id="homeChannels"><div class="skel-block skel-chart"></div></div>
               </section>
             </div>
 
@@ -1079,6 +1084,19 @@
               <p class="costs-note">La inversion en publicidad no viene en la API de pedidos de Mercado Libre.</p>
             </section>
 
+            <!-- ---- Rentabilidad: ganancia REAL = ingresos − comisión/envío − costo (COGS) − ads ---- -->
+            <section class="panel wide-panel section-hidden" data-section="rentabilidad" id="rentaPanel">
+              <div class="panel-heading">
+                <div>
+                  <span>Rentabilidad</span>
+                  <h2>Ganancia real por publicación</h2>
+                </div>
+                <button class="ghost-button" type="button" id="rentaReload">Actualizar</button>
+              </div>
+              <p class="inv-hint">Ganancia neta = <b>ingresos − comisión y envío de Mercado Libre − costo del producto (COGS)</b>. El costo sale de <b>Inventario → Lista de productos</b> (columna Costo) vía la composición de cada publicación. Período: el elegido arriba.</p>
+              <div id="rentaBody" aria-live="polite"></div>
+            </section>
+
             <section class="panel wide-panel" data-section="pedidos">
               <!-- ===== Lista de ventas (tocá una fila para ver el detalle) ===== -->
               <div id="ventaLista">
@@ -1230,7 +1248,7 @@
                 <div class="table-wrap">
                   <table class="meta-table inv-prod-table">
                     <thead>
-                      <tr><th>SKU</th><th>Producto</th><th>Stock</th><th>En publicaciones</th><th></th></tr>
+                      <tr><th>SKU</th><th>Producto</th><th>Stock</th><th>Costo</th><th>En publicaciones</th><th></th></tr>
                     </thead>
                     <tbody id="invProdBody"></tbody>
                   </table>
@@ -1745,19 +1763,20 @@
     <script src="./js/core/auth.js?v=a4b48152db"></script>
     <script src="./js/dashboard/store.js?v=b298969b83"></script>
     <script src="./js/dashboard/integration-core.js?v=5d3ff73791"></script>
-    <script src="./js/dashboard/charts.js?v=a27c1c35ee"></script>
+    <script src="./js/dashboard/charts.js?v=bdda0980a2"></script>
     <script src="./js/dashboard/finance.js?v=bd6e1f030e"></script>
     <script src="./js/dashboard/revolut.js?v=26156f3206"></script>
     <script src="./js/dashboard/meta.js?v=ed9747f9f6"></script>
-    <script src="./js/dashboard/commerce.js?v=f3d19b9bdf"></script>
+    <script src="./js/dashboard/commerce.js?v=406717be0f"></script>
     <script src="./js/dashboard/ads-agent.js?v=0d6508662f"></script>
-    <script src="./js/dashboard/inventory.js?v=cfbd501252"></script>
+    <script src="./js/dashboard/inventory.js?v=2c5b99739f"></script>
+    <script src="./js/dashboard/rentabilidad.js?v=b012c90521"></script>
     <script src="./js/dashboard/notifications.js?v=a69e274803"></script>
     <script src="./js/dashboard/tools.js?v=bcada13fc2"></script>
-    <script src="./js/dashboard/platform-nav.js?v=653cc91b6b"></script>
-    <script src="./js/dashboard/router.js?v=8a30aebdd9"></script>
+    <script src="./js/dashboard/platform-nav.js?v=dceb6cf7c3"></script>
+    <script src="./js/dashboard/router.js?v=a11aa0f02d"></script>
     <script src="./js/dashboard/logos.js?v=eac391f0f3"></script>
-    <script src="./js/dashboard/home.js?v=af88bc4fbe"></script>
+    <script src="./js/dashboard/home.js?v=921dc233f3"></script>
     <script src="./js/dashboard/shell.js?v=bae32a368e"></script>
     <script src="./js/dashboard/app.js?v=a76c16a114"></script>
     <script src="./js/dashboard/mobile-tables.js?v=acd7212400"></script>

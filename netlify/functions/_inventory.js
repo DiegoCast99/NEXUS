@@ -150,7 +150,8 @@ function mergeProducts(server, browser) {
     } else {
       stock = bStock; // el usuario lo editó
     }
-    out[id] = { sku: String(b.sku || ""), name: String(b.name || ""), stock: stock };
+    // sku/name/cost son del navegador (el webhook no los toca); stock es el merge.
+    out[id] = { sku: String(b.sku || ""), name: String(b.name || ""), stock: stock, cost: Math.max(0, Number(b.cost) || 0) };
   });
   return out;
 }

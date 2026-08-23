@@ -1032,6 +1032,13 @@
     if (elements.commerceMarginValue) elements.commerceMarginValue.textContent = currency.format(totals.margin || 0);
     if (elements.commerceMarginHint) elements.commerceMarginHint.textContent = totals.revenue ? `${((totals.margin / totals.revenue) * 100).toFixed(1)}% sobre ventas` : "Rentabilidad estimada";
 
+    // Si la subsección Rentabilidad está abierta, recalcularla con el período/cuenta
+    // actual (cambio de período o sync la refrescan). Barato: solo si está visible.
+    if (S.renderRentabilidad) {
+      var rentaP = document.getElementById("rentaPanel");
+      if (rentaP && !rentaP.classList.contains("section-hidden")) S.renderRentabilidad();
+    }
+
     // --- Metricas por periodo (estilo panel de Mercado Libre) ---
     if (elements.commerceUnitsValue) elements.commerceUnitsValue.textContent = integerNumber.format(totals.units || 0);
     if (elements.commerceUnitsHint) {
@@ -1132,6 +1139,12 @@
 
     drawCommerceTrendChart();
     if (ml) S.drawCommerceCostsChart();
+    // Si la sección Rentabilidad está a la vista, recalcular con los datos/período
+    // actuales (cambio de período, re-sync, etc.).
+    try {
+      var rp = document.getElementById("rentaPanel");
+      if (rp && !rp.classList.contains("section-hidden") && S.renderRentabilidad) S.renderRentabilidad();
+    } catch (e) {}
   }
 
   // ---- Deep-link desde la notificacion de venta --------------

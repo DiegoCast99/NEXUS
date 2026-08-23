@@ -27,6 +27,7 @@
   var SECTIONS = {
     ecommerce: [
       { id: "resumen", label: "Metricas", hint: "Ventas, costos y tendencia" },
+      { id: "rentabilidad", label: "Rentabilidad", hint: "Ganancia real por publicacion", flag: "ml" },
       { id: "pedidos", label: "Ventas", hint: "Detalle de tus ventas" },
       { id: "publicaciones", label: "Publicaciones", hint: "Stock y estado", flag: "ml" },
       { id: "inventario", label: "Inventario", hint: "Stock central y sync", flag: "ml" },

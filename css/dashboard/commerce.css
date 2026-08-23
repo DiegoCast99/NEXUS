@@ -1267,11 +1267,13 @@
 .inv-prod-table td { vertical-align: middle; }
 .inv-prod-table th { text-align: left; }
 .inv-prod-table th:nth-child(3),   /* Stock */
-.inv-prod-table th:nth-child(4) {  /* En publicaciones */
+.inv-prod-table th:nth-child(4),   /* Costo */
+.inv-prod-table th:nth-child(5) {  /* En publicaciones */
   text-align: center;
 }
 .inv-prod-table .num { text-align: center; font-variant-numeric: tabular-nums; }
-.inv-prod-table .inv-stock { text-align: center; }   /* dígitos del stock al centro de la caja */
+.inv-prod-table .inv-stock,
+.inv-prod-table .inv-cost { text-align: center; max-width: 96px; margin: 0 auto; font-variant-numeric: tabular-nums; }   /* dígitos centrados en la caja */
 
 /* Tabla de publicaciones: TODO centrado (encabezado y valor alineados en el
    centro), salvo la 1ª columna "Publicación" que lleva foto + título a la
@@ -1494,3 +1496,50 @@
   font-size: 10px;
   vertical-align: middle;
 }
+
+/* ============================================================
+   RENTABILIDAD (ganancia real por publicación)
+   ============================================================ */
+.renta-sum { margin-bottom: 18px; }
+.renta-sum .metric-card.ads-neg strong { color: var(--danger); }
+.renta-sum .metric-card.ads-pos strong { color: var(--good); }
+.renta-table { min-width: 720px; }
+.renta-table th, .renta-table td { vertical-align: middle; }
+.renta-table th:first-child, .renta-table td:first-child { text-align: left; }
+.renta-table th:not(:first-child), .renta-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.renta-prod { display: flex; align-items: center; gap: 10px; }
+.renta-thumb { width: 30px; height: 30px; flex: none; border-radius: 7px; object-fit: cover; background: rgba(255, 255, 255, 0.05); }
+.renta-net.pos { color: var(--good); font-weight: 700; }
+.renta-net.neg { color: var(--danger); font-weight: 700; }
+.renta-falta { font-size: 11.5px; color: var(--warn); font-weight: 600; }
+@media (max-width: 1100px) { .renta-sum { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .renta-sum { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* ============================================================
+   RENTABILIDAD (ganancia real por publicación)
+   ============================================================ */
+.renta-tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin: 4px 0 14px; }
+.renta-tile {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 13px 14px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: linear-gradient(135deg, rgba(255,255,255,0.03), transparent 60%), rgba(18,18,22,0.5);
+}
+.renta-tile-lbl { font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); }
+.renta-tile strong { font-size: 21px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.renta-tile small { font-size: 11.5px; color: var(--muted); }
+.renta-tile.is-pos strong { color: var(--good); }
+.renta-tile.is-neg strong { color: var(--text); }
+.renta-adsline { margin: 0 2px 12px; font-size: 13px; color: rgba(244,244,246,0.8); line-height: 1.55; }
+.renta-adsline b { color: var(--text); }
+
+.renta-table { min-width: 720px; }
+.renta-table th { text-align: left; }
+.renta-table th:not(:first-child), .renta-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.renta-table td, .renta-table th { vertical-align: middle; }
+.renta-pub { display: flex; align-items: center; gap: 10px; max-width: 320px; }
+.renta-pub span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.renta-thumb { width: 30px; height: 30px; flex: none; border-radius: 7px; object-fit: cover; background: rgba(255,255,255,0.05); }
+.renta-pos { color: var(--good); }
+.renta-neg { color: var(--danger); }
+.renta-falta, .renta-parcial { color: var(--warn); font-size: 12px; }
+@media (max-width: 900px) { .renta-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
