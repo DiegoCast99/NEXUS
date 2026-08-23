@@ -501,6 +501,20 @@
     el("sideUser")?.addEventListener("click", function () { if (S.setView) S.setView("settings"); });
     el("helpBtn")?.addEventListener("click", function () { ensureHelpPop(); togglePop("helpPop", el("helpBtn")); });
     el("syncPill")?.addEventListener("click", function () { togglePop("syncPop", el("syncPill")); });
+
+    // Botón "volver arriba": aparece al scrollear (>600px) y sube suave al tope.
+    var stBtn = el("scrollTopBtn");
+    if (stBtn) {
+      var onScroll = function () {
+        var y = window.scrollY || document.documentElement.scrollTop || 0;
+        stBtn.classList.toggle("is-visible", y > 600);
+      };
+      window.addEventListener("scroll", onScroll, { passive: true });
+      stBtn.addEventListener("click", function () {
+        try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (e) { window.scrollTo(0, 0); }
+      });
+      onScroll();
+    }
     // Mobile: la hamburguesa de la topbar abre la hoja "Mas" (perfil/respaldo/sesion).
     el("mMenuBtn")?.addEventListener("click", function () { document.querySelector("#moduleNav [data-more]")?.click(); });
 

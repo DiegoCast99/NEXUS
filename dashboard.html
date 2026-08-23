@@ -69,7 +69,7 @@
     <link rel="stylesheet" href="./css/dashboard/commerce.css?v=4b7ff6b60c" />
     <link rel="stylesheet" href="./css/dashboard/tools.css?v=56092e9282" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=4fdb501d32" />
-    <link rel="stylesheet" href="./css/dashboard/redesign.css?v=0ae4f2bbba" />
+    <link rel="stylesheet" href="./css/dashboard/redesign.css?v=d7ac081c5e" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=73c6b2778a" />
     <link rel="stylesheet" href="./css/dashboard/mobile.css?v=58e05223f5" />
   </head>
@@ -1747,6 +1747,11 @@
 
     <div class="chart-tooltip" id="chartTooltip" role="status" aria-live="polite"></div>
 
+    <!-- Volver arriba: aparece al scrollear; sube al tope de la lista sin arrastrar -->
+    <button class="scroll-top" id="scrollTopBtn" type="button" aria-label="Volver arriba" title="Volver arriba">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6" /><path d="M6 12l6-6 6 6" /></svg>
+    </button>
+
     <!-- Avisos flotantes (errores/éxitos visibles, incluso de syncs en segundo plano) -->
     <div class="nexus-toasts" id="nexusToasts" aria-live="polite" aria-atomic="false"></div>
 
@@ -1777,7 +1782,7 @@
     <script src="./js/dashboard/router.js?v=a11aa0f02d"></script>
     <script src="./js/dashboard/logos.js?v=eac391f0f3"></script>
     <script src="./js/dashboard/home.js?v=921dc233f3"></script>
-    <script src="./js/dashboard/shell.js?v=bae32a368e"></script>
+    <script src="./js/dashboard/shell.js?v=3c32fcdbe1"></script>
     <script src="./js/dashboard/app.js?v=a76c16a114"></script>
     <script src="./js/dashboard/mobile-tables.js?v=acd7212400"></script>
     <script src="./js/pwa.js?v=7087eb1afe" defer></script>
