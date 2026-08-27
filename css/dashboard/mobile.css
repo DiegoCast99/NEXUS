@@ -161,6 +161,11 @@
 
   /* ---- HEADER contextual, compacto y sticky ---- */
   .topbar {
+    /* responsive.css pone .topbar en display:grid (era para el header viejo).
+       Con el layout nuevo (barra + saludo apilados) ese grid arma UNA sola
+       columna del ancho del contenido (~283px), y la .topbar-bar quedaba
+       encajada ahi: no llegaba al borde derecho. Volvemos a flex-columna. */
+    display: flex;
     position: sticky;
     top: 0;
     z-index: 30;

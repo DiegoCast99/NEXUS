@@ -253,6 +253,7 @@
       const flt = event.target.closest("[data-inv-filter]");
       if (flt) { S.invSetFilter(flt.getAttribute("data-inv-filter")); return; }
       if (event.target.closest("#invCompFilterClear")) S.invLimpiarCompFiltro();
+      if (event.target.closest("#invStockFilterClear")) S.invLimpiarStockFiltro();
     });
     // Filtro por componente (select): filtra las publicaciones por producto físico.
     elements.invPanel?.addEventListener("change", (event) => {

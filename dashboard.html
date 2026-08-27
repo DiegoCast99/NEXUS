@@ -66,12 +66,12 @@
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=e17d2d321c" />
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=b4cb91aa09" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=6d84225452" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=4b7ff6b60c" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=4b7cb599e8" />
     <link rel="stylesheet" href="./css/dashboard/tools.css?v=56092e9282" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=4fdb501d32" />
     <link rel="stylesheet" href="./css/dashboard/redesign.css?v=d7ac081c5e" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=73c6b2778a" />
-    <link rel="stylesheet" href="./css/dashboard/mobile.css?v=58e05223f5" />
+    <link rel="stylesheet" href="./css/dashboard/mobile.css?v=640bffc84f" />
   </head>
   <body>
     <!-- Splash del deep-link de venta: tapa la portada hasta que aparece el detalle. -->
@@ -1245,6 +1245,8 @@
               <!-- Vista 1: LISTA DE PRODUCTOS (crear los físicos) -->
               <div class="inv-view" data-inv-view="productos">
                 <p class="inv-hint">Creá acá tus <b>productos físicos individuales</b> (ej: “Creatina 1kg Growth”, “Whey 1kg”) con el stock real que tenés. Después, en <b>Publicaciones y enlaces</b>, asociás cada anuncio con los productos que consume.</p>
+                <!-- Banner de filtro por stock (lo activan las tarjetas de "Requiere atención") -->
+                <div class="inv-stockfilter is-hidden" id="invStockFilter"></div>
                 <div class="table-wrap">
                   <table class="meta-table inv-prod-table">
                     <thead>
@@ -1774,16 +1776,16 @@
     <script src="./js/dashboard/meta.js?v=ed9747f9f6"></script>
     <script src="./js/dashboard/commerce.js?v=406717be0f"></script>
     <script src="./js/dashboard/ads-agent.js?v=0d6508662f"></script>
-    <script src="./js/dashboard/inventory.js?v=2c5b99739f"></script>
+    <script src="./js/dashboard/inventory.js?v=2a6fb3d5e1"></script>
     <script src="./js/dashboard/rentabilidad.js?v=b012c90521"></script>
     <script src="./js/dashboard/notifications.js?v=a69e274803"></script>
     <script src="./js/dashboard/tools.js?v=bcada13fc2"></script>
     <script src="./js/dashboard/platform-nav.js?v=dceb6cf7c3"></script>
     <script src="./js/dashboard/router.js?v=a11aa0f02d"></script>
     <script src="./js/dashboard/logos.js?v=eac391f0f3"></script>
-    <script src="./js/dashboard/home.js?v=921dc233f3"></script>
+    <script src="./js/dashboard/home.js?v=62904421e4"></script>
     <script src="./js/dashboard/shell.js?v=3c32fcdbe1"></script>
-    <script src="./js/dashboard/app.js?v=a76c16a114"></script>
+    <script src="./js/dashboard/app.js?v=06c465aa1e"></script>
     <script src="./js/dashboard/mobile-tables.js?v=acd7212400"></script>
     <script src="./js/pwa.js?v=7087eb1afe" defer></script>
   </body>

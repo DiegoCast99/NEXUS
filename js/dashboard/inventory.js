@@ -22,6 +22,7 @@
   var invExpanded = {};   // mlbId -> desplegado (variantes NATIVAS de ML de esa publicación)
   var famExpanded = {};   // baseKey -> desplegado (FAMILIA de publicaciones sueltas por sabor)
   var listFilter = "all"; // filtro del listado: "all" | "synced" | "unsynced"
+  var stockFilter = "all"; // filtro de la Lista de productos: "all" | "out" | "low" (lo activa "Requiere atención")
   var compFiltro = "";    // filtro por COMPONENTE: productId → solo publicaciones que lo usan ("" = todas)
   var serverStock = {};   // Fase 4: stock por producto tal como se cargó del servidor
                           // (baseline para el merge 3-way al guardar).
@@ -191,8 +192,12 @@
   }
   async function invSyncOne(mlbId) {
     var api = S.requireSecureApi(), cuenta = cuentaDe(mlbId); // multi-cuenta: cada anuncio con SU token
-    var det = await api.mlApi("/items/" + mlbId + "?attributes=id,variations", "GET", null, cuenta);
-    var vars = (det.payload || {}).variations || [];
+    // Pedimos tambien status/sub_status: regla de negocio -> si la publicacion tiene
+    // stock, debe estar ACTIVA. Cuando ML la pauso por quedarse sin stock (o el vendedor
+    // la pauso a mano), al reponer stock la reactivamos (ver mas abajo).
+    var det = await api.mlApi("/items/" + mlbId + "?attributes=id,status,sub_status,variations", "GET", null, cuenta);
+    var payload = det.payload || {};
+    var vars = payload.variations || [];
     var body, total;
     if (vars.length) {
       var varsBody = []; total = 0;
@@ -208,11 +213,26 @@
       body = { available_quantity: cs }; total = cs;
     }
     await api.mlApi("/items/" + mlbId, "PUT", body, cuenta);
-    return total;
+
+    // Reactivar: SOLO si hay stock (>0) y la publicacion esta "paused". Otros estados
+    // (closed / under_review / inactive) NO se fuerzan a activo (ML los rechazaria).
+    // Es best-effort: si la reactivacion falla, el stock igual quedo sincronizado, asi
+    // que no rompemos el sync; se registra en el log para que se vea.
+    var reactivada = null;
+    if (total > 0 && payload.status === "paused") {
+      try {
+        await api.mlApi("/items/" + mlbId, "PUT", { status: "active" }, cuenta);
+        reactivada = true;
+      } catch (e) {
+        reactivada = false;
+        console.warn("[inventario] " + mlbId + ": stock sincronizado pero no se pudo reactivar:", (e && e.message) || e);
+      }
+    }
+    return { total: total, reactivada: reactivada };
   }
 
   async function invSyncListings(mlbIds, motivo) {
-    var cambiadas = 0, errores = 0;
+    var cambiadas = 0, errores = 0, reactivadas = 0;
     for (var i = 0; i < mlbIds.length; i++) {
       var mlbId = mlbIds[i];
       var computedApprox = computeListing(mlbId);
@@ -220,11 +240,13 @@
       var st = inv.listingState[mlbId] || {};
       if (st.published === computedApprox && st.status === "synced") continue;
       try {
-        var publicado = await invSyncOne(mlbId);
-        if (publicado == null) continue;
+        var res = await invSyncOne(mlbId);
+        if (res == null) continue;
+        var publicado = res.total;
         inv.listingState[mlbId] = { computed: publicado, published: publicado, status: "synced", lastSyncAt: new Date().toISOString(), error: null };
-        logSync({ listing: mlbId, antes: st.published != null ? st.published : "—", despues: publicado, motivo: motivo, resultado: "ok" });
+        logSync({ listing: mlbId, antes: st.published != null ? st.published : "—", despues: publicado, motivo: motivo, resultado: "ok", reactivada: res.reactivada });
         cambiadas++;
+        if (res.reactivada === true) reactivadas++;
       } catch (e) {
         inv.listingState[mlbId] = Object.assign({}, st, { computed: computedApprox, status: "error", lastSyncAt: new Date().toISOString(), error: (e && e.message) || "error" });
         logSync({ listing: mlbId, antes: st.published != null ? st.published : "—", despues: computedApprox, motivo: motivo, resultado: "error", error: (e && e.message) || "error" });
@@ -232,7 +254,7 @@
       }
       await dormir(120);
     }
-    return { cambiadas: cambiadas, errores: errores };
+    return { cambiadas: cambiadas, errores: errores, reactivadas: reactivadas };
   }
 
   function setInvMsg(txt, tipo) {
@@ -427,6 +449,19 @@
   function renderProductos() {
     if (!elements.invProdBody) return;
     var ids = Object.keys(inv.products);
+    // Filtro por stock (desde "Requiere atención" en el Inicio): out = 0; low = 1..3.
+    if (stockFilter === "out") ids = ids.filter(function (id) { return (Number(inv.products[id].stock) || 0) === 0; });
+    else if (stockFilter === "low") ids = ids.filter(function (id) { var s = Number(inv.products[id].stock) || 0; return s > 0 && s <= 3; });
+    var fb = document.getElementById("invStockFilter");
+    if (fb) {
+      if (stockFilter === "all") { fb.classList.add("is-hidden"); fb.innerHTML = ""; }
+      else {
+        var lbl = stockFilter === "out" ? "sin stock" : "con stock bajo";
+        fb.classList.remove("is-hidden");
+        fb.innerHTML = 'Mostrando <b>' + ids.length + '</b> producto(s) <b>' + lbl + '</b>.' +
+          ' <button type="button" class="inv-stockfilter-clear" id="invStockFilterClear">Ver todos</button>';
+      }
+    }
     elements.invProdEmpty?.classList.toggle("is-visible", !ids.length);
     elements.invProdBody.innerHTML = ids.map(function (id) {
       var p = inv.products[id];
@@ -878,11 +913,16 @@
     var log = inv.syncLog || [];
     elements.invLog.innerHTML = log.length ? log.slice(0, 30).map(function (e) {
       var ok = e.resultado === "ok";
+      // La regla "si hay stock, la publicacion va activa" puede reactivar una pausada:
+      // lo mostramos junto al "ok" (reactivada = true OK / false = no se pudo).
+      var okTxt = "ok";
+      if (ok && e.reactivada === true) okTxt = "ok · reactivada";
+      else if (ok && e.reactivada === false) okTxt = "ok · sin reactivar";
       return "<div class='inv-log-row'>" +
         "<span class='inv-log-when'>" + escapeHtml(String(e.ts).slice(0, 16).replace("T", " ")) + "</span>" +
         "<span class='inv-log-what'>" + escapeHtml(tituloListing(e.listing)) + " · " + escapeHtml(String(e.antes)) + "→" + escapeHtml(String(e.despues)) + "</span>" +
         "<span class='inv-log-why'>" + escapeHtml(e.motivo || "") + "</span>" +
-        "<span class='" + (ok ? "inv-log-ok" : "inv-log-err") + "'>" + (ok ? "ok" : escapeHtml(e.error || "error")) + "</span>" +
+        "<span class='" + (ok ? "inv-log-ok" : "inv-log-err") + "'>" + (ok ? escapeHtml(okTxt) : escapeHtml(e.error || "error")) + "</span>" +
       "</div>";
     }).join("") : "<p class='pub-quiet'>Sin sincronizaciones todavía.</p>";
   }
@@ -926,7 +966,7 @@
       cambiaronStock.forEach(function (pid) { listingsDeProducto(pid).forEach(function (m) { afectadas[m] = true; }); });
       var r = await invSyncListings(Object.keys(afectadas), "Ajuste manual de stock");
       await invSave();
-      setInvMsg("Guardado. " + r.cambiadas + " publicación(es) sincronizada(s)" + (r.errores ? ", " + r.errores + " con error." : "."), r.errores ? "error" : "success");
+      setInvMsg("Guardado. " + r.cambiadas + " publicación(es) sincronizada(s)" + (r.reactivadas ? " · " + r.reactivadas + " reactivada" + (r.reactivadas > 1 ? "s" : "") : "") + (r.errores ? ", " + r.errores + " con error." : "."), r.errores ? "error" : "success");
       renderInventory();
     } catch (e) { setInvMsg("Error al guardar/sincronizar: " + ((e && e.message) || "error"), "error"); }
   }
@@ -952,7 +992,7 @@
       Object.keys(inv.compositions).forEach(function (k) { bases[String(k).split("::")[0]] = true; });
       var r = await invSyncListings(Object.keys(bases), "Sincronización manual (todas)");
       await invSave();
-      setInvMsg(r.cambiadas + " sincronizada(s)" + (r.errores ? ", " + r.errores + " con error." : "."), r.errores ? "error" : "success");
+      setInvMsg(r.cambiadas + " sincronizada(s)" + (r.reactivadas ? " · " + r.reactivadas + " reactivada" + (r.reactivadas > 1 ? "s" : "") : "") + (r.errores ? ", " + r.errores + " con error." : "."), r.errores ? "error" : "success");
       renderInventory();
     } catch (e) { setInvMsg("Error: " + ((e && e.message) || "error"), "error"); }
   }
@@ -964,7 +1004,7 @@
     try {
       var r = await invSyncListings([mlbId], "Reintento manual");
       await invSave();
-      setInvMsg(r.errores ? "La publicación sigue con error." : "Publicación sincronizada.", r.errores ? "error" : "success");
+      setInvMsg(r.errores ? "La publicación sigue con error." : ("Publicación sincronizada" + (r.reactivadas ? " y reactivada" : "") + "."), r.errores ? "error" : "success");
       renderInventory();
     } catch (e) { setInvMsg("Error al reintentar: " + ((e && e.message) || "error"), "error"); }
   }
@@ -1115,10 +1155,24 @@
     if (cargado) return true;
     try { await invLoad(); return true; } catch (e) { return false; }
   }
+  // Desde "Requiere atención": abre la Lista de productos filtrada a los que están
+  // sin stock ("out") o con stock bajo ("low"), y sube al inventario.
+  function invShowStock(kind) {
+    stockFilter = (kind === "out" || kind === "low") ? kind : "all";
+    if (S.setView) S.setView("productos");   // E-Commerce → ML → Inventario
+    Promise.resolve(ensureInventoryLoaded()).then(function () {
+      invTab("productos", true);
+      renderProductos();
+      var p = elements.invPanel;
+      if (p && p.scrollIntoView) { try { p.scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) {} }
+    }).catch(function () {});
+  }
+  function invLimpiarStockFiltro() { stockFilter = "all"; renderProductos(); }
 
   Object.assign(S, {
     abrirInventario, invActualizar, renderInventory, invTab, detenerInvTiempoReal,
     cogsUnit: cogsUnit, getInventory: getInventory, ensureInventoryLoaded: ensureInventoryLoaded,
+    invShowStock: invShowStock, invLimpiarStockFiltro: invLimpiarStockFiltro,
     invAddProduct, invGuardarProductos, invDeleteProduct,
     invCargarPublicaciones, invResyncAll, invReintentarUno,
     invConfigurar, invComposeCancelar, invComposeAddComponent, invComposeQuitar, invComposeGuardar, invToggleExpand,

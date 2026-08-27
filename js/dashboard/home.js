@@ -72,13 +72,39 @@
     return isNaN(t) ? null : t;
   }
 
-  // Junta TODAS las órdenes de todas las cuentas ML, con su cuenta.
+  // Cuentas ML ÚNICAS: si dos slots (ej: "Mercado Libre 1" y "Mercado Libre 2")
+  // apuntan al MISMO usuario de Mercado Libre, se cuenta UNA sola vez. Sin esto, la
+  // misma cuenta conectada dos veces DUPLICA ventas/visitas/ganancias y la dona da
+  // 50/50 falso. Dedupe por mlUserId; si no está guardado, por la firma de órdenes.
+  function mlAccountsUnicas() {
+    var accts = (S.mlAccounts && S.mlAccounts()) || [];
+    var seen = {}, out = [];
+    accts.forEach(function (a) {
+      var cfg = S.getCommerceConfig ? S.getCommerceConfig(a.id) : null;
+      var key = (cfg && cfg.mlUserId) ? ("u:" + cfg.mlUserId) : "";
+      if (!key) {
+        var snap = S.getCommerceSnapshot ? S.getCommerceSnapshot(a.id) : null;
+        if (snap && snap.allOrders && snap.allOrders.length) {
+          key = "s:" + snap.allOrders.slice(0, 10).map(function (o) { return String(o.id); }).sort().join(",");
+        }
+      }
+      if (key) { if (seen[key]) return; seen[key] = true; }
+      out.push(a);
+    });
+    return out;
+  }
+
+  // Junta TODAS las órdenes de las cuentas ML ÚNICAS, deduplicando por id de orden
+  // (belt-and-suspenders: aunque dos slots compartan órdenes, cada una cuenta 1 vez).
   function collectOrders() {
-    var accounts = (S.mlAccounts && S.mlAccounts()) || [];
-    var out = [];
+    var accounts = mlAccountsUnicas();
+    var out = [], seen = {};
     accounts.forEach(function (acc) {
       var snap = S.getCommerceSnapshot && S.getCommerceSnapshot(acc.id);
       (snap && snap.allOrders ? snap.allOrders : []).forEach(function (o) {
+        var oid = String(o.id || "");
+        if (oid && seen[oid]) return;
+        if (oid) seen[oid] = true;
         out.push({ o: o, acc: acc.id, accName: acc.name });
       });
     });
@@ -118,7 +144,7 @@
   // [fromTs, toTs). Cada día es "YYYY-MM-DD" → se ubica al inicio de ese día local.
   function sumVisitas(fromTs, toTs) {
     var total = 0;
-    (S.mlAccounts ? S.mlAccounts() : []).forEach(function (a) {
+    mlAccountsUnicas().forEach(function (a) {
       var snap = S.getCommerceSnapshot && S.getCommerceSnapshot(a.id);
       var byDay = snap && snap.visitsByDay;
       if (!byDay) return;
@@ -151,7 +177,7 @@
     } else {
       // Snapshot viejo (sin serie diaria) o ML no la dio: total agregado, sin delta.
       var vtot = 0;
-      (S.mlAccounts ? S.mlAccounts() : []).forEach(function (a) {
+      mlAccountsUnicas().forEach(function (a) {
         var snap = S.getCommerceSnapshot && S.getCommerceSnapshot(a.id);
         var tt = snap && snap.totals;
         if (tt && typeof tt.sessions === "number") vtot += tt.sessions;
@@ -163,7 +189,7 @@
     // La gráfica "Ingresos por día" ahora sigue el período elegido (antes 14 días
     // fijos): por eso al cambiar el período la gráfica cambia y se re-anima.
     var trendMap = {}, trendCount = {}, byName = {}, perAccount = {};
-    (S.mlAccounts ? S.mlAccounts() : []).forEach(function (a) { perAccount[a.id] = { id: a.id, name: a.name, revenue: 0, orders: 0, connected: !!(S.getCommerceConfig && S.getCommerceConfig(a.id).hasToken) }; });
+    mlAccountsUnicas().forEach(function (a) { perAccount[a.id] = { id: a.id, name: a.name, revenue: 0, orders: 0, connected: !!(S.getCommerceConfig && S.getCommerceConfig(a.id).hasToken) }; });
     items.forEach(function (it) {
       var t = orderTime(it.o);
       if (t !== null && (t < curFrom || t >= curTo)) return;
@@ -179,7 +205,7 @@
 
     // Fallback: sin allOrders pero con totals cacheados.
     if (!hasOrders) {
-      (S.mlAccounts ? S.mlAccounts() : []).forEach(function (a) {
+      mlAccountsUnicas().forEach(function (a) {
         var snap = S.getCommerceSnapshot && S.getCommerceSnapshot(a.id);
         var tt = snap && snap.totals; if (!tt) return;
         cur.revenue += Number(tt.revenue) || 0; cur.margin += Number(tt.margin) || 0;
@@ -411,17 +437,18 @@
         return false;
       });
     }
-    // Orden pedido: Mercado Libre 1, Mercado Libre 2, Mercado Livre, luego el resto.
-    // `id` ÚNICO por canal (no el slug): ML1 y ML2 comparten slug "mercadolibre"
-    // pero deben tener color de dona/leyenda propio.
-    var channels = [
-      { id: "mercadolibre",  name: "Mercado Libre 1", slug: "mercadolibre", value: rev["mercadolibre"] || 0, soon: false },
-      { id: "mercadolibre2", name: "Mercado Libre 2", slug: "mercadolibre", value: rev["mercadolibre2"] || 0, soon: false },
-      { id: "mercadolivre",  name: "Mercado Livre",   slug: "mercadolivre", value: rev["mercadolivre"] || 0, soon: false },
-      { id: "alphaweb",      name: "Alpha Fitness",   slug: "alphafitness", photoId: alphaPhotoId, value: alphaRev, soon: false },
-      { id: "amazon",        name: "Amazon",          slug: "amazon", value: 0, soon: true },
-      { id: "shopee",        name: "Shopee",          slug: "shopee", value: 0, soon: true }
-    ];
+    // Canales de Mercado Libre: SOLO las cuentas ÚNICAS. Si dos slots apuntan al
+    // mismo usuario de ML (misma cuenta conectada dos veces), aparece UNA sola vez
+    // (antes daba dos canales al 50/50 con datos duplicados). Cada cuenta con su
+    // nombre; `id` único (ML1/ML2 comparten slug de logo pero color propio).
+    var mlChans = mlAccountsUnicas().map(function (a) {
+      return { id: a.id, name: a.name, slug: (a.id === "mercadolivre" ? "mercadolivre" : "mercadolibre"), value: rev[a.id] || 0, soon: false };
+    });
+    var channels = mlChans.concat([
+      { id: "alphaweb", name: "Alpha Fitness", slug: "alphafitness", photoId: alphaPhotoId, value: alphaRev, soon: false },
+      { id: "amazon",   name: "Amazon",        slug: "amazon", value: 0, soon: true },
+      { id: "shopee",   name: "Shopee",        slug: "shopee", value: 0, soon: true }
+    ]);
     var total = channels.reduce(function (a, c) { return a + c.value; }, 0);
     var real = channels.filter(function (c) { return c.value > 0; });
 
@@ -522,15 +549,15 @@
     var a = invAlertsCache;
     if (a && a !== true) {
       var out = (a.out || []).length, low = (a.low || []).length, errs = (a.errors || []).length;
-      if (out) items.push({ sev: "danger", ic: IC.box, title: out + (out === 1 ? " producto sin stock" : " productos sin stock"), sub: "Reponé o pausá para no vender sin stock", go: "productos" });
+      if (out) items.push({ sev: "danger", ic: IC.box, title: out + (out === 1 ? " producto sin stock" : " productos sin stock"), sub: "Reponé o pausá para no vender sin stock", go: "stock:out" });
       if (errs) items.push({ sev: "danger", ic: IC.warn, title: errs + (errs === 1 ? " publicación con error de sync" : " publicaciones con error de sync"), sub: "No se pudo actualizar el stock en ML", go: "productos" });
-      if (low) items.push({ sev: "warn", ic: IC.box, title: low + (low === 1 ? " producto con stock bajo" : " productos con stock bajo"), sub: "Quedan pocas unidades", go: "productos" });
+      if (low) items.push({ sev: "warn", ic: IC.box, title: low + (low === 1 ? " producto con stock bajo" : " productos con stock bajo"), sub: "Quedan pocas unidades", go: "stock:low" });
     }
     // Publicidad: si ya hay campañas cargadas (visitaste Publicidad), avisar cuántas
     // pierden plata (gastan sin vender o ROAS<1). Best-effort: no dispara carga.
     try {
       var adsLosers = 0;
-      (S.mlAccounts ? S.mlAccounts() : []).forEach(function (acc) {
+      mlAccountsUnicas().forEach(function (acc) {
         var d = S.adsDatos ? S.adsDatos(acc.id) : null;
         var camps = d && d.campaigns;
         if (!Array.isArray(camps)) return;
@@ -686,13 +713,21 @@
     if (biz && !biz.dataset.bound) {
       biz.dataset.bound = "1";
       biz.addEventListener("click", function (e) { var card = e.target.closest(".home-biz-card[data-view]"); if (card && S.setView) S.setView(card.getAttribute("data-view")); });
-    }
-    // "Requiere atención": cada tarjeta lleva a la sección donde se resuelve.
-    var att = el("homeAttention");
-    if (att && !att.dataset.bound) {
-      att.dataset.bound = "1";
-      att.addEventListener("click", function (e) { var c = e.target.closest("[data-att-go]"); if (c && S.setView) S.setView(c.getAttribute("data-att-go")); });
       biz.addEventListener("keydown", function (e) { var card = e.target.closest(".home-biz-card[data-view]"); if (card && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); card.click(); } });
+    }
+    // "Requiere atención": delegación a nivel DOCUMENTO (robusta, no depende de que
+    // #homeAttention exista al bindear). stock:out/low filtran el Inventario a esos
+    // productos; el resto navega con setView.
+    if (!initHome._attBound) {
+      initHome._attBound = true;
+      document.addEventListener("click", function (e) {
+        var c = e.target && e.target.closest ? e.target.closest("[data-att-go]") : null;
+        if (!c) return;
+        var go = c.getAttribute("data-att-go");
+        if (go === "stock:out" && S.invShowStock) S.invShowStock("out");
+        else if (go === "stock:low" && S.invShowStock) S.invShowStock("low");
+        else if (S.setView) S.setView(go);
+      });
     }
   }
 

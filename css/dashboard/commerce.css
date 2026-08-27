@@ -1543,3 +1543,21 @@
 .renta-neg { color: var(--danger); }
 .renta-falta, .renta-parcial { color: var(--warn); font-size: 12px; }
 @media (max-width: 900px) { .renta-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Banner de filtro por stock (Lista de productos, activado desde "Requiere atención") */
+.inv-stockfilter {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 0 0 12px; padding: 10px 13px;
+  border: 1px solid rgba(255, 106, 61, 0.28); border-radius: 10px;
+  background: rgba(255, 106, 61, 0.08);
+  font-size: 13px; color: var(--text);
+}
+.inv-stockfilter.is-hidden { display: none; }
+.inv-stockfilter b { font-variant-numeric: tabular-nums; }
+.inv-stockfilter-clear {
+  margin-left: auto; border: 1px solid var(--border); border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05); color: var(--text);
+  font-size: 12px; font-weight: 600; padding: 5px 12px; cursor: pointer;
+  transition: border-color 0.14s ease, color 0.14s ease;
+}
+.inv-stockfilter-clear:hover { border-color: rgba(255, 106, 61, 0.5); color: var(--accent); }
