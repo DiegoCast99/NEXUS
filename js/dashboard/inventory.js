@@ -316,17 +316,51 @@
   async function cargarCatalogoCuenta(api, cuenta) {
     var me = await api.mlApi("/users/me", "GET", null, cuenta);
     var userId = (me.payload || {}).id;
-    var ids = [], offset = 0;
-    for (var pg = 0; pg < 6; pg++) {
-      var r = await api.mlApi("/users/" + userId + "/items/search?limit=50&offset=" + offset, "GET", null, cuenta);
+    // 1) Lista AUTORITATIVA de publicaciones de la cuenta (los IDs de /items/search).
+    //    Es lo que define el conteo "Todas". Se pagina COMPLETA (no un cap chico) y
+    //    se reintenta cada página una vez → el número es CERTERO y no depende de qué
+    //    fetch de detalle falló. searchOk = se pudo traer la lista entera.
+    var ids = [], offset = 0, total = Infinity, searchOk = true;
+    for (var pg = 0; pg < 60 && offset < total; pg++) {   // cap de seguridad = 3000 pubs
+      var r = null;
+      for (var intento = 0; intento < 2 && !r; intento++) {
+        try { r = await api.mlApi("/users/" + userId + "/items/search?limit=50&offset=" + offset, "GET", null, cuenta); }
+        catch (e) { r = null; }
+      }
+      if (!r) { searchOk = false; break; }   // una página no vino: NO reconciliar (evita borrar de más)
       var res = r.payload || {}, lote = res.results || [];
       ids = ids.concat(lote);
-      var total = (res.paging && res.paging.total) || ids.length;
+      total = (res.paging && typeof res.paging.total === "number") ? res.paging.total : ids.length;
       offset += 50;
-      if (!lote.length || offset >= total) break;
+      if (!lote.length) break;
     }
-    // Lotes de 20 ids en PARALELO (cap 6 concurrentes), SIN sleeps. Se repinta por
-    // tanda (render incremental) para que las fotos aparezcan apenas llegan.
+    ids = ids.map(String);
+    var idsSet = {}; ids.forEach(function (id) { idsSet[id] = true; });
+
+    // 2) Asegurar UNA entrada por publicación ANTES de traer el detalle: así el
+    //    conteo es estable = cantidad de publicaciones reales, aunque el fetch de
+    //    detalle (fotos/stock) falle o llegue después. Se preserva lo ya conocido.
+    ids.forEach(function (id) {
+      if (catalogo[id]) catalogo[id].account = cuenta;
+      else catalogo[id] = { title: id, stock: 0, thumbnail: "", variations: [], account: cuenta, pending: true };
+    });
+
+    // 3) Reconciliar: sacar del catálogo las publicaciones de ESTA cuenta que ML ya
+    //    no lista (cerradas/borradas) para que el conteo sea real. Solo si la lista
+    //    vino completa (searchOk) y solo las que NO tienen composición del usuario
+    //    (esas se conservan aunque falten momentáneamente en la búsqueda).
+    if (searchOk) {
+      var compBase = {};
+      Object.keys(inv.compositions).forEach(function (k) { compBase[String(k).split("::")[0]] = true; });
+      Object.keys(catalogo).forEach(function (id) {
+        if (catalogo[id] && catalogo[id].account === cuenta && !idsSet[id] && !compBase[id]) delete catalogo[id];
+      });
+    }
+    guardarCatalogoCache();
+    renderListings();   // ya con el conteo CORRECTO; el detalle de abajo solo agrega fotos/stock
+
+    // 4) Detalle (enriquecimiento): fotos, stock ML y variantes. Best-effort — si un
+    //    lote falla NO cambia el conteo (la publicación ya quedó contada en el paso 2).
     var batches = [];
     for (var i = 0; i < ids.length; i += 20) batches.push(ids.slice(i, i + 20));
     var candidatosVar = {};   // ids con variantes que el multiget NO trajo -> backfill por item
