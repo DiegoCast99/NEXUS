@@ -818,6 +818,39 @@
     finally { _notifRefreshBusy = false; }
   }
 
+  // Cachea la IDENTIDAD real (id + @nickname) de CADA cuenta ML conectada, vía
+  // /users/me con el token de cada slot. Sirve para: (1) mostrar el @usuario de
+  // cada cuenta en la leyenda de "Ventas por canal", y (2) detectar si dos slots
+  // apuntan a la MISMA cuenta de ML (mismo mlUserId => el OAuth de la 2da terminó
+  // reconectando la 1ra). Best-effort; no rompe si una cuenta falla.
+  var _identBusy = false;
+  async function refrescarIdentidadCuentas() {
+    if (_identBusy) return;
+    _identBusy = true;
+    try {
+      var api = S.requireSecureApi();
+      var accounts = (S.mlAccounts && S.mlAccounts()) || [];
+      var cambios = false;
+      await Promise.all(accounts.map(function (acc) {
+        var cfg = getCommerceConfig(acc.id);
+        if (!cfg || !cfg.hasToken) return Promise.resolve();
+        return api.mlApi("/users/me", "GET", null, acc.id).then(function (me) {
+          var p = (me && me.payload) || {};
+          if (!p.id) return;
+          var c = state.commerce.configs[acc.id];
+          if (!c) return;
+          if (String(c.mlUserId || "") !== String(p.id) || c.mlNickname !== (p.nickname || "")) {
+            c.mlUserId = String(p.id);
+            c.mlNickname = p.nickname || "";
+            cambios = true;
+          }
+        }).catch(function () {});
+      }));
+      if (cambios) { try { saveCommerceConfigs(); } catch (e) {} }
+    } catch (e) { /* best-effort */ }
+    finally { _identBusy = false; }
+  }
+
   // Visitas a las publicaciones del vendedor en el periodo.
   // Endpoint distinto al de ordenes: /users/{id}/items_visits.
   // Si falla (ML tarda 48h en consolidar, o el rango excede 150 dias) no
@@ -3641,7 +3674,7 @@
   }
 
   Object.assign(S, {
-    adsDatos, activeMLId, adsUpdateCampaign, cargarAdsMTD, thumbsForItems, diagnosticarFotos, refrescarVentasNotif,
+    adsDatos, activeMLId, adsUpdateCampaign, cargarAdsMTD, thumbsForItems, diagnosticarFotos, refrescarVentasNotif, refrescarIdentidadCuentas,
     aggregateCommerceProducts, aggregateCommerceTrend, buildDemoCommerceSnapshot, buildMLAuthUrl,
     clearSelectedCommerceApp, clearSelectedCommerceGroup, createCommerceSnapshot, disconnectML, ensureMLLiveDefaults, fetchCommerceData, fetchMLOrders,
     handleMlOAuthReturn, normalizeCommerceOrder, normalizeMLOrder,

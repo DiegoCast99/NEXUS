@@ -577,10 +577,12 @@
       // Al terminar, re-renderizamos el Inicio: refrescarVentasNotif trae las ventas
       // de TODAS las cuentas ML (ML1, ML2, ...) a sus snapshots, así la dona "Ventas
       // por canal" refleja el ingreso de CADA Mercado Libre (antes solo actualizaba
-      // el puntito de la campana → ML2 quedaba en 0% con datos viejos).
-      if (S.refrescarVentasNotif) Promise.resolve(S.refrescarVentasNotif())
-        .then(function () { updateNotifDot(); if (S.renderHome) S.renderHome(); })
-        .catch(function () {});
+      // el puntito de la campana → ML2 quedaba en 0% con datos viejos). En paralelo
+      // cacheamos la identidad (@nickname) real de cada cuenta para la leyenda.
+      var tareas = [];
+      if (S.refrescarVentasNotif) tareas.push(Promise.resolve(S.refrescarVentasNotif()).catch(function () {}));
+      if (S.refrescarIdentidadCuentas) tareas.push(Promise.resolve(S.refrescarIdentidadCuentas()).catch(function () {}));
+      Promise.all(tareas).then(function () { updateNotifDot(); if (S.renderHome) S.renderHome(); });
     }, 2500);
   }
 
