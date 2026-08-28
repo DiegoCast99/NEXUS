@@ -271,10 +271,33 @@
   function cuentasMLDelInventario() {
     var activa = activeML();
     var todas = (S.mlAccounts ? S.mlAccounts() : null) || [{ id: activa }];
-    var ids = todas.map(function (a) { return a.id; }).filter(function (id) {
-      try { return S.getCommerceConfig(id).hasToken; } catch (e) { return id === activa; }
+    // La cuenta ACTIVA primero: si es un duplicado, que su slot gane el dedup.
+    var ordenadas = todas.filter(function (a) { return a.id === activa; })
+                         .concat(todas.filter(function (a) { return a.id !== activa; }));
+    // Solo cuentas CONECTADAS (con token) y DEDUP por usuario real de ML (mlUserId; si
+    // falta, por la firma de órdenes del snapshot). Evita cargar/contar la MISMA cuenta
+    // dos veces cuando está en dos slots (ML1 y ML2): eso hacía cargar el catálogo dos
+    // veces en paralelo, pisándose el 'account' de cada publicación (carrera), y el
+    // filtro por cuenta las incluía/excluía al azar → el conteo "Sin sincronizar" bailaba.
+    var seen = {}, out = [];
+    ordenadas.forEach(function (a) {
+      var cfg = null;
+      try { cfg = S.getCommerceConfig(a.id); } catch (e) {}
+      if (!cfg || !cfg.hasToken) return;
+      var key = cfg.mlUserId ? ("u:" + cfg.mlUserId) : "";
+      if (!key) {
+        var snap = S.getCommerceSnapshot ? S.getCommerceSnapshot(a.id) : null;
+        if (snap && snap.allOrders && snap.allOrders.length) {
+          key = "s:" + snap.allOrders.slice(0, 10).map(function (o) { return String(o.id); }).sort().join(",");
+        } else {
+          key = "id:" + a.id;   // sin forma de identificar el usuario: no deduplicar este slot
+        }
+      }
+      if (seen[key]) return;
+      seen[key] = true;
+      out.push(a.id);
     });
-    return ids.length ? ids : [activa];
+    return out.length ? out : [activa];
   }
   // Cuenta a la que pertenece una publicación (para filtrar por cuenta en la tabla).
   function cuentaDeListing(mlbId) {
@@ -304,13 +327,26 @@
     return t;
   }
 
+  var _catalogoInFlight = null;
   async function cargarCatalogo() {
-    var api = S.requireSecureApi();
-    var cuentas = cuentasMLDelInventario();
-    // Cuentas en paralelo (cada una hace sus lotes en paralelo también).
-    await Promise.all(cuentas.map(function (c) { return cargarCatalogoCuenta(api, c).catch(function () {}); }));
-    catalogoCargado = true;
-    guardarCatalogoCache();
+    // Reentrancia: si ya hay una carga en curso (ej. el auto-refresh de 90s corriendo
+    // justo cuando apretás "Cargar publicaciones"/"Actualizar"), reusamos ESA promesa
+    // en vez de arrancar otra en paralelo sobre el mismo `catalogo` (dos cargas a la vez
+    // se pisaban y hacían variar el conteo).
+    if (_catalogoInFlight) return _catalogoInFlight;
+    _catalogoInFlight = (async function () {
+      try {
+        var api = S.requireSecureApi();
+        var cuentas = cuentasMLDelInventario();
+        // Cuentas en paralelo (cada una hace sus lotes en paralelo también).
+        await Promise.all(cuentas.map(function (c) { return cargarCatalogoCuenta(api, c).catch(function () {}); }));
+        catalogoCargado = true;
+        guardarCatalogoCache();
+      } finally {
+        _catalogoInFlight = null;
+      }
+    })();
+    return _catalogoInFlight;
   }
 
   async function cargarCatalogoCuenta(api, cuenta) {
