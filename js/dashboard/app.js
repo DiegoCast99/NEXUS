@@ -544,6 +544,10 @@
               // hay snapshot local, arrancar el "en vivo" (init no pudo, no había token).
               if (primerCloud) {
                 primerCloud = false;
+                // La nube ya trajo los datos y applyRemoteData los pintó (KPIs +
+                // gráficas): recién ACÁ la barra de arranque llega a 100% y se revela
+                // el dashboard COMPLETO, sin pop-in.
+                try { if (window.NexusBoot) window.NexusBoot.dataReady(); } catch (e) {}
                 try {
                   if (S.getCommerceConfig && S.getCommerceConfig("mercadolibre").hasToken &&
                       S.getCommerceSnapshot && !S.getCommerceSnapshot("mercadolibre")) {
@@ -556,7 +560,8 @@
             // Sin suscripción en vivo: bajar una vez y refrescar (fallback).
             window.NexusFirestore.loadUserData(user.uid).then(function (loaded) {
               if (loaded) { S.rehydrateState(); try { S.renderAll(); S.renderMetaDashboard(); S.renderCommerceDashboard(); } catch (e) {} }
-            }).catch(function () {});
+              try { if (window.NexusBoot) window.NexusBoot.dataReady(); } catch (e) {}
+            }).catch(function () { try { if (window.NexusBoot) window.NexusBoot.dataReady(); } catch (e) {} });
           }
         }
       } else {
@@ -567,5 +572,7 @@
     window.location.replace("./index.html");
   } else {
     init();
+    // Sin Firebase (preview local): no hay nube; el dato del cache ya es el completo.
+    try { if (window.NexusBoot) window.NexusBoot.dataReady(); } catch (e) {}
   }
 })();
