@@ -94,10 +94,13 @@
     return out;
   }
 
-  // Junta TODAS las órdenes de las cuentas ML ÚNICAS, deduplicando por id de orden
-  // (belt-and-suspenders: aunque dos slots compartan órdenes, cada una cuenta 1 vez).
+  // Junta las órdenes de TODOS los slots de ML (ML1, ML2, ML Livre) para poder mostrar
+  // cada canal por separado en la dona, PERO deduplicando por id de orden: cada venta
+  // se cuenta UNA sola vez (atribuida al primer slot que la tiene). Así, si dos slots
+  // son la MISMA cuenta, una toma las ventas y la otra queda en 0 (nunca se duplica el
+  // total); si son cuentas DISTINTAS, cada una muestra sus ventas reales.
   function collectOrders() {
-    var accounts = mlAccountsUnicas();
+    var accounts = (S.mlAccounts && S.mlAccounts()) || [];
     var out = [], seen = {};
     accounts.forEach(function (acc) {
       var snap = S.getCommerceSnapshot && S.getCommerceSnapshot(acc.id);
@@ -189,7 +192,10 @@
     // La gráfica "Ingresos por día" ahora sigue el período elegido (antes 14 días
     // fijos): por eso al cambiar el período la gráfica cambia y se re-anima.
     var trendMap = {}, trendCount = {}, byName = {}, perAccount = {};
-    mlAccountsUnicas().forEach(function (a) { perAccount[a.id] = { id: a.id, name: a.name, revenue: 0, orders: 0, connected: !!(S.getCommerceConfig && S.getCommerceConfig(a.id).hasToken) }; });
+    // Un canal por CADA slot de ML (ML1, ML2, ML Livre) para la dona "Ventas por canal".
+    // Los ingresos ya vienen deduplicados por orden en collectOrders (cada venta a un
+    // solo slot), así que la suma de la dona sigue igual al total de los KPIs.
+    ((S.mlAccounts && S.mlAccounts()) || []).forEach(function (a) { perAccount[a.id] = { id: a.id, name: a.name, revenue: 0, orders: 0, connected: !!(S.getCommerceConfig && S.getCommerceConfig(a.id).hasToken) }; });
     items.forEach(function (it) {
       var t = orderTime(it.o);
       if (t !== null && (t < curFrom || t >= curTo)) return;
@@ -437,11 +443,11 @@
         return false;
       });
     }
-    // Canales de Mercado Libre: SOLO las cuentas ÚNICAS. Si dos slots apuntan al
-    // mismo usuario de ML (misma cuenta conectada dos veces), aparece UNA sola vez
-    // (antes daba dos canales al 50/50 con datos duplicados). Cada cuenta con su
-    // nombre; `id` único (ML1/ML2 comparten slug de logo pero color propio).
-    var mlChans = mlAccountsUnicas().map(function (a) {
+    // Canales de Mercado Libre: TODOS los slots (ML1, ML2, ML Livre) por separado, cada
+    // uno con SU ingreso. Los ingresos ya vienen deduplicados por orden (collectOrders),
+    // así que no hay 50/50 falso: si dos slots son la misma cuenta, uno toma las ventas
+    // y el otro queda en 0%; si son cuentas distintas, cada uno muestra lo suyo.
+    var mlChans = ((S.mlAccounts && S.mlAccounts()) || []).map(function (a) {
       return { id: a.id, name: a.name, slug: (a.id === "mercadolivre" ? "mercadolivre" : "mercadolibre"), value: rev[a.id] || 0, soon: false };
     });
     var channels = mlChans.concat([
