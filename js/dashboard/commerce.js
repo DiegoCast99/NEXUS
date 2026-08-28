@@ -783,34 +783,38 @@
     return out.map(normalizeMLOrder);
   }
 
-  // Refresca las ventas recientes de TODAS las cuentas ML conectadas y mergea las
-  // nuevas en sus snapshots, para que la campanita muestre lo último de CADA
-  // cuenta (no solo la activa). Best-effort; se llama al abrir la campana y al
-  // iniciar. La cuenta activa igual la refresca su propio sync.
+  // Resuelve las ventas de las cuentas ML NO activas y REEMPLAZA su snapshot con SUS
+  // órdenes reales (identidad fresca: /users/me del token de cada cuenta). La cuenta
+  // activa la sincroniza en detalle syncMercadoLibre (visitas + enriquecido), así que
+  // acá se la saltea para no pisar su snapshot rico.
+  //
+  // Por qué REEMPLAZAR y no mergear: si en el pasado el snapshot de una cuenta quedó
+  // contaminado con órdenes de OTRA cuenta (por un mlUserId cacheado incorrecto), el
+  // merge las conservaba y el dedup por id de orden se las comía → esa cuenta quedaba
+  // en 0% en "Ventas por canal". Reemplazando con la verdad de ML por cuenta, la dona
+  // muestra el ingreso real de CADA Mercado Libre. Best-effort; se llama al abrir la
+  // campana y al iniciar.
   var _notifRefreshBusy = false;
   async function refrescarVentasNotif() {
     if (_notifRefreshBusy) return;
     _notifRefreshBusy = true;
     try {
       var accounts = (S.mlAccounts && S.mlAccounts()) || [];
+      var activa = activeMLId();
       var now = Date.now();
       var range = { from: toDateInput(new Date(now - 30 * 86400000)), to: toDateInput(new Date(now)) };
       var cambios = false;
       await Promise.all(accounts.map(function (acc) {
+        if (acc.id === activa) return Promise.resolve();       // la activa la maneja syncMercadoLibre
         var cfg = getCommerceConfig(acc.id);
         if (!cfg || !cfg.hasToken) return Promise.resolve();
         return fetchOrdersDeCuenta(acc.id, range).then(function (orders) {
-          if (!orders || !orders.length) return;
-          var snap = state.commerce.snapshots[acc.id];
-          if (!snap) {
-            state.commerce.snapshots[acc.id] = createCommerceSnapshot(orders, "live", { range: range, viewRange: range });
-            cambios = true;
-          } else {
-            var byId = {};
-            (snap.allOrders || []).forEach(function (o) { byId[String(o.id)] = true; });
-            var nuevos = orders.filter(function (o) { return !byId[String(o.id)]; });
-            if (nuevos.length) { snap.allOrders = nuevos.concat(snap.allOrders || []); cambios = true; }
-          }
+          var prev = state.commerce.snapshots[acc.id];
+          var next = createCommerceSnapshot(orders || [], "live", { range: range, viewRange: range });
+          // Preservar la serie de visitas si la cuenta ya la tenía (acá no la re-pedimos).
+          if (prev && prev.visitsByDay) next.visitsByDay = prev.visitsByDay;
+          state.commerce.snapshots[acc.id] = next;
+          cambios = true;
         }).catch(function () {});
       }));
       if (cambios) { try { saveCommerceSnapshots(); } catch (e) {} }

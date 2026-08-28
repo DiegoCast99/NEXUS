@@ -425,6 +425,9 @@
     // separado). Facturación por cuenta para que la dona refleje cada una.
     var rev = {};
     ml.perAccount.forEach(function (x) { rev[x.id] = (rev[x.id] || 0) + (Number(x.revenue) || 0); });
+    // Conteo de ventas por cuenta (en el período elegido), para mostrarlo en la leyenda.
+    var ordCnt = {};
+    ml.perAccount.forEach(function (x) { ordCnt[x.id] = (ordCnt[x.id] || 0) + (Number(x.orders) || 0); });
     // Alpha Fitness (tienda propia): canal REAL (no "próximamente"). Su facturación
     // la alimenta el conector de la tienda web ("alphaweb").
     var alphaRev = Number(ml.alphaRevenue) || 0;
@@ -445,18 +448,20 @@
     var mlChans = ((S.mlAccounts && S.mlAccounts()) || []).map(function (a) {
       var cfg = null; try { cfg = S.getCommerceConfig(a.id); } catch (e) {}
       return {
-        id: a.id, name: a.name,
+        id: a.id, name: a.name, isML: true,
         nick: (cfg && cfg.mlNickname) || "",
         uid: (cfg && cfg.mlUserId) ? String(cfg.mlUserId) : "",
+        hasToken: !!(cfg && cfg.hasToken),
+        orders: ordCnt[a.id] || 0,
         slug: (a.id === "mercadolivre" ? "mercadolivre" : "mercadolibre"),
         value: rev[a.id] || 0, soon: false
       };
     });
-    // Aviso si dos slots de ML resultan ser la MISMA cuenta (mismo user id de ML):
-    // ahí uno toma todas las ventas y el otro queda en 0%. No es un bug de la dona:
-    // están conectadas al mismo usuario de Mercado Libre (hay que reconectar una).
+    // Aviso SOLO si dos cuentas CONECTADAS comparten el mismo user id real de ML: ahí
+    // una toma todas las ventas y la otra queda en 0% (misma cuenta conectada dos veces).
+    // Se exige hasToken para no contar un id viejo de un slot desconectado (falso positivo).
     var _uidVistos = {}, mlDup = false;
-    mlChans.forEach(function (c) { if (c.uid) { if (_uidVistos[c.uid]) mlDup = true; else _uidVistos[c.uid] = true; } });
+    mlChans.forEach(function (c) { if (c.hasToken && c.uid) { if (_uidVistos[c.uid]) mlDup = true; else _uidVistos[c.uid] = true; } });
     var channels = mlChans.concat([
       { id: "alphaweb", name: "Alpha Fitness", slug: "alphafitness", photoId: alphaPhotoId, value: alphaRev, soon: false },
       { id: "amazon",   name: "Amazon",        slug: "amazon", value: 0, soon: true },
@@ -489,9 +494,12 @@
       var p = total > 0 ? Math.round((c.value / total) * 100) : 0;
       var right = c.soon ? '<span class="home-ch-soon">Proximamente</span>' : '<b>' + p + '%</b>';
       var dot = isReal ? '<i style="background:' + CH_COLORS[real.findIndex(function (r) { return r.id === c.id; }) % CH_COLORS.length] + '"></i>' : '';
-      var nick = c.nick ? ' <small style="opacity:.5;font-weight:500">@' + esc(c.nick) + '</small>' : '';
+      var subBits = [];
+      if (c.nick) subBits.push('@' + esc(c.nick));
+      if (c.isML) subBits.push((c.orders || 0) + ' ventas');
+      var sub = subBits.length ? ' <small style="opacity:.5;font-weight:500">' + subBits.join(' · ') + '</small>' : '';
       return '<div class="home-ch' + (c.soon ? ' is-soon' : '') + '">' + bizLogo(c.photoId || c.slug, c.slug, 24) +
-        '<span class="home-ch-name">' + esc(c.name) + nick + '</span>' + dot + right + '</div>';
+        '<span class="home-ch-name">' + esc(c.name) + sub + '</span>' + dot + right + '</div>';
     }).join("");
     var dupNote = mlDup
       ? '<div style="margin-top:12px;padding:9px 12px;border-radius:10px;background:rgba(244,179,80,0.10);border:1px solid rgba(244,179,80,0.25);color:#f4b350;font-size:12px;line-height:1.45">Dos cuentas de Mercado Libre estan conectadas al MISMO usuario de ML (mismo @). Por eso una toma todas las ventas y la otra queda en 0%. Reconecta la segunda con la cuenta correcta (deslogueate de ML antes, o usa una ventana privada).</div>'
