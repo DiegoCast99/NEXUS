@@ -89,7 +89,8 @@
         border-radius: 999px;
         background: linear-gradient(90deg, #ff9a4d, #ff5a2e);
         box-shadow: 0 0 16px rgba(255, 106, 61, 0.65);
-        transition: width 240ms cubic-bezier(0.4, 0, 0.2, 1);
+        /* El ancho lo maneja el JS por setInterval (pasos chicos, fluido y robusto
+           en pestañas ocultas). Sin transition para no acumular lag. */
       }
       .nx-boot-track > i::after {
         content: ""; position: absolute; inset: 0;
@@ -133,13 +134,27 @@
         var bar = document.getElementById("nxBootBar");
         if (!boot || !bar) { root.classList.remove("nexus-booting"); return; }
         var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-        var MIN = reduce ? 420 : 1300; // tiempo mínimo visible (que se VEA cargar del todo)
+        var MIN = reduce ? 500 : 1400; // tiempo mínimo visible (que se VEA cargar del todo)
         function now() { return (window.performance && performance.now) ? performance.now() : Date.now(); }
         var t0 = now();
-        var pct = 0, ready = false, finished = false;
+        var pct = 0, cloudReady = false, finished = false;
+
+        // El Inicio está PINTADO cuando sus skeletons ya fueron reemplazados por el
+        // render real (KPIs + gráfica). Es la señal más confiable de "datos a la vista".
+        function homeRendered() {
+          var k = document.getElementById("homeKpis");
+          var c = document.getElementById("homeSalesChart");
+          if (!k || !c) return false;
+          if (k.querySelector(".skel-kpi")) return false;   // KPIs aún en skeleton
+          if (c.querySelector(".skel-chart")) return false; // gráfica aún en skeleton
+          return true;
+        }
+        // Listo = Inicio pintado Y (llegó la nube O ya pasó un margen con el cache).
+        function dataOk(el) { return homeRendered() && (cloudReady || el > 4000); }
 
         function finish() {
           if (finished) return; finished = true;
+          if (iv) window.clearInterval(iv);
           bar.style.width = "100%";
           window.setTimeout(function () {
             boot.classList.add("is-done"); // fade-out del overlay
@@ -147,25 +162,30 @@
               root.classList.remove("nexus-booting"); // restaura scroll del dashboard
               boot.style.display = "none";
             }, 660);
-          }, 240); // breve hold en 100%
+          }, 220); // breve hold en 100%
         }
         function tick() {
           if (finished) return;
           var el = now() - t0;
-          var target = ready ? 100 : 88;
-          pct += (target - pct) * (reduce ? 0.2 : 0.06);
-          if (ready && el >= MIN && pct > 97) pct = 100;
+          if (dataOk(el)) {
+            pct += (100 - pct) * 0.3 + 1.5;          // completa suave hacia 100
+            if (el >= MIN && pct > 98) pct = 100;
+          } else {
+            var timePct = Math.min(90, (el / 1200) * 90); // creep 0→90% en ~1.2s
+            if (timePct > pct) pct = timePct;
+          }
+          if (pct > 100) pct = 100;
           bar.style.width = pct.toFixed(1) + "%";
           if (pct >= 100) { finish(); return; }
-          window.requestAnimationFrame(tick);
         }
-        window.requestAnimationFrame(tick);
+        // setInterval (NO requestAnimationFrame): avanza aunque la pestaña esté oculta
+        // o al fondo (rAF se pausa ahí). ~25fps con pasos chicos = fluido.
+        var iv = window.setInterval(tick, 40);
 
-        // La app avisa cuando la nube ya aplicó los datos y las gráficas están pintadas.
-        window.NexusBoot = { dataReady: function () { ready = true; } };
-        // Failsafes: si la señal nunca llega, completar igual (nunca trancar la pantalla).
-        window.setTimeout(function () { ready = true; }, 5200);
-        window.setTimeout(finish, 7000);
+        // La app avisa cuando ya aplicó el primer snapshot de la nube.
+        window.NexusBoot = { dataReady: function () { cloudReady = true; } };
+        // Failsafe duro: completar igual si algo no señaliza (nunca trancar la pantalla).
+        window.setTimeout(finish, 8000);
       })();
     </script>
 
@@ -1882,7 +1902,7 @@
     <script src="./js/dashboard/logos.js?v=eac391f0f3"></script>
     <script src="./js/dashboard/home.js?v=62904421e4"></script>
     <script src="./js/dashboard/shell.js?v=3c32fcdbe1"></script>
-    <script src="./js/dashboard/app.js?v=7260d02b05"></script>
+    <script src="./js/dashboard/app.js?v=628547822a"></script>
     <script src="./js/dashboard/mobile-tables.js?v=acd7212400"></script>
     <script src="./js/pwa.js?v=7087eb1afe" defer></script>
   </body>

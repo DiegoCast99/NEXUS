@@ -544,9 +544,11 @@
               // hay snapshot local, arrancar el "en vivo" (init no pudo, no había token).
               if (primerCloud) {
                 primerCloud = false;
-                // La nube ya trajo los datos y applyRemoteData los pintó (KPIs +
-                // gráficas): recién ACÁ la barra de arranque llega a 100% y se revela
-                // el dashboard COMPLETO, sin pop-in.
+                // Pintamos el Inicio con lo que haya ahora (cache + nube ya aplicada)
+                // ANTES de avisar "nube lista": el overlay de arranque recién revela
+                // cuando el Inicio está pintado de verdad (skeletons reemplazados),
+                // así aparece COMPLETO y sin pop-in.
+                try { if (S.renderHome) S.renderHome(); } catch (e) {}
                 try { if (window.NexusBoot) window.NexusBoot.dataReady(); } catch (e) {}
                 try {
                   if (S.getCommerceConfig && S.getCommerceConfig("mercadolibre").hasToken &&

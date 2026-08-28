@@ -37,17 +37,29 @@
   // - Con Firebase: onAuthStateChanged redirige al dashboard cuando detecta al
   //   usuario ya logueado (la restauración de sesión es asíncrona).
   // - Sin Firebase (preview local sin CDN): chequeo síncrono de localStorage.
+  // La intro SOLO se muestra si NO vas a entrar logueado. Si hay sesión, redirige
+  // al dashboard sin correrla → no se ve el logo aparecer y desaparecer al saltar.
+  var introRan = false;
+  function startIntroOnce() { if (introRan) return; introRan = true; runNexusIntro(); }
+
   if (window.NexusFirebaseAuth) {
+    // Failsafe: si el auth no responde a tiempo, mostrar la intro igual.
+    var introFallback = setTimeout(startIntroOnce, 2500);
     window.NexusFirebaseAuth.onAuthStateChanged(function (user) {
+      clearTimeout(introFallback);
       if (user) {
         document.body.classList.remove("intro-boot", "intro-lock");
         window.location.replace("./dashboard.html");
+      } else {
+        startIntroOnce();
       }
     });
   } else if (window.NexusAuth.hasSession()) {
     document.body.classList.remove("intro-boot", "intro-lock");
     window.location.replace("./dashboard.html");
     return;
+  } else {
+    startIntroOnce();
   }
 
   function runNexusIntro() {
@@ -246,7 +258,8 @@
     };
   }
 
-  runNexusIntro();
+  // (La intro ya NO se corre acá incondicionalmente: se dispara en el guard de sesión
+  //  de arriba, sólo si NO vas a entrar logueado — evita el flash del logo al redirigir.)
 
   document.querySelectorAll(".has-menu > button, .has-menu > a").forEach((control) => {
     control.addEventListener("click", (event) => {
