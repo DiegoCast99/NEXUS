@@ -52,11 +52,7 @@
 
   function runNexusIntro() {
     const intro = document.getElementById("nexusIntro");
-    const counter = document.getElementById("introCounter");
-    const brand = document.getElementById("introBrand");
-    const text = document.getElementById("introText");
-    const canvas = document.getElementById("introCanvas");
-    if (!intro || !counter || !canvas) {
+    if (!intro) {
       document.body.classList.remove("intro-boot", "intro-lock");
       return;
     }
@@ -74,30 +70,26 @@
       return;
     }
 
+    // Intro minimalista: entra el logo + wordmark y se llena una barra fina; luego
+    // fade-out y se revela la landing. La animación la maneja el CSS por clases.
     const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-    const timings = reducedMotion
-      ? { counter: 620, globe: 220, copy: 360, outro: 260 }
-      : { counter: 1650, globe: 640, copy: 760, outro: 620 };
+    const hold = reducedMotion ? 560 : 1650;   // cuánto se ve la intro antes del fade-out
+    const outro = reducedMotion ? 260 : 620;
     let completed = false;
-    let raf = 0;
     let safetyTimer = 0;
-    let typeTimer = 0;
+    let doneTimer = 0;
 
-    if (brand) brand.textContent = introCopy.brand;
-    if (text) text.textContent = "";
     intro.setAttribute("aria-hidden", "false");
     intro.classList.add("is-running");
     document.body.classList.add("intro-lock");
-
-    const stopCanvas = setupIntroSphere(canvas, reducedMotion);
+    // Doble rAF para garantizar que la transición de entrada dispare.
+    requestAnimationFrame(() => requestAnimationFrame(() => intro.classList.add("is-visible")));
 
     function finishIntro() {
       if (completed) return;
       completed = true;
       window.clearTimeout(safetyTimer);
-      window.clearTimeout(typeTimer);
-      window.cancelAnimationFrame(raf);
-      stopCanvas?.();
+      window.clearTimeout(doneTimer);
       try {
         sessionStorage.setItem(introSeenKey, "true");
       } catch (error) {
@@ -106,41 +98,14 @@
       document.body.classList.remove("intro-boot");
       intro.classList.add("is-finalizing");
       window.setTimeout(() => {
-        intro.classList.remove("is-running", "is-counter-done", "is-globe-visible", "is-copy-visible", "is-finalizing");
+        intro.classList.remove("is-running", "is-visible", "is-finalizing");
         intro.setAttribute("aria-hidden", "true");
         document.body.classList.remove("intro-boot", "intro-lock");
-      }, timings.outro);
+      }, outro);
     }
 
     safetyTimer = window.setTimeout(finishIntro, 5000);
-
-    const start = performance.now();
-    function animateCounter(time) {
-      if (completed) return;
-      const progress = clamp((time - start) / timings.counter, 0, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      counter.textContent = `${String(Math.round(eased * 100)).padStart(3, "0")}%`;
-      if (progress < 1) {
-        raf = requestAnimationFrame(animateCounter);
-        return;
-      }
-
-      counter.textContent = "100%";
-      intro.classList.add("is-counter-done");
-      window.setTimeout(() => {
-        if (completed) return;
-        intro.classList.add("is-globe-visible");
-        window.setTimeout(() => {
-          if (completed) return;
-          intro.classList.add("is-copy-visible");
-          typeIntroText(text, introCopy.text, reducedMotion ? 8 : 24, () => {
-            typeTimer = window.setTimeout(finishIntro, timings.copy);
-          });
-        }, timings.globe);
-      }, 260);
-    }
-
-    raf = requestAnimationFrame(animateCounter);
+    doneTimer = window.setTimeout(finishIntro, hold);
   }
 
   function typeIntroText(target, value, speed, done) {
