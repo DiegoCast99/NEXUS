@@ -187,10 +187,16 @@
 
   function allSales() {
     var accounts = (S.mlAccounts && S.mlAccounts()) || [];
-    var all = [];
+    var all = [], seen = {};
     accounts.forEach(function (acc) {
       var snap = S.getCommerceSnapshot && S.getCommerceSnapshot(acc.id);
       (snap && snap.allOrders ? snap.allOrders : []).forEach(function (o) {
+        // Dedup por id de orden: si la misma cuenta está conectada en dos slots
+        // (ML1 y ML2), la venta viene en ambos snapshots y aparecería duplicada
+        // (una con foto, otra sin). Nos quedamos con la primera (ML1, ya enriquecida).
+        var oid = String(o.id || "");
+        if (oid && seen[oid]) return;
+        if (oid) seen[oid] = true;
         all.push({ acc: acc.id, accName: acc.name, product: o.product, total: o.total, createdAt: o.createdAt || o.date, id: o.id, thumbnail: o.thumbnail || "", itemId: o.itemId || "" });
       });
     });
