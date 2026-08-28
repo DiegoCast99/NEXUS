@@ -13,8 +13,8 @@ const APP_SHELL = [
   "/index.html",
   "/dashboard.html",
   "/manifest.json",
-  "/img/icon-192.png?v=5",
-  "/img/icon-512.png?v=5",
+  "/img/icon-192.png?v=6",
+  "/img/icon-512.png?v=6",
   "/img/notif-venta.png?v=3"
 ];
 
