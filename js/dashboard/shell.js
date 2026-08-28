@@ -173,7 +173,7 @@
       renderNotifs();  // pinta lo cacheado al instante
       // Refresca las ventas recientes de TODAS las cuentas (no solo la activa) y
       // repinta + marca visto cuando termina.
-      var trasRefresco = function () { renderNotifs(); markNotifsSeen(); };
+      var trasRefresco = function () { renderNotifs(); markNotifsSeen(); if (S.renderHome) S.renderHome(); };
       if (S.refrescarVentasNotif) Promise.resolve(S.refrescarVentasNotif()).then(trasRefresco).catch(trasRefresco);
       else trasRefresco();
     }
@@ -574,7 +574,13 @@
     // campanita muestre lo último de cada una (no solo la activa). Con un delay
     // corto para no competir con la carga inicial.
     setTimeout(function () {
-      if (S.refrescarVentasNotif) Promise.resolve(S.refrescarVentasNotif()).then(function () { updateNotifDot(); }).catch(function () {});
+      // Al terminar, re-renderizamos el Inicio: refrescarVentasNotif trae las ventas
+      // de TODAS las cuentas ML (ML1, ML2, ...) a sus snapshots, así la dona "Ventas
+      // por canal" refleja el ingreso de CADA Mercado Libre (antes solo actualizaba
+      // el puntito de la campana → ML2 quedaba en 0% con datos viejos).
+      if (S.refrescarVentasNotif) Promise.resolve(S.refrescarVentasNotif())
+        .then(function () { updateNotifDot(); if (S.renderHome) S.renderHome(); })
+        .catch(function () {});
     }, 2500);
   }
 
