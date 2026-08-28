@@ -494,12 +494,8 @@
       var p = total > 0 ? Math.round((c.value / total) * 100) : 0;
       var right = c.soon ? '<span class="home-ch-soon">Proximamente</span>' : '<b>' + p + '%</b>';
       var dot = isReal ? '<i style="background:' + CH_COLORS[real.findIndex(function (r) { return r.id === c.id; }) % CH_COLORS.length] + '"></i>' : '';
-      var subBits = [];
-      if (c.nick) subBits.push('@' + esc(c.nick));
-      if (c.isML) subBits.push((c.orders || 0) + ' ventas');
-      var sub = subBits.length ? ' <small style="opacity:.5;font-weight:500">' + subBits.join(' · ') + '</small>' : '';
       return '<div class="home-ch' + (c.soon ? ' is-soon' : '') + '">' + bizLogo(c.photoId || c.slug, c.slug, 24) +
-        '<span class="home-ch-name">' + esc(c.name) + sub + '</span>' + dot + right + '</div>';
+        '<span class="home-ch-name">' + esc(c.name) + '</span>' + dot + right + '</div>';
     }).join("");
     var dupNote = mlDup
       ? '<div style="margin-top:12px;padding:9px 12px;border-radius:10px;background:rgba(244,179,80,0.10);border:1px solid rgba(244,179,80,0.25);color:#f4b350;font-size:12px;line-height:1.45">Dos cuentas de Mercado Libre estan conectadas al MISMO usuario de ML (mismo @). Por eso una toma todas las ventas y la otra queda en 0%. Reconecta la segunda con la cuenta correcta (deslogueate de ML antes, o usa una ventana privada).</div>'
