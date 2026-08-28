@@ -271,30 +271,25 @@
   function cuentasMLDelInventario() {
     var activa = activeML();
     var todas = (S.mlAccounts ? S.mlAccounts() : null) || [{ id: activa }];
-    // La cuenta ACTIVA primero: si es un duplicado, que su slot gane el dedup.
+    // La cuenta ACTIVA primero (si hubiera un duplicado, que gane su slot).
     var ordenadas = todas.filter(function (a) { return a.id === activa; })
                          .concat(todas.filter(function (a) { return a.id !== activa; }));
-    // Solo cuentas CONECTADAS (con token) y DEDUP por usuario real de ML (mlUserId; si
-    // falta, por la firma de órdenes del snapshot). Evita cargar/contar la MISMA cuenta
-    // dos veces cuando está en dos slots (ML1 y ML2): eso hacía cargar el catálogo dos
-    // veces en paralelo, pisándose el 'account' de cada publicación (carrera), y el
-    // filtro por cuenta las incluía/excluía al azar → el conteo "Sin sincronizar" bailaba.
+    // Cada slot CONECTADO (con token) se carga con SU token → SU propio catálogo (cada
+    // cuenta de ML tiene sus propias publicaciones). Se deduplica SOLO cuando dos slots
+    // son EXACTAMENTE la misma cuenta de ML (mismo `mlUserId`), para no cargarla dos
+    // veces. Si los mlUserId difieren (o falta), NO se deduplica: son cuentas distintas.
+    // (Antes se caía a "firma de órdenes" y unía mal ML1 y ML2 cuando el snapshot de ML2
+    //  todavía tenía las órdenes de ML1 → ML2 mostraba los datos de ML1.)
     var seen = {}, out = [];
     ordenadas.forEach(function (a) {
       var cfg = null;
       try { cfg = S.getCommerceConfig(a.id); } catch (e) {}
       if (!cfg || !cfg.hasToken) return;
-      var key = cfg.mlUserId ? ("u:" + cfg.mlUserId) : "";
-      if (!key) {
-        var snap = S.getCommerceSnapshot ? S.getCommerceSnapshot(a.id) : null;
-        if (snap && snap.allOrders && snap.allOrders.length) {
-          key = "s:" + snap.allOrders.slice(0, 10).map(function (o) { return String(o.id); }).sort().join(",");
-        } else {
-          key = "id:" + a.id;   // sin forma de identificar el usuario: no deduplicar este slot
-        }
+      var uid = cfg.mlUserId;
+      if (uid) {
+        if (seen[uid]) return;   // misma cuenta de ML (mismo usuario) ya incluida
+        seen[uid] = true;
       }
-      if (seen[key]) return;
-      seen[key] = true;
       out.push(a.id);
     });
     return out.length ? out : [activa];

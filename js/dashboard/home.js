@@ -73,22 +73,17 @@
   }
 
   // Cuentas ML ÚNICAS: si dos slots (ej: "Mercado Libre 1" y "Mercado Libre 2")
-  // apuntan al MISMO usuario de Mercado Libre, se cuenta UNA sola vez. Sin esto, la
-  // misma cuenta conectada dos veces DUPLICA ventas/visitas/ganancias y la dona da
-  // 50/50 falso. Dedupe por mlUserId; si no está guardado, por la firma de órdenes.
+  // apuntan al MISMO usuario de Mercado Libre, se cuenta UNA sola vez (para no duplicar
+  // VISITAS). Dedupe SOLO por mlUserId (identidad real de la cuenta). NO se cae a la
+  // "firma de órdenes": eso unía mal cuentas DISTINTAS cuando el snapshot de una todavía
+  // tenía las órdenes de la otra. Si mlUserId difiere (o falta), son cuentas distintas.
   function mlAccountsUnicas() {
     var accts = (S.mlAccounts && S.mlAccounts()) || [];
     var seen = {}, out = [];
     accts.forEach(function (a) {
       var cfg = S.getCommerceConfig ? S.getCommerceConfig(a.id) : null;
-      var key = (cfg && cfg.mlUserId) ? ("u:" + cfg.mlUserId) : "";
-      if (!key) {
-        var snap = S.getCommerceSnapshot ? S.getCommerceSnapshot(a.id) : null;
-        if (snap && snap.allOrders && snap.allOrders.length) {
-          key = "s:" + snap.allOrders.slice(0, 10).map(function (o) { return String(o.id); }).sort().join(",");
-        }
-      }
-      if (key) { if (seen[key]) return; seen[key] = true; }
+      var uid = cfg && cfg.mlUserId;
+      if (uid) { if (seen[uid]) return; seen[uid] = true; }
       out.push(a);
     });
     return out;
