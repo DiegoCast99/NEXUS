@@ -315,16 +315,31 @@
       var api = S.requireSecureApi();
       var cuenta = mlConnectingAccount();
       var result = await api.mlSaveTokens(encBundle, cuenta);
+      var nuevoUid = (result && result.userId) ? String(result.userId) : "";
+      // ¿Quedó apuntando a la MISMA cuenta de ML que otro slot ya conectado? Pasa
+      // cuando el OAuth REUSA la sesión de ML abierta en el navegador (Mercado Libre
+      // no muestra selector si ya hay sesión activa) y emite el token de ESA cuenta.
+      // Se detecta comparando el user_id REAL que emitió ML contra los otros slots.
+      var choqueCon = "";
+      if (nuevoUid) {
+        ((S.mlAccounts && S.mlAccounts()) || []).forEach(function (a) {
+          if (a.id === cuenta) return;
+          var oc = state.commerce.configs[a.id];
+          if (oc && oc.hasToken && String(oc.mlUserId || "") === nuevoUid) choqueCon = a.name;
+        });
+      }
       state.commerce.configs[cuenta] = Object.assign(
         state.commerce.configs[cuenta] || S.defaultCommerceConfig(),
-        { hasToken: true, mlUserId: (result && result.userId) || "", tokenScope: grantedScope }
+        { hasToken: true, mlUserId: nuevoUid, tokenScope: grantedScope }
       );
       saveCommerceConfigs();
       selectCommerceApp(cuenta);
       // Avisar si Mercado Libre NO otorgó escritura: sin ella, pausar/ajustar
       // publicidad y cambiar stock fallan con 401. Suele ser porque la app de ML
       // no tiene el scope "write" habilitado (no se arregla reconectando).
-      if (grantedScope && !/\bwrite\b/.test(grantedScope)) {
+      if (choqueCon) {
+        setMlMessage("Conectaste la MISMA cuenta de Mercado Libre que \"" + choqueCon + "\" (mismo usuario). Mercado Libre reusó la sesión abierta. Para conectar la OTRA cuenta: 1) entrá a mercadolibre.com y CERRÁ SESIÓN (o abrí una VENTANA PRIVADA), 2) volvé acá y tocá \"Conectar\" de nuevo, 3) iniciá sesión con la cuenta correcta.", "error");
+      } else if (grantedScope && !/\bwrite\b/.test(grantedScope)) {
         setMlMessage("Conectado, pero SOLO con permiso de lectura. Para pausar/ajustar publicidad y stock, la aplicación de Mercado Libre necesita el scope de escritura habilitado. Revisá los permisos de la app en developers.mercadolibre.com.", "error");
       } else {
         setMlMessage("Cuenta de Mercado Libre conectada exitosamente.", "success");
