@@ -1184,6 +1184,9 @@
     const platform = state.meta.selectedPlatform ? getMetaPlatform() : null;
     elements.topbarActions?.classList.toggle("is-hidden", view === "welcome" || view === "settings" || (view === "meta" && !platform));
     elements.financeTools?.classList.toggle("is-hidden", view !== "finance");
+    // El selector de periodo del Inicio vive en el header (fila del saludo): solo se
+    // muestra en la vista "welcome"; en las demas se oculta.
+    document.getElementById("homePeriodBar")?.classList.toggle("is-hidden", view !== "welcome");
 
     if (view === "welcome") {
       const nombre = S.profileName ? S.profileName() : "Diego";

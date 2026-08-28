@@ -560,7 +560,7 @@
     padding: calc(8px + env(safe-area-inset-top)) 16px 8px;
     border-bottom: 1px solid var(--border);
   }
-  .topbar-head { padding: 0; }
+  .topbar-head { padding: 0; flex-wrap: wrap; }
   /* El subtitulo SI se muestra en el home mobile (el mockup lo tiene). */
   .topbar .topbar-lead p {
     display: block;
@@ -568,4 +568,15 @@
     font-size: 13px;
     margin: 2px 0 0;
   }
+  /* Selector de periodo (ahora en el header): en mobile baja a su propia linea
+     debajo del saludo y scrollea en horizontal si no entran los 5 botones. */
+  #homePeriodBar { width: 100%; }
+  #homePeriodBar .home-period {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  #homePeriodBar .home-period::-webkit-scrollbar { display: none; }
+  #homePeriodBar .home-per { white-space: nowrap; }
 }

@@ -428,6 +428,9 @@
 .home { display: flex; flex-direction: column; gap: 20px; }
 
 .home-toolbar { display: flex; justify-content: flex-end; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* En el header (fila del saludo) el selector no debe estirarse: se queda a la derecha,
+   pegado al borde inferior del saludo. */
+#homePeriodBar { flex: 0 0 auto; }
 .home-period {
   display: inline-flex;
   gap: 3px;

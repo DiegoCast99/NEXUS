@@ -115,9 +115,9 @@
     <link rel="stylesheet" href="./css/dashboard/commerce.css?v=4b7cb599e8" />
     <link rel="stylesheet" href="./css/dashboard/tools.css?v=56092e9282" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=4fdb501d32" />
-    <link rel="stylesheet" href="./css/dashboard/redesign.css?v=b0a5ac35d4" />
+    <link rel="stylesheet" href="./css/dashboard/redesign.css?v=aa1ac736ee" />
     <link rel="stylesheet" href="./css/dashboard/responsive.css?v=73c6b2778a" />
-    <link rel="stylesheet" href="./css/dashboard/mobile.css?v=640bffc84f" />
+    <link rel="stylesheet" href="./css/dashboard/mobile.css?v=b43a3e821c" />
   </head>
   <body>
     <!-- Overlay de arranque: NEXUS + barra que espera a que la nube traiga los datos.
@@ -410,6 +410,22 @@
                 </label>
               </div>
             </div>
+            <!-- Selector de periodo del Inicio: vive en la fila del saludo (arriba a la
+                 derecha) para no dejar una franja vacia arriba de las tarjetas. Solo se
+                 muestra en la vista "welcome" (lo togglea updateTopbarForView). -->
+            <div class="home-toolbar" id="homePeriodBar">
+              <div class="home-period" id="homePeriodTabs" role="tablist" aria-label="Periodo">
+                <button class="home-per" type="button" data-home-period="hoy" role="tab">Hoy</button>
+                <button class="home-per" type="button" data-home-period="7" role="tab">7 días</button>
+                <button class="home-per" type="button" data-home-period="15" role="tab">15 días</button>
+                <button class="home-per is-active" type="button" data-home-period="30" role="tab">30 días</button>
+                <button class="home-per" type="button" data-home-period="custom" role="tab">Personalizado</button>
+              </div>
+              <div class="home-daterange is-hidden" id="homeDateRange">
+                <label class="home-date-field"><span>Desde</span><input type="date" id="homeDateFrom" /></label>
+                <label class="home-date-field"><span>Hasta</span><input type="date" id="homeDateTo" /></label>
+              </div>
+            </div>
           </div>
 
           <!-- Popover de notificaciones (campana). Lo puebla home.js. -->
@@ -450,20 +466,8 @@
 
         <section class="view-panel is-active" data-panel="welcome" aria-label="Resumen general de Nexus">
           <div class="home" data-home>
-            <!-- Selector de periodo -->
-            <div class="home-toolbar">
-              <div class="home-period" id="homePeriodTabs" role="tablist" aria-label="Periodo">
-                <button class="home-per" type="button" data-home-period="hoy" role="tab">Hoy</button>
-                <button class="home-per" type="button" data-home-period="7" role="tab">7 días</button>
-                <button class="home-per" type="button" data-home-period="15" role="tab">15 días</button>
-                <button class="home-per is-active" type="button" data-home-period="30" role="tab">30 días</button>
-                <button class="home-per" type="button" data-home-period="custom" role="tab">Personalizado</button>
-              </div>
-              <div class="home-daterange is-hidden" id="homeDateRange">
-                <label class="home-date-field"><span>Desde</span><input type="date" id="homeDateFrom" /></label>
-                <label class="home-date-field"><span>Hasta</span><input type="date" id="homeDateTo" /></label>
-              </div>
-            </div>
+            <!-- El selector de periodo se movio a la fila del saludo (header) para tapar
+                 la franja vacia que quedaba arriba. El Inicio arranca directo en los KPIs. -->
 
             <!-- KPIs (los puebla home.js con datos reales; skeleton hasta que rendericen) -->
             <div class="home-kpis" id="homeKpis" aria-live="polite">
@@ -1885,7 +1889,7 @@
     <script src="./js/firebase/secure-api.js?v=eabc044110"></script>
     <!-- Dashboard modules -->
     <script src="./js/core/auth.js?v=a4b48152db"></script>
-    <script src="./js/dashboard/store.js?v=b298969b83"></script>
+    <script src="./js/dashboard/store.js?v=50aa18d84d"></script>
     <script src="./js/dashboard/integration-core.js?v=5d3ff73791"></script>
     <script src="./js/dashboard/charts.js?v=bdda0980a2"></script>
     <script src="./js/dashboard/finance.js?v=bd6e1f030e"></script>
