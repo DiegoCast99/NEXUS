@@ -12,3 +12,7 @@ node_modules/
 
 # Logs
 *.log
+
+# Logos fuente (grandes) — la app usa los icon-*.png generados, no estos
+img/logo nexus definitivo.PNG
+img/logo definitivo 2.png
