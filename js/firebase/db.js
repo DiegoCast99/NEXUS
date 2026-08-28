@@ -18,11 +18,11 @@
   const db = firebase.firestore();
   try {
     // La app del Dock en macOS corre en WKWebView (modo "standalone"): ahí el
-    // transporte por streaming de Firestore (WebChannel) suele fallar y los datos
-    // NUNCA cargan (dashboard vacío, sin perfil). Auto-detectar long-polling usa el
-    // transporte eficiente en el navegador y cae a HTTP simple donde hace falta,
-    // haciendo la sincronización confiable también instalado como app.
-    db.settings({ experimentalAutoDetectLongPolling: true });
+    // transporte por streaming de Firestore (WebChannel) FALLA y los datos nunca
+    // cargan (dashboard vacío, perfil como prefijo del email). El auto-detect no
+    // alcanzó, así que FORZAMOS long-polling (HTTP simple): anda igual en el
+    // navegador y hace la sincronización confiable también instalado como app.
+    db.settings({ experimentalForceLongPolling: true });
   } catch (error) {
     // settings() ya fijadas o no soportadas: seguimos con el transporte por defecto.
   }

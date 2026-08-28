@@ -558,6 +558,22 @@
                 } catch (e) {}
               }
             });
+            // Fallback para la app del Dock (WKWebView "standalone"): si el listener en
+            // vivo no trajo NADA en 3,5s (transporte de streaming trabado), bajamos el
+            // doc con get() una sola vez — una request simple suele funcionar donde el
+            // streaming no. Si el listener llega antes, este fallback no hace nada.
+            window.setTimeout(function () {
+              if (!primerCloud || !window.NexusFirestore.loadUserData) return;
+              window.NexusFirestore.loadUserData(user.uid).then(function (loaded) {
+                if (!primerCloud) return; // el listener llegó mientras se bajaba
+                primerCloud = false;
+                if (loaded) {
+                  S.rehydrateState();
+                  try { S.renderAll(); if (S.renderHome) S.renderHome(); S.renderMetaDashboard(); S.renderCommerceDashboard(); } catch (e) {}
+                }
+                try { if (window.NexusBoot) window.NexusBoot.dataReady(); } catch (e) {}
+              }).catch(function () {});
+            }, 3500);
           } else if (window.NexusFirestore) {
             // Sin suscripción en vivo: bajar una vez y refrescar (fallback).
             window.NexusFirestore.loadUserData(user.uid).then(function (loaded) {
