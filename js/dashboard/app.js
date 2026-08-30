@@ -532,6 +532,10 @@
           // hidrató con localStorage al cargar los módulos). En recargas del mismo
           // dispositivo el dashboard aparece al instante, sin esperar a la red.
           init();
+          // Failsafe del gate anti-wipe: si la nube no confirma su carga en 8s (offline
+          // o Firestore trabado), habilitamos las subidas igual para no bloquear el
+          // guardado para siempre. Antes de eso, ningún cambio local pisa la nube.
+          window.setTimeout(function () { try { S.markCloudLoaded && S.markCloudLoaded(); } catch (e) {} }, 8000);
           // La nube llega por la suscripción EN VIVO: su primer snapshot trae los
           // datos actuales de Firestore y applyRemoteData re-renderiza si algo
           // difiere (cubre multi-dispositivo y el dispositivo nuevo con cache
@@ -544,12 +548,17 @@
               // hay snapshot local, arrancar el "en vivo" (init no pudo, no había token).
               if (primerCloud) {
                 primerCloud = false;
+                try { S.markCloudLoaded && S.markCloudLoaded(); } catch (e) {}   // ya bajamos la nube: habilitar subidas
                 // Pintamos el Inicio con lo que haya ahora (cache + nube ya aplicada)
                 // ANTES de avisar "nube lista": el overlay de arranque recién revela
                 // cuando el Inicio está pintado de verdad (skeletons reemplazados),
                 // así aparece COMPLETO y sin pop-in.
                 try { if (S.renderHome) S.renderHome(); } catch (e) {}
                 try { if (window.NexusBoot) window.NexusBoot.dataReady(); } catch (e) {}
+                // Conexión de cada cuenta de ML: SIEMPRE desde el server (device-independiente).
+                // Corre DESPUÉS de aplicar la nube para ganarle al blob; si difiere, guarda y
+                // auto-cura la nube. Arregla "cuentas desconectadas al abrir en otro dispositivo".
+                try { if (S.sincronizarConexionesML) S.sincronizarConexionesML(); } catch (e) {}
                 try {
                   if (S.getCommerceConfig && S.getCommerceConfig("mercadolibre").hasToken &&
                       S.getCommerceSnapshot && !S.getCommerceSnapshot("mercadolibre")) {
@@ -567,19 +576,23 @@
               window.NexusFirestore.loadUserData(user.uid).then(function (loaded) {
                 if (!primerCloud) return; // el listener llegó mientras se bajaba
                 primerCloud = false;
+                try { S.markCloudLoaded && S.markCloudLoaded(); } catch (e) {}
                 if (loaded) {
                   S.rehydrateState();
                   try { S.renderAll(); if (S.renderHome) S.renderHome(); S.renderMetaDashboard(); S.renderCommerceDashboard(); } catch (e) {}
                 }
                 try { if (window.NexusBoot) window.NexusBoot.dataReady(); } catch (e) {}
-              }).catch(function () {});
+                try { if (S.sincronizarConexionesML) S.sincronizarConexionesML(); } catch (e) {}
+              }).catch(function () { try { S.markCloudLoaded && S.markCloudLoaded(); } catch (e) {} });
             }, 3500);
           } else if (window.NexusFirestore) {
             // Sin suscripción en vivo: bajar una vez y refrescar (fallback).
             window.NexusFirestore.loadUserData(user.uid).then(function (loaded) {
+              try { S.markCloudLoaded && S.markCloudLoaded(); } catch (e) {}
               if (loaded) { S.rehydrateState(); try { S.renderAll(); S.renderMetaDashboard(); S.renderCommerceDashboard(); } catch (e) {} }
               try { if (window.NexusBoot) window.NexusBoot.dataReady(); } catch (e) {}
-            }).catch(function () { try { if (window.NexusBoot) window.NexusBoot.dataReady(); } catch (e) {} });
+              try { if (S.sincronizarConexionesML) S.sincronizarConexionesML(); } catch (e) {}
+            }).catch(function () { try { S.markCloudLoaded && S.markCloudLoaded(); if (window.NexusBoot) window.NexusBoot.dataReady(); } catch (e) {} });
           }
         }
       } else {
@@ -591,6 +604,7 @@
   } else {
     init();
     // Sin Firebase (preview local): no hay nube; el dato del cache ya es el completo.
+    try { S.markCloudLoaded && S.markCloudLoaded(); } catch (e) {}
     try { if (window.NexusBoot) window.NexusBoot.dataReady(); } catch (e) {}
   }
 })();

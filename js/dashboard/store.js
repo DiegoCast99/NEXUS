@@ -43,10 +43,18 @@
   // el usuario nunca pierda datos en silencio creyendo que se guardaron.
   // Sincronización a la nube (Firestore), debounced. Si NexusFirestore no está
   // cargado (SDK ausente), es un no-op y el dashboard sigue solo con localStorage.
+  // GATE anti-wipe: un dispositivo NO sube a la nube hasta haber BAJADO primero el
+  // estado remoto. Sin esto, un dispositivo fresco (localStorage vacío/parcial) subía
+  // su blob y, como saveUserData REEMPLAZA nexusData entero, borraba datos de la nube
+  // -> "se desconectan las cuentas de ML en todos lados". app.js llama markCloudLoaded()
+  // cuando llegó el primer snapshot/carga de Firestore (o tras un timeout de seguridad).
   let _cloudSyncTimer = null;
+  let _cloudLoaded = false;
+  function markCloudLoaded() { _cloudLoaded = true; }
   function scheduleCloudSync(key) {
     if (!window.NexusFirestore) return;
     if (NON_DATA_KEYS.has(key) || String(key).indexOf("nexus") !== 0) return;
+    if (!_cloudLoaded) return;   // todavía no bajamos la nube: NO subir (evita pisarla)
     if (_cloudSyncTimer) clearTimeout(_cloudSyncTimer);
     _cloudSyncTimer = setTimeout(function () {
       _cloudSyncTimer = null;
@@ -60,6 +68,7 @@
   // nunca. Esta era la causa de "modifique en el celular y no aparece en la PC".
   function flushCloudSync() {
     if (!window.NexusFirestore) return;
+    if (!_cloudLoaded) return;   // ídem: nunca subir antes de haber bajado la nube
     if (_cloudSyncTimer) { clearTimeout(_cloudSyncTimer); _cloudSyncTimer = null; }
     window.NexusFirestore.saveUserData(collectNexusData());
   }
@@ -1283,7 +1292,7 @@
     movementMonth, normalizeAdAccountId, normalizeApiVersion, persistActiveMetaPlatform, runDashboardReveal, safeSetItem,
     sampleMovements, saveCommerceConfigs, saveCommerceSnapshots, saveMetaConfig, saveMetaPlatforms, saveMetaSnapshot,
     saveMovements, shiftMonth, state, summarize, toDateInput, updateTopbarForView,
-    rehydrateState, flushCloudSync, hasPendingCloudSync, isCloudSyncKey, toast,
+    rehydrateState, flushCloudSync, hasPendingCloudSync, isCloudSyncKey, markCloudLoaded, toast,
     financeMoney, setFinanceCurrency, financeCurrency, setGbpUyuRate, gbpUyuRate, FINANCE_CCY_KEY,
     setMonthRange,
   });

@@ -351,6 +351,44 @@
     }
   }
 
+  // Sincroniza el estado "conectado" de CADA cuenta de ML desde el SERVER, que es la
+  // FUENTE DE VERDAD: los tokens viven cifrados en Firestore por-uid. Así, cualquier
+  // dispositivo / navegador privado / PWA reinstalada que inicie sesión ve las cuentas
+  // conectadas SIN depender del blob localStorage<->Firestore (que podía llegar parcial
+  // o pisarse entre dispositivos y "desconectaba" cuentas). Best-effort, auto-cura: si
+  // el server dice conectada y el blob decía que no, lo corrige y GUARDA (arregla la
+  // nube también). Si mlConnections falla (offline / sin sesión), no toca nada.
+  async function sincronizarConexionesML() {
+    if (!S.requireSecureApi) return;
+    var api; try { api = S.requireSecureApi(); } catch (e) { return; }
+    if (!api.mlConnections) return;
+    var res;
+    try { res = await api.mlConnections(); } catch (e) { return; }
+    var accounts = res && res.accounts;
+    if (!accounts) return;
+    var cambios = false;
+    ((S.mlAccounts && S.mlAccounts()) || []).forEach(function (a) {
+      var srv = accounts[a.id];
+      if (!srv) return;
+      var cfg = state.commerce.configs[a.id];
+      if (!cfg) { cfg = state.commerce.configs[a.id] = S.defaultCommerceConfig(); }
+      // SOLO ENCENDER: si el server confirma que hay token y el blob decía "sin
+      // conectar", lo corregimos. NO apagamos hasToken cuando el server dice que no
+      // (un error transitorio de lectura no debe desconectar una cuenta buena; la
+      // desconexión real la hace el botón Desconectar, que ya limpia blob + server).
+      if (srv.connected) {
+        if (!cfg.hasToken) { cfg.hasToken = true; cambios = true; }
+        if (srv.userId && String(cfg.mlUserId || "") !== String(srv.userId)) { cfg.mlUserId = String(srv.userId); cambios = true; }
+        if (srv.scope && cfg.tokenScope !== srv.scope) { cfg.tokenScope = srv.scope; cambios = true; }
+      }
+    });
+    if (cambios) {
+      try { saveCommerceConfigs(); } catch (e) {}
+      try { renderCommerceDashboard(); } catch (e) {}
+      try { if (S.renderHome) S.renderHome(); } catch (e) {}
+    }
+  }
+
   function normalizeMLOrder(mlOrder, index) {
     var payments = mlOrder.payments || [];
     var orderItems = mlOrder.order_items || [];
@@ -3693,7 +3731,7 @@
   }
 
   Object.assign(S, {
-    adsDatos, activeMLId, adsUpdateCampaign, cargarAdsMTD, thumbsForItems, diagnosticarFotos, refrescarVentasNotif, refrescarIdentidadCuentas,
+    adsDatos, activeMLId, adsUpdateCampaign, cargarAdsMTD, thumbsForItems, diagnosticarFotos, refrescarVentasNotif, refrescarIdentidadCuentas, sincronizarConexionesML,
     aggregateCommerceProducts, aggregateCommerceTrend, buildDemoCommerceSnapshot, buildMLAuthUrl,
     clearSelectedCommerceApp, clearSelectedCommerceGroup, createCommerceSnapshot, disconnectML, ensureMLLiveDefaults, fetchCommerceData, fetchMLOrders,
     handleMlOAuthReturn, normalizeCommerceOrder, normalizeMLOrder,

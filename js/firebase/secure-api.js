@@ -111,6 +111,11 @@
     mlDiagnose: function () {
       return call("ml-diagnose", {});
     },
+    // Estado REAL de conexión de cada cuenta de ML (lee los tokens server-side).
+    // Fuente de verdad device-independiente para "conectado".
+    mlConnections: function () {
+      return call("ml-connections", {});
+    },
     // Conexion con Revolut via GoCardless (Open Banking). action:
     // save-keys | status | link | confirm | sync | disconnect.
     revolut: function (action, extra) {
