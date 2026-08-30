@@ -46,10 +46,17 @@
 html {
   min-height: 100%;
   /* Defensa: el <html> pinta el fondo del tema (no negro) por si el sistema
-     revela área fuera del viewport de layout (rebote/gestos). El zoom ya está
-     bloqueado en el meta viewport, así que no debería verse, pero por las dudas. */
+     revela área fuera del viewport de layout (rebote/gestos). */
   background: var(--bg);
   overscroll-behavior: none;
+  /* RED DE SEGURIDAD contra el desborde horizontal (la "franja negra" al hacer
+     pinch-zoom en mobile): si alguna sección deja un elemento más ancho que la
+     pantalla, se recorta acá en vez de ensanchar toda la página. `clip` NO crea
+     un contenedor de scroll (no rompe position:sticky del topbar); `hidden` es
+     el fallback para iOS viejo que no soporta clip. La causa raíz igual se
+     arregla por sección (min-width:0 en los items de grid/flex). */
+  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 body {

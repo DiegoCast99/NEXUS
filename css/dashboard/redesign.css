@@ -431,6 +431,11 @@
 /* En el header (fila del saludo) el selector no debe estirarse: se queda a la derecha,
    pegado al borde inferior del saludo. */
 #homePeriodBar { flex: 0 0 auto; }
+/* Solo se muestra en el Inicio. updateTopbarForView le pone .is-hidden en las demas
+   vistas, pero `.home-toolbar{display:flex}` tiene la MISMA especificidad que
+   `.is-hidden{display:none}` y ganaba por orden -> el selector se filtraba a Finanzas,
+   E-Commerce, etc. Con especificidad de ID el ocultar siempre gana. */
+#homePeriodBar.is-hidden { display: none; }
 .home-period {
   display: inline-flex;
   gap: 3px;
@@ -499,6 +504,12 @@
 .home-row4 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; }
 .home-panel { padding: 18px 18px 16px; }
 .home-panel .panel-heading { margin-bottom: 12px; }
+/* Los items de grid nacen con min-width:auto: si su contenido (p. ej. nombres
+   largos de producto en las listas) no puede encogerse, la celda se estira y
+   desborda la pantalla en mobile (aparecía una franja negra al hacer zoom).
+   min-width:0 permite que la celda se achique y el texto interno trunque. */
+.home-row2 > *, .home-row2b > *, .home-row4 > * { min-width: 0; }
+.home-li { min-width: 0; }
 .home-chip {
   padding: 5px 11px;
   border-radius: 999px;

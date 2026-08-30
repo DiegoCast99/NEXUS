@@ -568,15 +568,23 @@
     font-size: 13px;
     margin: 2px 0 0;
   }
-  /* Selector de periodo (ahora en el header): en mobile baja a su propia linea
-     debajo del saludo y scrollea en horizontal si no entran los 5 botones. */
+  /* Selector de periodo (ahora en el header): en mobile ocupa su propia linea a
+     todo el ancho y los 5 botones se REPARTEN para entrar sin cortarse
+     ("Personalizado" quedaba tapado). */
   #homePeriodBar { width: 100%; }
-  #homePeriodBar .home-period {
-    width: 100%;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+  #homePeriodBar .home-period { width: 100%; justify-content: space-between; }
+  #homePeriodBar .home-per {
+    flex: 1 1 auto;
+    padding: 7px 5px;
+    font-size: 11.5px;
+    text-align: center;
+    white-space: nowrap;
   }
-  #homePeriodBar .home-period::-webkit-scrollbar { display: none; }
-  #homePeriodBar .home-per { white-space: nowrap; }
+  /* La marca NEXUS del header no se parte en dos lineas ("NE / XUS"). */
+  .m-brand .m-brand-name { white-space: nowrap; }
+  /* Pill de sync compacto (solo el punto de estado): el texto ("hace 3 min" /
+     "Error de sync") ocupaba demasiado y apretaba la marca hasta partirla. El
+     color del punto ya comunica el estado; el detalle se ve al tocar/entrar. */
+  .sync-pill .sync-pill-txt { display: none; }
+  .sync-pill { padding: 8px; gap: 0; }
 }

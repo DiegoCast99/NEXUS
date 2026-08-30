@@ -340,10 +340,16 @@
       grid += '<line x1="' + padL + '" y1="' + gy.toFixed(1) + '" x2="' + (W - padR) + '" y2="' + gy.toFixed(1) + '" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>';
       yLabels += '<span class="hc-y" style="top:' + (gy / H * 100).toFixed(2) + '%">' + curK(val) + '</span>';
     }
-    // Etiquetas de días (eje X, abajo): ~6 repartidas + siempre la última.
+    // Etiquetas de días (eje X, abajo): ~6 repartidas + siempre la última. Si la
+    // última tick regular queda pegada a la del último día, se descarta para que no
+    // se superpongan (antes salía "26/0828/08").
     var stepLbl = Math.max(1, Math.ceil(pts.length / 6)), xLabels = "";
-    pts.forEach(function (p, i) {
-      if (i % stepLbl !== 0 && i !== pts.length - 1) return;
+    var lastI = pts.length - 1, idxs = [];
+    for (var li = 0; li < pts.length; li += stepLbl) idxs.push(li);
+    if (idxs.length && (lastI - idxs[idxs.length - 1]) < stepLbl * 0.6) idxs.pop();
+    if (idxs[idxs.length - 1] !== lastI) idxs.push(lastI);
+    idxs.forEach(function (i) {
+      var p = pts[i];
       var d = String(p.date || ""), lbl = d.length >= 10 ? (d.slice(8, 10) + "/" + d.slice(5, 7)) : d;
       xLabels += '<span class="hc-x" style="left:' + (x(i) / W * 100).toFixed(2) + '%">' + esc(lbl) + '</span>';
     });
