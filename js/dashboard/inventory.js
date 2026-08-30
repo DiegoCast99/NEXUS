@@ -205,7 +205,15 @@
         var c = computeVariation(mlbId, v.id);
         if (c != null) { varsBody.push({ id: v.id, available_quantity: c }); total += c; }
       });
-      if (!varsBody.length) return null;   // ninguna variación gestionada
+      // Publicación CON variaciones y composición configurada, pero NINGUNA de las
+      // variaciones actuales de ML matchea la composición (típico si ML recreó las
+      // variaciones con IDs nuevos al editar la publicación). NO es un no-op silencioso:
+      // devolvemos noMatch para avisarlo y que el titular re-vincule -> nunca queda
+      // stock viejo colgado en ML sin que se sepa.
+      if (!varsBody.length) {
+        if (compKeysDe(mlbId).length) return { noMatch: true, mlVars: vars.length };
+        return null;   // sin composición: no gestionada
+      }
       body = { variations: varsBody };
     } else {
       var cs = computeVariation(mlbId, null);
@@ -231,17 +239,34 @@
     return { total: total, reactivada: reactivada };
   }
 
-  async function invSyncListings(mlbIds, motivo) {
-    var cambiadas = 0, errores = 0, reactivadas = 0;
+  // force=true: NUNCA saltear (empujar SIEMPRE a ML). Se usa en TODAS las acciones
+  // manuales (guardar stock, "sincronizar todas", reintento). El salteo por "ya
+  // sincronizado" (st.published===computedApprox) es solo una optimización para las
+  // corridas automáticas de fondo: era peligroso para stock porque el registro interno
+  // de Nexus puede DIFERIR de ML real (ML reactiva/edita, o el registro quedó viejo)
+  // y entonces nunca se corregía ML -> riesgo de vender algo sin stock. Con force, el
+  // titular siempre puede garantizar que ML quede igual que la planilla.
+  async function invSyncListings(mlbIds, motivo, force) {
+    var cambiadas = 0, errores = 0, reactivadas = 0, sinMatch = 0, sinMatchIds = [];
     for (var i = 0; i < mlbIds.length; i++) {
       var mlbId = mlbIds[i];
       var computedApprox = computeListing(mlbId);
       if (computedApprox == null) continue;
       var st = inv.listingState[mlbId] || {};
-      if (st.published === computedApprox && st.status === "synced") continue;
+      if (!force && st.published === computedApprox && st.status === "synced") continue;
       try {
         var res = await invSyncOne(mlbId);
         if (res == null) continue;
+        if (res.noMatch) {
+          // La composición no coincide con las variaciones actuales de ML: hay que
+          // re-vincular. Lo marcamos como error visible (no como "synced") para que
+          // NUNCA se crea que quedó al día cuando en realidad ML tiene stock viejo.
+          inv.listingState[mlbId] = Object.assign({}, st, { status: "error", lastSyncAt: new Date().toISOString(), error: "composición no coincide con las variaciones de ML (re-vinculá)" });
+          logSync({ listing: mlbId, antes: st.published != null ? st.published : "—", despues: "—", motivo: motivo, resultado: "error", error: "composición no coincide con las variaciones de ML" });
+          sinMatch++; sinMatchIds.push(mlbId);
+          await dormir(120);
+          continue;
+        }
         var publicado = res.total;
         inv.listingState[mlbId] = { computed: publicado, published: publicado, status: "synced", lastSyncAt: new Date().toISOString(), error: null };
         logSync({ listing: mlbId, antes: st.published != null ? st.published : "—", despues: publicado, motivo: motivo, resultado: "ok", reactivada: res.reactivada });
@@ -254,7 +279,7 @@
       }
       await dormir(120);
     }
-    return { cambiadas: cambiadas, errores: errores, reactivadas: reactivadas };
+    return { cambiadas: cambiadas, errores: errores, reactivadas: reactivadas, sinMatch: sinMatch, sinMatchIds: sinMatchIds };
   }
 
   function setInvMsg(txt, tipo) {
@@ -1029,9 +1054,23 @@
       // Publicaciones afectadas por los productos cuyo stock cambio (sin repetir).
       var afectadas = {};
       cambiaronStock.forEach(function (pid) { listingsDeProducto(pid).forEach(function (m) { afectadas[m] = true; }); });
-      var r = await invSyncListings(Object.keys(afectadas), "Ajuste manual de stock");
+      var r = await invSyncListings(Object.keys(afectadas), "Ajuste manual de stock", true);
       await invSave();
-      setInvMsg("Guardado. " + r.cambiadas + " publicación(es) sincronizada(s)" + (r.reactivadas ? " · " + r.reactivadas + " reactivada" + (r.reactivadas > 1 ? "s" : "") : "") + (r.errores ? ", " + r.errores + " con error." : "."), r.errores ? "error" : "success");
+      var afectN = Object.keys(afectadas).length;
+      var msg;
+      if (!cambiaronStock.length) {
+        msg = "Guardado. (No cambió ningún stock.)";
+      } else if (!afectN) {
+        // El titular cambió stock de un producto que NO está vinculado a ninguna
+        // publicación -> ML no se toca. Se avisa EXPLÍCITO para que no crea que sí.
+        msg = "Guardado, pero ese producto NO está vinculado a ninguna publicación de Mercado Libre, así que no se actualizó nada en ML. Vinculalo en 'Publicaciones' (composición).";
+      } else {
+        msg = "Guardado. " + r.cambiadas + "/" + afectN + " publicación(es) sincronizada(s) con Mercado Libre"
+          + (r.reactivadas ? " · " + r.reactivadas + " reactivada" + (r.reactivadas > 1 ? "s" : "") : "")
+          + (r.sinMatch ? " · " + r.sinMatch + " sin actualizar (su composición no coincide con las variaciones actuales de ML: re-vinculala)" : "")
+          + (r.errores ? " · " + r.errores + " con error" : "") + ".";
+      }
+      setInvMsg(msg, (r.errores || r.sinMatch) ? "error" : "success");
       renderInventory();
     } catch (e) { setInvMsg("Error al guardar/sincronizar: " + ((e && e.message) || "error"), "error"); }
   }
@@ -1055,9 +1094,12 @@
       // Colapsar claves por sabor ("MLB::var") al id base, sin repetir.
       var bases = {};
       Object.keys(inv.compositions).forEach(function (k) { bases[String(k).split("::")[0]] = true; });
-      var r = await invSyncListings(Object.keys(bases), "Sincronización manual (todas)");
+      var r = await invSyncListings(Object.keys(bases), "Sincronización manual (todas)", true);
       await invSave();
-      setInvMsg(r.cambiadas + " sincronizada(s)" + (r.reactivadas ? " · " + r.reactivadas + " reactivada" + (r.reactivadas > 1 ? "s" : "") : "") + (r.errores ? ", " + r.errores + " con error." : "."), r.errores ? "error" : "success");
+      setInvMsg(r.cambiadas + " sincronizada(s)"
+        + (r.reactivadas ? " · " + r.reactivadas + " reactivada" + (r.reactivadas > 1 ? "s" : "") : "")
+        + (r.sinMatch ? " · " + r.sinMatch + " sin actualizar (composición no coincide con ML: re-vinculá)" : "")
+        + (r.errores ? " · " + r.errores + " con error" : "") + ".", (r.errores || r.sinMatch) ? "error" : "success");
       renderInventory();
     } catch (e) { setInvMsg("Error: " + ((e && e.message) || "error"), "error"); }
   }
@@ -1067,9 +1109,12 @@
   async function invReintentarUno(mlbId) {
     setInvMsg("Reintentando sincronización de la publicación…");
     try {
-      var r = await invSyncListings([mlbId], "Reintento manual");
+      var r = await invSyncListings([mlbId], "Reintento manual", true);
       await invSave();
-      setInvMsg(r.errores ? "La publicación sigue con error." : ("Publicación sincronizada" + (r.reactivadas ? " y reactivada" : "") + "."), r.errores ? "error" : "success");
+      var txt = r.errores ? "La publicación sigue con error."
+        : r.sinMatch ? "La composición no coincide con las variaciones actuales de ML: re-vinculá la publicación."
+        : ("Publicación sincronizada" + (r.reactivadas ? " y reactivada" : "") + ".");
+      setInvMsg(txt, (r.errores || r.sinMatch) ? "error" : "success");
       renderInventory();
     } catch (e) { setInvMsg("Error al reintentar: " + ((e && e.message) || "error"), "error"); }
   }
