@@ -86,6 +86,9 @@
   width: 0.5em;            /* ancho de las barras */
   height: 0.7em;
   padding: 0 0.14em;       /* bearing lateral: iguala el aire del letter-spacing */
+  /* La X arranca pegada a su borde, así que la "E" (≡) quedaba muy pegada a la X.
+     Un pelín de aire a la derecha para igualar la separación con las otras letras. */
+  margin-right: 0.09em;
   vertical-align: baseline;
   background-image:
     linear-gradient(currentColor, currentColor),

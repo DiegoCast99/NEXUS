@@ -43,6 +43,34 @@
   box-sizing: border-box;
 }
 
+/* Barra de scroll DISCRETA: el navegador la pintaba blanca brillante y resaltaba
+   sobre el fondo oscuro. Ahora es un thumb gris muy tenue (matte, "casi
+   indetectable") sobre pista transparente — se puede agarrar y arrastrar igual, pero
+   no molesta. Firefox usa scrollbar-width/color; WebKit/Safari usa ::-webkit-scrollbar. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.09);
+  border-radius: 10px;
+  border: 2px solid transparent;   /* aire alrededor: el thumb se ve más finito */
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.18);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 html {
   min-height: 100%;
   /* Defensa: el <html> pinta el fondo del tema (no negro) por si el sistema
