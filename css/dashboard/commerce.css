@@ -71,7 +71,11 @@
 }
 
 .commerce-layout .panel:not(.wide-panel) {
-  grid-column: span 4;
+  /* La tarjeta de Costos ocupaba 4/12: quedaba angosta, las sub-tarjetas se
+     comprimían (texto saliéndose) y sobraba mucho espacio vacío a la derecha.
+     A 8/12 respira, las sub-tarjetas entran cómodas en ambos estados de la barra
+     lateral, y se ve más equilibrada. En ≤1180px responsive.css la lleva a full. */
+  grid-column: span 8;
 }
 
 .commerce-status-live {
@@ -310,7 +314,7 @@
 .costs-summary-item {
   display: grid;
   gap: 3px;
-  padding: 12px 14px;
+  padding: 14px 14px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.03);
@@ -318,7 +322,15 @@
      real de este item, asi al abrir la barra se achica y no se corta. */
   container-type: inline-size;
   min-width: 0;
+  /* Etiqueta, número y detalle centrados y parejos (pedido del titular). */
+  justify-items: center;
+  text-align: center;
 }
+/* La etiqueta (VENTAS CONCRETADAS, etc.) puede envolver en varias líneas sin
+   salirse del cuadro aunque la barra lateral esté abierta. */
+.costs-summary-item span { overflow-wrap: anywhere; max-width: 100%; }
+.costs-summary-item strong,
+.costs-summary-item small { max-width: 100%; }
 
 .costs-summary-item span {
   color: var(--muted);
