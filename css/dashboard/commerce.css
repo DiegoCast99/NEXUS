@@ -1518,7 +1518,11 @@
 .renta-table { min-width: 720px; }
 .renta-table th, .renta-table td { vertical-align: middle; }
 .renta-table th:first-child, .renta-table td:first-child { text-align: left; }
-.renta-table th:not(:first-child), .renta-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+/* Columnas numéricas (Unid., Ingresos, Costos ML, COGS, Neta, Margen) CENTRADAS:
+   header y dato alineados en el centro de cada columna (pedido del titular). Se usa
+   td:not(:first-child) —no td.num— para que TODAS las celdas queden parejas aunque
+   alguna no tenga la clase .num (ej. "falta costo"). */
+.renta-table th:not(:first-child), .renta-table td:not(:first-child) { text-align: center; font-variant-numeric: tabular-nums; }
 .renta-prod { display: flex; align-items: center; gap: 10px; }
 .renta-thumb { width: 30px; height: 30px; flex: none; border-radius: 7px; object-fit: cover; background: rgba(255, 255, 255, 0.05); }
 .renta-net.pos { color: var(--good); font-weight: 700; }
@@ -1546,7 +1550,7 @@
 
 .renta-table { min-width: 720px; }
 .renta-table th { text-align: left; }
-.renta-table th:not(:first-child), .renta-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.renta-table th:not(:first-child), .renta-table td:not(:first-child) { text-align: center; font-variant-numeric: tabular-nums; }
 .renta-table td, .renta-table th { vertical-align: middle; }
 .renta-pub { display: flex; align-items: center; gap: 10px; max-width: 320px; }
 .renta-pub span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
