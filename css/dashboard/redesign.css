@@ -875,6 +875,10 @@
   .topbar-search { display: none; }           /* la lupa vive en "Mas" en mobile */
   #helpBtn { display: none; }
   .m-only { display: flex !important; }
+  /* El botón hamburguesa es .icon-btn (grid + place-items:center), pero .m-only le
+     fuerza display:flex y perdía el centrado -> las 3 rayas quedaban pegadas a la
+     izquierda. Re-centramos el contenido del flex para que el ícono quede EXACTO. */
+  .icon-btn.m-only { align-items: center; justify-content: center; }
   .m-brand {
     display: flex; align-items: center; gap: 9px;
     font-weight: 800; letter-spacing: 0.14em; font-size: 24px; color: var(--text);
