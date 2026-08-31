@@ -71,11 +71,12 @@
 }
 
 .commerce-layout .panel:not(.wide-panel) {
-  /* La tarjeta de Costos ocupaba 4/12: quedaba angosta, las sub-tarjetas se
-     comprimían (texto saliéndose) y sobraba mucho espacio vacío a la derecha.
-     A 8/12 respira, las sub-tarjetas entran cómodas en ambos estados de la barra
-     lateral, y se ve más equilibrada. En ≤1180px responsive.css la lleva a full. */
-  grid-column: span 8;
+  /* La tarjeta de Costos ocupaba 4/12 (muy angosta, sub-tarjetas comprimidas). A
+     6/12 se ensancha un poco —lo justo para que las 3 sub-tarjetas entren cómodas
+     con la barra abierta o cerrada— sin quedar enorme. El tamaño del donut se acota
+     aparte (#commerceCostsChart) para que NO crezca con el ancho. En ≤1180px
+     responsive.css la lleva a full. */
+  grid-column: span 6;
 }
 
 .commerce-status-live {
@@ -358,6 +359,14 @@
 
 .costs-summary-item.is-net strong {
   color: var(--green);
+}
+
+/* El donut de costos NO debe crecer con el ancho de la tarjeta (el canvas es
+   width:100% + height:auto, así que al ensanchar la tarjeta se estiraba gigante).
+   Lo acotamos a un tamaño fijo y lo centramos: queda prolijo en cualquier ancho. */
+#commerceCostsChart {
+  max-width: 300px;
+  margin: 6px auto 2px;
 }
 
 .costs-note {

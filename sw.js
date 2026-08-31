@@ -8,7 +8,7 @@
      va directo a la red — auth y Firestore siguen funcionando.
    Para forzar refresco tras un deploy grande: subir CACHE_VERSION.
    ============================================================ */
-const CACHE_VERSION = "nexus-cache-6636c8c4b0";
+const CACHE_VERSION = "nexus-cache-26c37179ad";
 const APP_SHELL = [
   "/index.html",
   "/dashboard.html",
