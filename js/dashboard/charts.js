@@ -329,19 +329,32 @@
       ctx.clearRect(0, 0, width, height);
       const sweep = Math.PI * 2 * p;
       let start = -Math.PI / 2, drawn = 0;
+      // Anillo de fondo (track) tenue, para que la dona se lea aunque falte un tramo.
+      const lw = Math.max(16, radius * 0.22);
+      ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.lineWidth = lw; ctx.lineCap = "butt"; ctx.shadowBlur = 0;
+      ctx.strokeStyle = "rgba(255,255,255,0.045)"; ctx.stroke();
+      // Segmentos NEÓN: punta redondeada + pequeño hueco entre segmentos + glow.
+      ctx.lineCap = "round";
+      const gapRad = Math.min(0.13, lw / radius);
       for (let index = 0; index < entries.length; index += 1) {
         const angle = (entries[index][1] / total) * Math.PI * 2;
         const rem = sweep - drawn;
         if (rem <= 0.0001) break;
-        ctx.beginPath();
-        ctx.arc(cx, cy, radius, start, start + Math.min(angle, rem));
-        ctx.lineWidth = Math.max(16, radius * 0.22);
-        ctx.strokeStyle = categoryColors[index % categoryColors.length];
-        ctx.shadowColor = categoryColors[index % categoryColors.length];
-        ctx.shadowBlur = p >= 1 ? (index < 3 ? 12 : 4) : 0;
-        ctx.stroke();
+        const a0 = start + gapRad / 2;
+        const a1 = start + Math.min(angle, rem) - gapRad / 2;
+        if (a1 > a0) {
+          ctx.beginPath();
+          ctx.arc(cx, cy, radius, a0, a1);
+          ctx.lineWidth = lw;
+          ctx.strokeStyle = categoryColors[index % categoryColors.length];
+          ctx.shadowColor = categoryColors[index % categoryColors.length];
+          ctx.shadowBlur = p >= 1 ? (index < 3 ? 16 : 8) : 0;
+          ctx.stroke();
+        }
         start += angle; drawn += angle;
       }
+      ctx.lineCap = "butt";
       ctx.shadowBlur = 0;
       ctx.globalAlpha = Math.max(0, Math.min(1, (p - 0.45) / 0.55));
       ctx.fillStyle = "rgba(244,244,246,0.94)";
@@ -393,19 +406,32 @@
       ctx.clearRect(0, 0, width, height);
       const sweep = Math.PI * 2 * p;
       let start = -Math.PI / 2, drawn = 0;
+      // Anillo de fondo (track) tenue, para que la dona se lea aunque falte un tramo.
+      const lw = Math.max(16, radius * 0.22);
+      ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.lineWidth = lw; ctx.lineCap = "butt"; ctx.shadowBlur = 0;
+      ctx.strokeStyle = "rgba(255,255,255,0.045)"; ctx.stroke();
+      // Segmentos NEÓN: punta redondeada + pequeño hueco entre segmentos + glow.
+      ctx.lineCap = "round";
+      const gapRad = Math.min(0.13, lw / radius);
       for (let index = 0; index < entries.length; index += 1) {
         const angle = (entries[index][1] / total) * Math.PI * 2;
         const rem = sweep - drawn;
         if (rem <= 0.0001) break;
-        ctx.beginPath();
-        ctx.arc(cx, cy, radius, start, start + Math.min(angle, rem));
-        ctx.lineWidth = Math.max(16, radius * 0.22);
-        ctx.strokeStyle = categoryColors[index % categoryColors.length];
-        ctx.shadowColor = categoryColors[index % categoryColors.length];
-        ctx.shadowBlur = p >= 1 ? (index < 3 ? 12 : 4) : 0;
-        ctx.stroke();
+        const a0 = start + gapRad / 2;
+        const a1 = start + Math.min(angle, rem) - gapRad / 2;
+        if (a1 > a0) {
+          ctx.beginPath();
+          ctx.arc(cx, cy, radius, a0, a1);
+          ctx.lineWidth = lw;
+          ctx.strokeStyle = categoryColors[index % categoryColors.length];
+          ctx.shadowColor = categoryColors[index % categoryColors.length];
+          ctx.shadowBlur = p >= 1 ? (index < 3 ? 16 : 8) : 0;
+          ctx.stroke();
+        }
         start += angle; drawn += angle;
       }
+      ctx.lineCap = "butt";
       ctx.shadowBlur = 0;
       ctx.globalAlpha = Math.max(0, Math.min(1, (p - 0.45) / 0.55));
       ctx.fillStyle = "rgba(244,244,246,0.94)";

@@ -319,17 +319,20 @@
 
   // Paleta cálida (rediseño 2026-08): naranja/ambar al frente, con variedad
   // suficiente para segmentos de dona sin volver al rosa/cyan viejos.
+  // Paleta NEÓN cohesiva para las gráficas estilo dona (Ventas por canal, Costos,
+  // Gastos): magenta / azul eléctrico / cyan / violeta / rosa, a juego con el gráfico
+  // de "Ingresos y ventas por día" (línea magenta #ff3d9a + barras azul #5b8dff).
   const categoryColors = [
-    "#ff6a3d",
-    "#f5a623",
-    "#ff3d2e",
-    "#34d399",
-    "#ffd166",
-    "#ff8f6b",
-    "#c9822e",
-    "#e2574c",
-    "#8b8b94",
-    "#6df2d1"
+    "#ff3d9a", // magenta neón
+    "#5b8dff", // azul eléctrico
+    "#22d3ee", // cyan
+    "#a855f7", // violeta
+    "#ff77c8", // rosa
+    "#3dd7ff", // celeste
+    "#8b5cf6", // púrpura
+    "#34e5c4", // menta
+    "#f9a8ff", // magenta claro
+    "#7c94ff"  // índigo
   ];
 
   const sampleMovements = [

@@ -841,7 +841,7 @@
 .home-donut { position: relative; width: 138px; height: 138px; flex: none; }
 .home-donut svg { width: 100%; height: 100%; }
 .home-donut-c { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
-.home-donut-c b { font-size: 18px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.home-donut-c b { font-size: 18px; font-weight: 750; font-variant-numeric: tabular-nums; text-shadow: 0 0 14px rgba(255, 61, 154, 0.28); }
 .home-donut-c small { display: block; font-size: 11px; color: var(--muted); }
 .home-ch-legend { flex: 1; min-width: 190px; display: grid; gap: 10px; }
 .home-ch { display: flex; align-items: center; gap: 10px; font-size: 13.5px; }

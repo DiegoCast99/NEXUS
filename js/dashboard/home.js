@@ -424,7 +424,17 @@
   }
 
   // ---- Ventas por canal (dona SVG + leyenda con logos) ----
-  var CH_COLORS = ["#ff6a3d", "#f5a623", "#ff3d2e", "#b24dff", "#52e1ff"];
+  // Paleta NEÓN (a juego con la gráfica de Ingresos: magenta + azul eléctrico).
+  var CH_COLORS = ["#ff3d9a", "#5b8dff", "#22d3ee", "#a855f7", "#ff77c8", "#3dd7ff"];
+  // Gradiente por color (de→a) para darle profundidad neón a cada arco de la dona.
+  var CH_GRAD = [
+    ["#ff3d9a", "#ff8dd0"],
+    ["#5b8dff", "#38e6ff"],
+    ["#22d3ee", "#67e8f9"],
+    ["#a855f7", "#d0a2ff"],
+    ["#ff77c8", "#ff4da6"],
+    ["#3dd7ff", "#7cf0ff"]
+  ];
   function renderChannels(ml) {
     var box = el("homeChannels"); if (!box) return;
     // Cada cuenta de Mercado Libre es su PROPIO canal (ML1, ML2 y ML Brasil por
@@ -481,18 +491,29 @@
     var animD = S.shouldAnimateChart ? S.shouldAnimateChart("home-donut", channels.map(function (c) { return c.value; }).join(",")) : false;
     var svgCls = animD ? ' class="hn-anim-donut"' : "";
     if (total > 0) {
-      var C = 2 * Math.PI * 15.9155, off = 0, segs = "";
+      // Dona PREMIUM: cada segmento con gradiente neón + glow, puntas redondeadas y
+      // un pequeño hueco entre segmentos (look moderno/segmentado). Barrido de entrada.
+      var C = 2 * Math.PI * 15.9155, off = 0, segs = "", GAP = 6;
       real.forEach(function (c, i) {
-        var frac = c.value / total, len = frac * C, gap = C - len;
-        // Barrido: cada arco "se dibuja" (dasharray 0→len) en su tramo del giro.
+        var frac = c.value / total, len = frac * C;
+        var draw = Math.max(1.6, len - GAP);   // arco visible (deja el hueco entre segmentos)
+        var rest = C - draw;
+        var gi = i % CH_GRAD.length;
         var cls = animD ? ' class="hn-arc"' : "";
-        var av = animD ? ' style="--dlen:' + len.toFixed(2) + ';--dgap:' + gap.toFixed(2) + ';--ddur:' + Math.max(360, Math.round((len / C) * 1050)) + 'ms;--ddelay:' + Math.round((off / C) * 1050) + 'ms"' : "";
-        segs += '<circle' + cls + av + ' cx="21" cy="21" r="15.9155" fill="none" stroke="' + CH_COLORS[i % CH_COLORS.length] + '" stroke-width="5" stroke-dasharray="' + len.toFixed(2) + ' ' + gap.toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" stroke-linecap="butt" transform="rotate(-90 21 21)"/>';
+        var av = animD ? ' style="--dlen:' + draw.toFixed(2) + ';--dgap:' + rest.toFixed(2) + ';--ddur:' + Math.max(360, Math.round((len / C) * 1050)) + 'ms;--ddelay:' + Math.round((off / C) * 1050) + 'ms"' : "";
+        segs += '<circle' + cls + av + ' cx="21" cy="21" r="15.9155" fill="none" stroke="url(#chg' + gi + ')" stroke-width="5" stroke-dasharray="' + draw.toFixed(2) + ' ' + rest.toFixed(2) + '" stroke-dashoffset="' + (-(off + GAP / 2)).toFixed(2) + '" stroke-linecap="round" transform="rotate(-90 21 21)"/>';
         off += len;
       });
-      donut = '<div class="home-donut"><svg' + svgCls + ' viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="15.9155" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5"/>' + segs + '</svg><div class="home-donut-c"><b>' + curK(total) + '</b><small>Total</small></div></div>';
+      var chDefs = '<defs>' +
+        '<filter id="donutGlow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="0.85" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>' +
+        CH_GRAD.map(function (g, gi) { return '<linearGradient id="chg' + gi + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' + g[0] + '"/><stop offset="1" stop-color="' + g[1] + '"/></linearGradient>'; }).join("") +
+        '</defs>';
+      donut = '<div class="home-donut"><svg' + svgCls + ' viewBox="0 0 42 42" aria-hidden="true">' + chDefs +
+        '<circle cx="21" cy="21" r="15.9155" fill="none" stroke="rgba(255,255,255,0.045)" stroke-width="5"/>' +
+        '<g filter="url(#donutGlow)">' + segs + '</g></svg>' +
+        '<div class="home-donut-c"><b>' + curK(total) + '</b><small>Total</small></div></div>';
     } else {
-      donut = '<div class="home-donut"><svg viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="15.9155" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5"/></svg><div class="home-donut-c"><b>$0</b><small>Total</small></div></div>';
+      donut = '<div class="home-donut"><svg viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="15.9155" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="5"/></svg><div class="home-donut-c"><b>$0</b><small>Total</small></div></div>';
     }
 
     var legend = channels.map(function (c, i) {
