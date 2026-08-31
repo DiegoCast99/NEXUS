@@ -1027,6 +1027,27 @@
 }
 /* contain = muestra la foto COMPLETA (sin recortar/agrandar) dentro del cuadro. */
 .venta-foto { width: 150px; height: 150px; object-fit: contain; box-sizing: border-box; padding: 6px; }
+/* Estado de carga: shimmer limpio mientras baja la HD (en vez de la miniatura
+   pixelada). Al terminar, la foto nítida se revela sin pasar por baja calidad. */
+.venta-foto-wrap.is-loading { position: relative; }
+.venta-foto-wrap.is-loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg,
+    rgba(255, 255, 255, 0.03) 30%,
+    rgba(255, 255, 255, 0.10) 50%,
+    rgba(255, 255, 255, 0.03) 70%);
+  background-size: 220% 100%;
+  animation: ventaFotoShimmer 1.15s ease-in-out infinite;
+}
+@keyframes ventaFotoShimmer {
+  from { background-position: 220% 0; }
+  to { background-position: -220% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .venta-foto-wrap.is-loading::after { animation: none; }
+}
 @media (max-width: 430px) {
   .venta-foto-wrap, .venta-foto { width: 118px; height: 118px; }
 }

@@ -1271,6 +1271,12 @@
   var _thumbCache = {};
   var _photoHDCache = {};   // foto de alta resolución por itemId (para el detalle)
   function _precargar(url) { if (url) { try { var im = new Image(); im.decoding = "async"; im.src = url; } catch (e) {} } }
+  // Marca el marco de la foto de venta como "cargando" (shimmer limpio) mientras se
+  // baja la HD, en vez de mostrar la miniatura pixelada.
+  function setVentaFotoLoading(on) {
+    var wrap = elements.ventaFoto && elements.ventaFoto.closest && elements.ventaFoto.closest(".venta-foto-wrap");
+    if (wrap) wrap.classList.toggle("is-loading", !!on);
+  }
 
   // Foto de UNA publicacion, robusto: pide el item COMPLETO (/items/{id} sin
   // proyeccion de atributos, que a veces omitia la miniatura) y saca la mejor
@@ -1533,35 +1539,42 @@
     // Izquierda: foto + producto + unidades. Si vino sin foto (camino rapido de
     // la notificacion), se trae aparte y se rellena sin bloquear el render.
     if (elements.ventaFoto) {
-      // Foto al instante: la del pedido o la cacheada (precargada en memoria).
-      var fotoYa = o.thumbnail || (o.itemId ? _thumbCache[o.itemId] : "");
-      if (fotoYa) { o.thumbnail = fotoYa; elements.ventaFoto.src = fotoYa; elements.ventaFoto.style.display = ""; }
-      else {
+      // Mostrar la foto SIEMPRE en ALTA RESOLUCIÓN, sin la fase pixelada. Antes se
+      // pintaba la miniatura chica escalada a 150px (se veía pixelada/agrandada) y
+      // recién después llegaba la HD y "se corregía". Ahora:
+      //   - si la HD ya está cacheada (precargada) -> se muestra nítida AL INSTANTE;
+      //   - si no -> shimmer de carga limpio (NO la miniatura pixelada) mientras se
+      //     baja la HD, y recién cuando terminó de cargar se revela nítida.
+      var itemIdStr = o.itemId ? String(o.itemId) : "";
+      var hdYa = itemIdStr ? _photoHDCache[itemIdStr] : "";
+      if (hdYa) {
+        o.thumbnail = hdYa;
+        elements.ventaFoto.src = hdYa; elements.ventaFoto.style.display = "";
+        setVentaFotoLoading(false);
+      } else if (itemIdStr) {
         elements.ventaFoto.removeAttribute("src"); elements.ventaFoto.style.display = "none";
-        if (o.itemId) {
-          fetchOrderThumb(state.commerce.selectedApp, o.itemId).then(function (thumb) {
-            if (thumb && ventaActual && String(ventaActual.id) === String(o.id) && elements.ventaFoto) {
-              o.thumbnail = thumb;
-              elements.ventaFoto.src = thumb; elements.ventaFoto.style.display = "";
-            }
-          });
-        }
-      }
-      // Upgrade progresivo a ALTA RESOLUCIÓN: la miniatura se ve al instante y, cuando
-      // llega la foto grande del producto, la reemplaza (mucho más nítida a 150px).
-      if (o.itemId) {
-        fetchOrderPhotoHD(state.commerce.selectedApp, o.itemId).then(function (hd) {
-          if (!hd || !ventaActual || String(ventaActual.id) !== String(o.id) || !elements.ventaFoto) return;
-          if (elements.ventaFoto.src === hd) return;
+        setVentaFotoLoading(true);   // shimmer limpio, sin imagen de baja calidad
+        fetchOrderPhotoHD(state.commerce.selectedApp, itemIdStr).then(function (hd) {
+          if (!ventaActual || String(ventaActual.id) !== String(o.id) || !elements.ventaFoto) return;
+          // Preferimos SIEMPRE la HD; solo caemos a la miniatura si no hubo HD.
+          var elegido = hd || o.thumbnail || _thumbCache[itemIdStr] || "";
+          if (!elegido) { setVentaFotoLoading(false); return; }
           var im = new Image();
           im.onload = function () {
-            if (ventaActual && String(ventaActual.id) === String(o.id) && elements.ventaFoto) {
-              o.thumbnail = hd;
-              elements.ventaFoto.src = hd; elements.ventaFoto.style.display = "";
-            }
+            if (!ventaActual || String(ventaActual.id) !== String(o.id) || !elements.ventaFoto) return;
+            o.thumbnail = elegido;
+            elements.ventaFoto.src = elegido; elements.ventaFoto.style.display = "";
+            setVentaFotoLoading(false);
           };
-          im.src = hd;   // recién swapea cuando la HD terminó de cargar (sin flash)
-        });
+          im.onerror = function () { setVentaFotoLoading(false); };
+          im.src = elegido;   // recién se muestra cuando terminó de cargar (nítida, sin flash)
+        }).catch(function () { setVentaFotoLoading(false); });
+      } else {
+        // Sin itemId (no se puede pedir la HD): usar lo que haya del pedido.
+        var fb = o.thumbnail || "";
+        if (fb) { elements.ventaFoto.src = fb; elements.ventaFoto.style.display = ""; }
+        else { elements.ventaFoto.removeAttribute("src"); elements.ventaFoto.style.display = "none"; }
+        setVentaFotoLoading(false);
       }
     }
     txtVenta(elements.ventaProductoTitulo, o.product || "");

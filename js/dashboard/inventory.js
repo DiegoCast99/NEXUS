@@ -31,6 +31,7 @@
   var refreshTimer = null;      // intervalo de auto-actualización (mientras se ve la sección)
   var refrescando = false;      // evita solapar refrescos si uno tarda
   var REFRESH_MS = 90000;       // cada 90s: trae publicaciones nuevas + stock de ML
+  var _lastListingsHTML = null; // último HTML pintado en la lista (guard anti-parpadeo)
 
   // Cambia de pestaña dentro del panel de Inventario (Lista de productos /
   // Publicaciones y enlaces). Es lo que separa CREAR productos de ENLAZARLOS.
@@ -755,6 +756,14 @@
     } else {
       elements.invListingEmpty?.classList.toggle("is-visible", true);
     }
+    // GUARD ANTI-PARPADEO: renderListings se llama muchas veces (carga incremental
+    // por tandas + auto-refresh cada 90s que re-baja el catálogo). Reescribir
+    // innerHTML recrea TODOS los <img> y produce un flash. Si el HTML es idéntico
+    // al último pintado (mismas fotos/stock/estado), NO tocamos el DOM -> se acabó
+    // el parpadeo. Solo repinta cuando algo cambió de verdad. Si por algo el body
+    // quedó vacío pero teníamos contenido, forzamos el repintado igual.
+    if (html === _lastListingsHTML && elements.invListingBody.childElementCount > 0) return;
+    _lastListingsHTML = html;
     elements.invListingBody.innerHTML = html;
   }
 
