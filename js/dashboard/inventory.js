@@ -722,6 +722,39 @@
       if (!descDe[m]) return;
       (famTot[descDe[m].base] = famTot[descDe[m].base] || []).push(m);
     });
+    // DEDUP POR SABOR: dos publicaciones DISTINTAS pueden compartir la misma base +
+    // el mismo sabor (ej. una variante auto "Vainilla" y un combo configurado a mano
+    // "Vainilla" con el mismo título). Antes la familia mostraba el sabor REPETIDO 2-3
+    // veces. Ahora, dentro de una familia, queda UNA sola publicación por sabor (la que
+    // tiene composición configurada tiene prioridad; si no, la primera del catálogo).
+    // Las publicaciones "sobrantes" se SACAN de la familia y se muestran como fila
+    // individual (siguen visibles, con su MLU id, para poder borrar el duplicado en ML).
+    Object.keys(famTot).forEach(function (base) {
+      var miembros = famTot[base];
+      if (miembros.length < 2) return;
+      var elegidoPorSabor = {};   // saborNorm -> mlbId elegido
+      var quedan = [];
+      miembros.forEach(function (m) {
+        var sab = normTok((descDe[m] && descDe[m].sabor) || "");
+        if (!sab) { quedan.push(m); return; }
+        if (!elegidoPorSabor.hasOwnProperty(sab)) {
+          elegidoPorSabor[sab] = m; quedan.push(m);
+          return;
+        }
+        // Ya hay una publicación con este sabor: nos quedamos con la MEJOR (la que
+        // tiene composición configurada). La otra queda fuera de la familia.
+        var prev = elegidoPorSabor[sab];
+        var prevConf = compKeysDe(prev).length > 0;
+        var curConf = compKeysDe(m).length > 0;
+        if (curConf && !prevConf) {
+          var idx = quedan.indexOf(prev);
+          if (idx >= 0) quedan[idx] = m;      // la nueva (configurada) entra; la vieja sale
+          elegidoPorSabor[sab] = m;
+        }
+        // si no, 'm' simplemente no entra a 'quedan' -> se renderiza como fila suelta
+      });
+      famTot[base] = quedan;
+    });
     var famBaseDe = {};   // mlbId -> base (solo familias de 2+)
     Object.keys(famTot).forEach(function (base) {
       if (famTot[base].length >= 2) famTot[base].forEach(function (m) { famBaseDe[m] = base; });
