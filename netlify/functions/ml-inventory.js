@@ -67,6 +67,7 @@ exports.handler = async (event) => {
       const compositions = body.compositions && typeof body.compositions === "object" ? body.compositions : {};
       const listingState = body.listingState && typeof body.listingState === "object" ? body.listingState : {};
       const listingAccounts = body.listingAccounts && typeof body.listingAccounts === "object" ? body.listingAccounts : {};
+      const storeListings = body.storeListings && typeof body.storeListings === "object" ? body.storeListings : {};
       const syncLog = Array.isArray(body.syncLog) ? body.syncLog : [];
 
       for (let intento = 0; intento < MAX_RETRIES; intento++) {
@@ -80,6 +81,9 @@ exports.handler = async (event) => {
           // conoce; se preservan las que ya estaban).
           listingAccounts: Object.assign({}, server.listingAccounts, listingAccounts),
           listingState: Object.assign({}, server.listingState, listingState),
+          // storeListings: el navegador es la fuente (el usuario administra los enlaces),
+          // igual que compositions.
+          storeListings: storeListings,
           syncLog: mergeSyncLog(server.syncLog, syncLog, 200),
           updatedAt: new Date().toISOString()
         };

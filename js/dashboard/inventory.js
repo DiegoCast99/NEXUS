@@ -32,11 +32,17 @@
   var refrescando = false;      // evita solapar refrescos si uno tarda
   var REFRESH_MS = 90000;       // cada 90s: trae publicaciones nuevas + stock de ML
   var _lastListingsHTML = null; // último HTML pintado en la lista (guard anti-parpadeo)
+  // Tienda web propia (Alpha Fitness): catálogo + editor de enlace. Las composiciones
+  // viven en inv.compositions con clave "store:<productoId>" (o "::<sabor>").
+  var storeCatalog = {};   // productoId -> { id, title, sabores:[], variations:[{id,label,stock}], stockCantidad }
+  var storeCatalogCargado = false;
+  var storeSel = "";       // productoId de la tienda en edición ("store:" se antepone en las claves)
+  var storeVar = "";       // sabor en edición ("" = simple)
 
   // Cambia de pestaña dentro del panel de Inventario (Lista de productos /
   // Publicaciones y enlaces). Es lo que separa CREAR productos de ENLAZARLOS.
   function invTab(tab, porUsuario) {
-    currentTab = tab === "publicaciones" ? "publicaciones" : "productos";
+    currentTab = (tab === "publicaciones" || tab === "tienda") ? tab : "productos";
     if (porUsuario) tabTocado = true;
     var panel = elements.invPanel;
     if (!panel) return;
@@ -50,6 +56,8 @@
     // pestaña Publicaciones: se muestran/ocultan según la pestaña activa.
     var acts = panel.querySelector("#invPubActions");
     if (acts) acts.classList.toggle("is-hidden", currentTab !== "publicaciones");
+    // Al entrar a "Tienda web" la primera vez, traer el catálogo (best-effort).
+    if (currentTab === "tienda" && !storeCatalogCargado) storeCargarCatalogo();
   }
 
   function activeML() { return S.state.commerce.selectedApp || S.state.commerce.activeApp || "mercadolibre"; }
@@ -63,6 +71,7 @@
     inv = {
       products: (o && o.products) || {}, compositions: (o && o.compositions) || {},
       listingAccounts: (o && o.listingAccounts) || {},
+      storeListings: (o && o.storeListings) || {},
       listingState: (o && o.listingState) || {}, syncLog: (o && Array.isArray(o.syncLog)) ? o.syncLog : []
     };
     snapshotServerStock();
@@ -100,6 +109,7 @@
     });
     var res = await S.requireSecureApi().inventory("save", {
       products: productos, compositions: inv.compositions, listingAccounts: inv.listingAccounts,
+      storeListings: inv.storeListings || {},
       listingState: inv.listingState, syncLog: inv.syncLog
     });
     if (res && res.inventory) adoptInv(res.inventory); // reflejar el estado real fusionado
@@ -158,7 +168,19 @@
     while (inv.products["PROD-" + String(n).padStart(6, "0")]) n++;
     return "PROD-" + String(n).padStart(6, "0");
   }
-  function tituloListing(mlbId) { return (catalogo[mlbId] && catalogo[mlbId].title) || mlbId; }
+  function tituloListing(mlbId) {
+    // Publicaciones de la tienda propia ("store:<pid>"): nombre desde storeCatalog o
+    // el registro storeListings; con sufijo del sabor si la clave lo trae.
+    if (String(mlbId).indexOf("store:") === 0) {
+      var resto = String(mlbId).slice(6);
+      var partes = resto.split("::");
+      var pid = partes[0], sab = partes[1];
+      var nom = (storeCatalog[pid] && storeCatalog[pid].title) ||
+        (inv.storeListings && inv.storeListings[pid] && inv.storeListings[pid].nombre) || ("Tienda · " + pid);
+      return "🛒 " + nom + (sab ? " · " + sab : "");
+    }
+    return (catalogo[mlbId] && catalogo[mlbId].title) || mlbId;
+  }
   function variacionesDe(mlbId) { return (catalogo[mlbId] && catalogo[mlbId].variations) || []; }
   function varLabel(mlbId, varId) {
     var vs = variacionesDe(mlbId);
@@ -535,7 +557,7 @@
   // ============================================================
   //  RENDER
   // ============================================================
-  function renderInventory() { renderProductos(); renderListings(); renderCompose(); renderLog(); }
+  function renderInventory() { renderProductos(); renderListings(); renderCompose(); renderLog(); renderStore(); }
 
   function renderProductos() {
     if (!elements.invProdBody) return;
@@ -1321,6 +1343,169 @@
   }
   function invLimpiarStockFiltro() { stockFilter = "all"; renderProductos(); }
 
+  // ============================================================
+  //  TIENDA WEB (Alpha Fitness) — enlace de stock central
+  //  Reusa el motor BOM (computeListing/computeVariation) con clave
+  //  "store:<productoId>" (o "::<sabor>"). El editor es propio (no toca el de ML).
+  // ============================================================
+  async function storeCargarCatalogo() {
+    setInvMsg("Cargando catálogo de la tienda…");
+    try {
+      var res = await S.requireSecureApi().alphaStore("catalog");
+      var products = (res && res.products) || [];
+      storeCatalog = {};
+      products.forEach(function (p) {
+        var sabores = Array.isArray(p.sabores) ? p.sabores.filter(Boolean) : [];
+        var spf = (p.stockPorSabor && typeof p.stockPorSabor === "object") ? p.stockPorSabor : {};
+        storeCatalog[p.id] = {
+          id: p.id, title: p.nombre || ("Producto " + p.id),
+          sabores: sabores, stockCantidad: p.stockCantidad, stockPorSabor: spf
+        };
+      });
+      storeCatalogCargado = true;
+      renderStore();
+      setInvMsg(products.length + " producto(s) de la tienda cargado(s).", "success");
+    } catch (e) {
+      setInvMsg("No se pudo cargar la tienda: " + ((e && e.message) || "error") + ". Verificá que configuraste la tienda en Nexus (ALPHA_SITE_URL).", "error");
+    }
+  }
+
+  function storeStockDe(pid, sabor) {
+    var base = "store:" + pid;
+    return sabor ? computeVariation(base, sabor) : computeListing(base);
+  }
+  function storeEnlazado(pid, sabor) {
+    var k = "store:" + pid + (sabor ? "::" + sabor : "");
+    return Array.isArray(inv.compositions[k]) && inv.compositions[k].length > 0;
+  }
+
+  function renderStore() {
+    if (!elements.invStoreBody) return;
+    var ids = Object.keys(storeCatalog);
+    elements.invStoreEmpty && elements.invStoreEmpty.classList.toggle("is-visible", !ids.length);
+    if (!ids.length) { elements.invStoreBody.innerHTML = ""; renderStoreCompose(); return; }
+    var rows = ids.map(function (pid) {
+      var p = storeCatalog[pid];
+      if (p.sabores.length) {
+        var head = "<tr class='inv-parent'><td colspan='5'><b>🛒 " + escapeHtml(p.title) + "</b> <small class='pub-quiet'>" + p.sabores.length + " sabor(es)</small></td></tr>";
+        var subs = p.sabores.map(function (s) {
+          var calc = storeStockDe(pid, s);
+          var tienda = (p.stockPorSabor && p.stockPorSabor[s] != null) ? p.stockPorSabor[s] : null;
+          var enl = storeEnlazado(pid, s);
+          return "<tr class='inv-child'>" +
+            "<td class='inv-child-name'>" + escapeHtml(s) + "</td>" +
+            "<td>" + (enl ? "<span class='inv-pill ok'>enlazado</span>" : "<span class='inv-pill'>sin enlazar</span>") + "</td>" +
+            "<td>" + (calc == null ? "—" : integerNumber.format(calc)) + "</td>" +
+            "<td>" + (tienda == null ? "—" : integerNumber.format(tienda)) + "</td>" +
+            "<td><button class='table-action' type='button' data-store-cfg='" + escapeHtml(pid) + "' data-store-sabor='" + escapeHtml(s) + "'>" + (enl ? "Editar" : "Enlazar") + "</button></td>" +
+          "</tr>";
+        }).join("");
+        return head + subs;
+      }
+      var calcS = storeStockDe(pid, "");
+      var tiendaS = (p.stockCantidad != null) ? p.stockCantidad : null;
+      var enlS = storeEnlazado(pid, "");
+      return "<tr>" +
+        "<td><b>🛒 " + escapeHtml(p.title) + "</b></td>" +
+        "<td>" + (enlS ? "<span class='inv-pill ok'>enlazado</span>" : "<span class='inv-pill'>sin enlazar</span>") + "</td>" +
+        "<td>" + (calcS == null ? "—" : integerNumber.format(calcS)) + "</td>" +
+        "<td>" + (tiendaS == null ? "—" : integerNumber.format(tiendaS)) + "</td>" +
+        "<td><button class='table-action' type='button' data-store-cfg='" + escapeHtml(pid) + "' data-store-sabor=''>" + (enlS ? "Editar" : "Enlazar") + "</button></td>" +
+      "</tr>";
+    }).join("");
+    elements.invStoreBody.innerHTML = rows;
+    renderStoreCompose();
+  }
+
+  function storeConfigurar(pid, sabor) {
+    if (!Object.keys(inv.products).length) { setInvMsg("Primero creá productos físicos en “Lista de productos”.", "error"); return; }
+    storeSel = pid; storeVar = sabor || "";
+    renderStoreCompose();
+    elements.invStoreCompose && elements.invStoreCompose.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+  function storeComposeCancelar() { storeSel = ""; storeVar = ""; renderStoreCompose(); }
+
+  function renderStoreCompose() {
+    if (!elements.invStoreCompose) return;
+    var abierto = !!storeSel;
+    elements.invStoreCompose.classList.toggle("is-hidden", !abierto);
+    if (!abierto || !elements.invStoreComposeRows) return;
+    var p = storeCatalog[storeSel] || { title: storeSel };
+    var label = storeVar ? (p.title + " · " + storeVar) : p.title;
+    if (elements.invStoreComposeTitle) elements.invStoreComposeTitle.textContent = "Enlace · " + label;
+    var k = "store:" + storeSel + (storeVar ? "::" + storeVar : "");
+    var comp = inv.compositions[k] || [];
+    var prodOpts = Object.keys(inv.products).map(function (id) {
+      return { id: id, name: inv.products[id].name || inv.products[id].sku || id };
+    });
+    var rowsHtml = comp.map(function (c, idx) {
+      var sel = prodOpts.map(function (o) {
+        return "<option value='" + escapeHtml(o.id) + "'" + (o.id === c.productId ? " selected" : "") + ">" + escapeHtml(o.name) + "</option>";
+      }).join("");
+      return "<div class='inv-comp-row' data-idx='" + idx + "'>" +
+        "<select class='inv-store-prod'>" + sel + "</select>" +
+        "<input class='inv-store-qty' type='text' inputmode='numeric' value='" + escapeHtml(String(Number(c.qty) || 1)) + "' />" +
+        "<button class='table-action delete-action' type='button' data-store-del='" + idx + "'>Quitar</button>" +
+      "</div>";
+    }).join("") || "<p class='pub-quiet'>Sin componentes. Agregá el/los producto(s) físico(s) que consume.</p>";
+    elements.invStoreComposeRows.innerHTML = rowsHtml +
+      "<button class='ghost-button' type='button' data-store-add='1'>+ Componente</button>";
+  }
+
+  function storeComposeAddComponent() {
+    if (!storeSel) return;
+    var firstProd = Object.keys(inv.products)[0];
+    if (!firstProd) return;
+    var k = "store:" + storeSel + (storeVar ? "::" + storeVar : "");
+    var comp = inv.compositions[k] || [];
+    comp.push({ productId: firstProd, qty: 1 });
+    inv.compositions[k] = comp;
+    renderStoreCompose();
+  }
+  function storeComposeQuitar(idx) {
+    if (!storeSel) return;
+    var k = "store:" + storeSel + (storeVar ? "::" + storeVar : "");
+    var comp = inv.compositions[k] || [];
+    comp.splice(idx, 1);
+    if (comp.length) inv.compositions[k] = comp; else delete inv.compositions[k];
+    renderStoreCompose();
+  }
+
+  async function storeComposeGuardar() {
+    if (!storeSel || !elements.invStoreComposeRows) return;
+    var k = "store:" + storeSel + (storeVar ? "::" + storeVar : "");
+    var comp = [];
+    elements.invStoreComposeRows.querySelectorAll(".inv-comp-row").forEach(function (r) {
+      var pid = (r.querySelector(".inv-store-prod") || {}).value;
+      var qty = Math.max(1, Math.floor(Number((r.querySelector(".inv-store-qty") || {}).value) || 1));
+      if (pid) comp.push({ productId: pid, qty: qty });
+    });
+    if (comp.length) inv.compositions[k] = comp; else delete inv.compositions[k];
+    var p = storeCatalog[storeSel];
+    inv.storeListings = inv.storeListings || {};
+    inv.storeListings[storeSel] = { nombre: (p && p.title) || storeSel, sabores: (p && p.sabores) || [] };
+    if (elements.invStoreComposeMsg) { elements.invStoreComposeMsg.textContent = "Guardando…"; elements.invStoreComposeMsg.className = "meta-message"; }
+    try {
+      await invSave();
+      if (elements.invStoreComposeMsg) { elements.invStoreComposeMsg.textContent = "Enlace guardado. Tocá “Sincronizar tienda” para empujar el stock."; elements.invStoreComposeMsg.className = "meta-message is-success"; }
+      storeSel = ""; storeVar = "";
+      renderStore();
+    } catch (e) {
+      if (elements.invStoreComposeMsg) { elements.invStoreComposeMsg.textContent = "Error: " + ((e && e.message) || "error"); elements.invStoreComposeMsg.className = "meta-message is-error"; }
+    }
+  }
+
+  async function storeSync() {
+    setInvMsg("Sincronizando stock con la tienda…");
+    try {
+      var res = await S.requireSecureApi().alphaStore("push");
+      var n = (res && res.pushed) || 0, ap = (res && res.applied) || 0;
+      if (!n) setInvMsg("No hay productos de la tienda enlazados todavía. Enlazá alguno con “Enlazar”.", "error");
+      else setInvMsg("Tienda sincronizada: " + ap + "/" + n + " actualización(es) aplicada(s).", "success");
+      await storeCargarCatalogo();
+    } catch (e) { setInvMsg("Error al sincronizar la tienda: " + ((e && e.message) || "error"), "error"); }
+  }
+
   Object.assign(S, {
     abrirInventario, invActualizar, renderInventory, invTab, detenerInvTiempoReal,
     cogsUnit: cogsUnit, getInventory: getInventory, ensureInventoryLoaded: ensureInventoryLoaded,
@@ -1329,6 +1514,9 @@
     invCargarPublicaciones, invResyncAll, invReintentarUno,
     invConfigurar, invComposeCancelar, invComposeAddComponent, invComposeQuitar, invComposeGuardar, invToggleExpand,
     invToggleFamilia, invSetFilter, invSetCompFiltro, invLimpiarCompFiltro,
-    invRefiltrarPorCuenta
+    invRefiltrarPorCuenta,
+    // Tienda web (Alpha Fitness)
+    storeCargarCatalogo, storeConfigurar, storeComposeCancelar, storeComposeGuardar,
+    storeComposeAddComponent, storeComposeQuitar, storeSync
   });
 })();

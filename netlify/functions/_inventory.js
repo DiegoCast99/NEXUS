@@ -25,6 +25,11 @@ function normalizeInv(inv) {
   // "mercadolibre" | "mercadolibre2" | ...). Lo usa el sync para empujar cada
   // anuncio con el token de SU cuenta, aunque la venta caiga en otra.
   if (!inv.listingAccounts || typeof inv.listingAccounts !== "object") inv.listingAccounts = {};
+  // Tienda web propia (Alpha Fitness) enlazada como un canal más: registro de los
+  // productos de la tienda vinculados (metadata para la UI). Las composiciones viven
+  // en el MISMO inv.compositions con clave "store:<productoId>" (o
+  // "store:<productoId>::<sabor>"), así el motor BOM las calcula sin cambios.
+  if (!inv.storeListings || typeof inv.storeListings !== "object") inv.storeListings = {};
   if (!Array.isArray(inv.syncLog)) inv.syncLog = [];
   return inv;
 }

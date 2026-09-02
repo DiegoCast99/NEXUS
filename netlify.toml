@@ -36,6 +36,13 @@
 [functions."ml-ads-autopilot"]
   schedule = "0 12 * * *"
 
+# Poller de ventas de la tienda propia (Alpha Fitness): cada 10 minutos consulta el
+# feed de la tienda y descuenta/re-sincroniza el stock central por cada venta nueva.
+# SEGURO: no-op salvo que la tienda esté configurada (ALPHA_SITE_URL) y el titular
+# haya sincronizado al menos una vez (registra su uid).
+[functions."alpha-store-poll"]
+  schedule = "*/10 * * * *"
+
 # === Cabeceras de seguridad (Ola 0 de la auditoría) ===
 # Aplicadas a todas las rutas.
 [[headers]]

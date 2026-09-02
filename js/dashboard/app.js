@@ -284,6 +284,23 @@
     elements.invComposeAdd?.addEventListener("click", () => S.invComposeAddComponent(""));
     elements.invComposeSave?.addEventListener("click", () => S.invComposeGuardar());
     elements.invComposeCancel?.addEventListener("click", () => S.invComposeCancelar());
+    // ---- Tienda web (Alpha Fitness): catálogo, enlace y sync ----
+    elements.invStoreReload?.addEventListener("click", () => S.storeCargarCatalogo());
+    elements.invStoreSync?.addEventListener("click", () => S.storeSync());
+    elements.invStoreComposeSave?.addEventListener("click", () => S.storeComposeGuardar());
+    elements.invStoreComposeCancel?.addEventListener("click", () => S.storeComposeCancelar());
+    // Enlazar/editar un producto (o sabor) de la tienda (delegado en la tabla).
+    elements.invStoreBody?.addEventListener("click", (event) => {
+      const cfg = event.target.closest("button[data-store-cfg]");
+      if (cfg) S.storeConfigurar(cfg.getAttribute("data-store-cfg"), cfg.getAttribute("data-store-sabor") || "");
+    });
+    // Agregar/quitar componentes del enlace de la tienda (delegado en las filas).
+    elements.invStoreComposeRows?.addEventListener("click", (event) => {
+      const del = event.target.closest("button[data-store-del]");
+      if (del) { S.storeComposeQuitar(parseInt(del.getAttribute("data-store-del"), 10)); return; }
+      const add = event.target.closest("button[data-store-add]");
+      if (add) S.storeComposeAddComponent();
+    });
     // Agregar/quitar componentes por sabor (delegado en las filas de la composición).
     elements.invComposeRows?.addEventListener("click", (event) => {
       const del = event.target.closest("button[data-comp-del]");

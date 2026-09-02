@@ -1443,6 +1443,27 @@
 }
 .inv-comp-prod:focus, .inv-comp-qty:focus { outline: none; border-color: var(--accent); }
 
+/* Tienda web (Alpha Fitness): reusa el mismo look que la composición de ML. */
+.inv-store-prod {
+  flex: 1; min-width: 0; padding: 8px 10px;
+  border: 1px solid var(--border); border-radius: 9px;
+  background: var(--panel); color: var(--text); font-size: 13px; font-family: inherit;
+}
+.inv-store-qty {
+  flex: 0 0 84px; padding: 8px 10px;
+  border: 1px solid var(--border); border-radius: 9px;
+  background: var(--panel); color: var(--text); font-size: 13px;
+  text-align: right; font-variant-numeric: tabular-nums; font-family: inherit;
+}
+.inv-store-prod:focus, .inv-store-qty:focus { outline: none; border-color: var(--accent); }
+/* Pill de estado de enlace (enlazado / sin enlazar) */
+.inv-pill {
+  display: inline-block; padding: 2px 9px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; letter-spacing: .2px;
+  border: 1px solid var(--border); color: var(--muted); background: transparent;
+}
+.inv-pill.ok { color: #22c55e; border-color: rgba(34,197,94,.4); background: rgba(34,197,94,.08); }
+
 /* Historial de sincronización */
 .inv-log { display: flex; flex-direction: column; gap: 6px; }
 .inv-log-row {

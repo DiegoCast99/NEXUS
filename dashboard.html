@@ -112,7 +112,7 @@
     <link rel="stylesheet" href="./css/dashboard/welcome.css?v=e17d2d321c" />
     <link rel="stylesheet" href="./css/dashboard/finance.css?v=b4cb91aa09" />
     <link rel="stylesheet" href="./css/dashboard/meta.css?v=6d84225452" />
-    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=bb18250d24" />
+    <link rel="stylesheet" href="./css/dashboard/commerce.css?v=fce291ba54" />
     <link rel="stylesheet" href="./css/dashboard/tools.css?v=56092e9282" />
     <link rel="stylesheet" href="./css/dashboard/integrations.css?v=4fdb501d32" />
     <link rel="stylesheet" href="./css/dashboard/redesign.css?v=685a44047b" />
@@ -1354,6 +1354,7 @@
                 <div class="inv-tabs" role="tablist">
                   <button class="inv-tab is-active" type="button" data-inv-tab="productos">Lista de productos</button>
                   <button class="inv-tab" type="button" data-inv-tab="publicaciones">Publicaciones y enlaces</button>
+                  <button class="inv-tab" type="button" data-inv-tab="tienda">Tienda web</button>
                 </div>
                 <!-- Solo aplican a la pestaña "Publicaciones y enlaces": invTab las muestra/oculta -->
                 <div class="inv-pub-actions is-hidden" id="invPubActions">
@@ -1436,6 +1437,40 @@
 
                 <h3 class="inv-subtitle">Historial de sincronización</h3>
                 <div class="inv-log" id="invLog"></div>
+              </div>
+
+              <!-- Vista 3: TIENDA WEB (Alpha Fitness) — enlace de stock central -->
+              <div class="inv-view is-hidden" data-inv-view="tienda">
+                <p class="inv-hint">Enlazá los productos de tu <b>tienda web Alpha Fitness</b> al mismo stock físico que Mercado Libre. Al vender en la tienda o en ML, el stock baja en <b>todos lados</b>; si cargás stock acá, sube en la tienda. Cada <b>sabor</b> se controla por separado.</p>
+                <div class="inv-actions">
+                  <button class="ghost-button" type="button" id="invStoreReload">Actualizar catálogo de la tienda</button>
+                  <button class="primary-button" type="button" id="invStoreSync">Sincronizar tienda</button>
+                </div>
+                <div class="table-wrap">
+                  <table class="meta-table inv-listing-table">
+                    <thead>
+                      <tr><th>Producto de la tienda</th><th>Físico enlazado</th><th>Stock calc.</th><th>Stock tienda</th><th></th></tr>
+                    </thead>
+                    <tbody id="invStoreBody"></tbody>
+                  </table>
+                  <div class="empty-state" id="invStoreEmpty">
+                    <span></span>
+                    <h3>Conectá tu tienda</h3>
+                    <p>Tocá "Actualizar catálogo de la tienda" para traer tus productos y enlazarlos al stock central.</p>
+                  </div>
+                </div>
+
+                <!-- Editor de composición de la tienda (se abre con "Enlazar") -->
+                <div class="inv-compose is-hidden" id="invStoreCompose">
+                  <h4 class="inv-subtitle" id="invStoreComposeTitle">Enlace</h4>
+                  <p class="inv-hint">Definí qué productos físicos (y cuántos) consume este producto de la tienda.</p>
+                  <div id="invStoreComposeRows"></div>
+                  <div class="inv-actions">
+                    <button class="primary-button" type="button" id="invStoreComposeSave">Guardar enlace</button>
+                    <button class="ghost-button" type="button" id="invStoreComposeCancel">Cancelar</button>
+                  </div>
+                  <p class="meta-message" id="invStoreComposeMsg"></p>
+                </div>
               </div>
             </section>
 
@@ -1886,10 +1921,10 @@
     <script src="./js/firebase/config.js?v=69d619bec8"></script>
     <script src="./js/firebase/auth.js?v=5b6891dfee"></script>
     <script src="./js/firebase/db.js?v=58757eb001"></script>
-    <script src="./js/firebase/secure-api.js?v=651df43376"></script>
+    <script src="./js/firebase/secure-api.js?v=ca8a024daf"></script>
     <!-- Dashboard modules -->
     <script src="./js/core/auth.js?v=a4b48152db"></script>
-    <script src="./js/dashboard/store.js?v=1ec3fb957a"></script>
+    <script src="./js/dashboard/store.js?v=5a01471af1"></script>
     <script src="./js/dashboard/integration-core.js?v=5d3ff73791"></script>
     <script src="./js/dashboard/charts.js?v=855b33088a"></script>
     <script src="./js/dashboard/finance.js?v=bd6e1f030e"></script>
@@ -1897,7 +1932,7 @@
     <script src="./js/dashboard/meta.js?v=ed9747f9f6"></script>
     <script src="./js/dashboard/commerce.js?v=9ce102e1e3"></script>
     <script src="./js/dashboard/ads-agent.js?v=0d6508662f"></script>
-    <script src="./js/dashboard/inventory.js?v=eb3b042054"></script>
+    <script src="./js/dashboard/inventory.js?v=6668b98d26"></script>
     <script src="./js/dashboard/rentabilidad.js?v=b012c90521"></script>
     <script src="./js/dashboard/notifications.js?v=a69e274803"></script>
     <script src="./js/dashboard/tools.js?v=bcada13fc2"></script>
@@ -1906,7 +1941,7 @@
     <script src="./js/dashboard/logos.js?v=eac391f0f3"></script>
     <script src="./js/dashboard/home.js?v=84462f747d"></script>
     <script src="./js/dashboard/shell.js?v=fc033e49ec"></script>
-    <script src="./js/dashboard/app.js?v=0048aca5fa"></script>
+    <script src="./js/dashboard/app.js?v=aa6a2b9e1f"></script>
     <script src="./js/dashboard/mobile-tables.js?v=acd7212400"></script>
     <script src="./js/pwa.js?v=7087eb1afe" defer></script>
   </body>

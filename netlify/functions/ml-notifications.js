@@ -15,6 +15,7 @@ const { adminGetDoc, adminPatchDoc, adminPatchDocIf, adminQueryUsersByField } = 
 const { sendPush } = require("./_webpush");
 const { ML_ACCOUNTS, mlAccountName, mlSellerField, decrypt, encrypt } = require("./_shared");
 const { normalizeInv, computeListing, computeVariation, listingsAfectadas, aplicarVenta } = require("./_inventory");
+const { alphaConfig, computeStoreUpdates, pushToStore, isStoreKey } = require("./_alphastore");
 
 const MAX_NOTIFIED = 60;
 const ML_API = "https://api.mercadolibre.com";
@@ -308,10 +309,33 @@ function parseLedger(doc) {
 //   Fase B) Recalcula las publicaciones afectadas, hace el PUT a ML UNA sola vez,
 //           y persiste listingState + log. La ESCRITURA reintenta ante conflicto;
 //           los PUT (ya hechos) no se repiten.
+// Wrapper histórico del webhook de ML (mantiene la firma original). Arma los items
+// de la orden de ML y delega en el núcleo compartido.
 async function descontarStockPorVenta(accountId, uid, orderId, orden, accessToken, fields) {
   const items = Array.isArray(orden.order_items) ? orden.order_items : [];
   if (!items.length) return;
-  const orderKey = accountId + ":" + orderId;
+  return procesarVentaInventario({
+    uid: uid, fields: fields,
+    orderKey: accountId + ":" + orderId,
+    items: items,
+    motivo: "Venta " + orderId,
+    seedTokens: { [accountId]: accessToken },
+    defaultAccount: accountId
+  });
+}
+
+// Núcleo compartido del descuento por venta. Lo usan el webhook de ML (venta en ML)
+// y el poller de la tienda (venta en Alpha Fitness). `items` viene en formato de
+// order_items de ML: [{ item:{ id, variation_id }, quantity }] — para la tienda,
+// id = "store:<productoId>" y variation_id = sabor.
+//   opts = { uid, fields, orderKey, items, motivo, seedTokens?, defaultAccount? }
+async function procesarVentaInventario(opts) {
+  const uid = opts.uid, fields = opts.fields || {}, orderKey = opts.orderKey;
+  const items = opts.items || [];
+  const motivo = opts.motivo || "Venta";
+  const seedTokens = opts.seedTokens || {};
+  const defaultAccount = opts.defaultAccount || null;
+  if (!items.length || !uid || !orderKey) return;
 
   // --- Fase A: descuento + idempotencia ---
   // Lee el blob `inventory` (productos) y el registro `ml_inventory_processed`
@@ -340,13 +364,13 @@ async function descontarStockPorVenta(accountId, uid, orderId, orden, accessToke
     }, ["inventory", INV_LEDGER_FIELD], updateTime);
     if (ok) { changed = r.changedProducts; break; }
     if (intento === INV_MAX_RETRIES - 1) {
-      console.error("ml-notifications inventario: no se pudo descontar orden " + orderId + " (conflictos)");
+      console.error("inventario: no se pudo descontar " + orderKey + " (conflictos)");
       return;
     }
   }
   if (!changed || !changed.length) return;
 
-  // --- Fase B: recalcular, empujar a ML (una vez) y persistir estado ---
+  // --- Fase B: recalcular, empujar (ML + tienda propia) y persistir estado ---
   let pushed = null;
   for (let intento = 0; intento < INV_MAX_RETRIES; intento++) {
     const doc = await adminGetDoc("users/" + uid);
@@ -356,13 +380,16 @@ async function descontarStockPorVenta(accountId, uid, orderId, orden, accessToke
 
     if (pushed === null) {
       pushed = {};
-      // Token por cuenta: la de la venta ya viene fresca; las demás se resuelven
-      // bajo demanda (multi-cuenta). Así una venta en ML1 puede empujar el stock a
-      // publicaciones de ML2 con el token de ML2.
-      const tokenCache = { [accountId]: accessToken };
+      // Token por cuenta: la de la venta (si hay) ya viene fresca; las demás se
+      // resuelven bajo demanda (multi-cuenta). Así una venta puede empujar el stock a
+      // publicaciones de OTRA cuenta con el token de esa cuenta.
+      const tokenCache = Object.assign({}, seedTokens);
       const afectadas = listingsAfectadas(inv, changed);
+
+      // ── Publicaciones de Mercado Libre ──
       for (let i = 0; i < afectadas.length; i++) {
         const mlbId = afectadas[i];
+        if (isStoreKey(mlbId)) continue; // la tienda propia se empuja aparte, más abajo
         const computedApprox = computeListing(inv, mlbId); // total aprox para el skip
         if (computedApprox == null) continue;
         const prev = inv.listingState[mlbId] || {};
@@ -370,12 +397,12 @@ async function descontarStockPorVenta(accountId, uid, orderId, orden, accessToke
         const antes = prev.published != null ? prev.published : null;
 
         // Cuenta dueña de ESTA publicación. Si no está registrada, cae en la de la venta.
-        const acc = (inv.listingAccounts && inv.listingAccounts[mlbId]) || accountId;
-        if (!(acc in tokenCache)) {
+        const acc = (inv.listingAccounts && inv.listingAccounts[mlbId]) || defaultAccount;
+        if (acc && !(acc in tokenCache)) {
           try { tokenCache[acc] = await tokenParaCuenta(uid, fields, acc); }
           catch (e) { tokenCache[acc] = null; }
         }
-        const tok = tokenCache[acc];
+        const tok = acc ? tokenCache[acc] : null;
         if (!tok) { pushed[mlbId] = { computed: computedApprox, ok: false, error: "sin token de " + acc, antes: antes }; continue; }
 
         try {
@@ -387,6 +414,31 @@ async function descontarStockPorVenta(accountId, uid, orderId, orden, accessToke
         }
         await sleep(120);
       }
+
+      // ── Tienda propia (Alpha Fitness): empuja el stock calculado de las
+      // publicaciones "store:" afectadas en UN solo POST. Best-effort: si falla,
+      // se marca error visible pero el stock de ML ya quedó sincronizado. ──
+      const storeAfectadas = afectadas.filter(isStoreKey);
+      if (storeAfectadas.length) {
+        const cfg = alphaConfig();
+        const marcar = function (okFlag, err) {
+          storeAfectadas.forEach(function (base) {
+            const c = computeListing(inv, base);
+            const prev = inv.listingState[base] || {};
+            pushed[base] = { computed: c == null ? 0 : c, ok: okFlag, error: err, antes: prev.published != null ? prev.published : null };
+          });
+        };
+        if (!cfg) {
+          marcar(false, "tienda no configurada (ALPHA_SITE_URL)");
+        } else {
+          try {
+            const updates = computeStoreUpdates(inv, storeAfectadas);
+            if (updates.length) await pushToStore(cfg, updates);
+            marcar(true, null);
+          } catch (e) { marcar(false, (e && e.message) || "error tienda"); }
+        }
+      }
+
       if (!Object.keys(pushed).length) return; // nada que persistir
     }
 
@@ -399,7 +451,7 @@ async function descontarStockPorVenta(accountId, uid, orderId, orden, accessToke
       inv.syncLog.unshift({
         ts: nowIso(), listing: mlbId,
         antes: p.antes == null ? "—" : p.antes, despues: p.computed,
-        motivo: "Venta " + orderId, resultado: p.ok ? "ok" : "error",
+        motivo: motivo, resultado: p.ok ? "ok" : "error",
         error: p.ok ? undefined : p.error
       });
     });
@@ -408,9 +460,9 @@ async function descontarStockPorVenta(accountId, uid, orderId, orden, accessToke
     const ok = await adminPatchDocIf("users/" + uid,
       { inventory: { stringValue: JSON.stringify(inv) } }, ["inventory"], updateTime);
     if (ok) return;
-    // conflicto: releer y re-aplicar `pushed` sin volver a hacer PUT a ML
+    // conflicto: releer y re-aplicar `pushed` sin volver a hacer PUT a ML/tienda
   }
-  console.error("ml-notifications inventario: no se pudo persistir el estado de sync de la orden " + orderId);
+  console.error("inventario: no se pudo persistir el estado de sync de " + orderKey);
 }
 
 // Sincroniza el stock de una publicación a ML con el token del server, calculando
@@ -458,4 +510,6 @@ async function syncListingToML(accessToken, inv, mlbId) {
 }
 
 // Export interno para tests unitarios (Netlify solo invoca `handler`).
-exports._test = { descontarStockPorVenta, syncListingToML, reclamarNotificacion };
+exports._test = { descontarStockPorVenta, procesarVentaInventario, syncListingToML, reclamarNotificacion };
+// Export para el poller de la tienda (Netlify solo invoca `handler`).
+exports.procesarVentaInventario = procesarVentaInventario;

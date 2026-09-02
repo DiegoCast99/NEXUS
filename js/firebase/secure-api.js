@@ -125,6 +125,10 @@
     inventory: function (action, extra) {
       return call("ml-inventory", Object.assign({ action: action }, extra || {}));
     },
+    // Puente de stock con la tienda propia (Alpha Fitness). action: catalog | push | status.
+    alphaStore: function (action, extra) {
+      return call("alpha-store", Object.assign({ action: action }, extra || {}));
+    },
     // Agente publicitario · piloto automatico (Nivel 3). action: status | arm | disarm.
     adsAgent: function (action, extra) {
       return call("ml-ads-agent", Object.assign({ action: action }, extra || {}));
