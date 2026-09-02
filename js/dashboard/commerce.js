@@ -683,8 +683,8 @@
     // entre las tres cuentas, no chips por sección. El inventario/stock es central
     // y compartido; cada sección se filtra por la cuenta elegida acá.
     var cuentas = (S.mlAccounts && S.mlAccounts()) || S.mlAccountsFor(actual);
-    // Con una sola cuenta el selector no aporta nada.
-    if (cuentas.length < 2) {
+    // Con ninguna cuenta el selector no aporta (igual necesita ML para tener contexto).
+    if (cuentas.length < 1) {
       elements.mlAccountField?.classList.add("is-hidden");
       return;
     }
@@ -693,21 +693,40 @@
       var estado = cfg.hasToken ? "" : " (sin conectar)";
       return '<option value="' + acc.id + '">' + escapeHtml(acc.name + estado) + "</option>";
     }).join("");
+    // Al final: la tienda propia. Seleccionarla muestra la vista de enlace de stock
+    // (antes era la pestaña "Tienda web" del Inventario). El titular pidió tenerla
+    // junto a las cuentas de ML, no como sub-pestaña.
+    html += '<option value="__alphaweb__">Alpha Fitness Web</option>';
     if (elements.mlAccountSelect.innerHTML !== html) elements.mlAccountSelect.innerHTML = html;
-    elements.mlAccountSelect.value = actual;
+    // El selector muestra "Alpha Fitness Web" solo cuando el Inventario está a la vista
+    // y en la vista tienda; en cualquier otro caso, la cuenta de ML activa.
+    var invPanel = document.getElementById("invPanel");
+    var invVisible = invPanel && !invPanel.classList.contains("section-hidden");
+    var enTienda = invVisible && S.invEnTienda && S.invEnTienda();
+    elements.mlAccountSelect.value = enTienda ? "__alphaweb__" : actual;
   }
 
   // Cambia de cuenta: es entrar a otra "app", asi que reusa selectCommerceApp
   // (que ya trae los datos de esa cuenta y reprograma el auto-sync).
   function selectMLAccount(id) {
-    if (!isMLApp(id) || id === activeMLId()) return;
-    selectCommerceApp(id);
-    // Si el Inventario está a la vista, re-filtrar sus publicaciones por la nueva
-    // cuenta (el stock físico es central; solo cambia qué publicaciones se listan).
     var invPanel = document.getElementById("invPanel");
-    if (invPanel && !invPanel.classList.contains("section-hidden") && S.invRefiltrarPorCuenta) {
-      S.invRefiltrarPorCuenta();
+    var invVisible = invPanel && !invPanel.classList.contains("section-hidden");
+    // "Alpha Fitness Web": mostrar la vista de enlace de stock de la tienda dentro
+    // del Inventario (no cambia la app de e-commerce activa, solo la sub-vista).
+    if (id === "__alphaweb__") {
+      if (S.invTab) S.invTab("tienda", true);
+      return;
     }
+    if (!isMLApp(id)) return;
+    var veniaDeTienda = invVisible && S.invEnTienda && S.invEnTienda();
+    if (id !== activeMLId()) {
+      selectCommerceApp(id);
+      // Si el Inventario está a la vista, re-filtrar sus publicaciones por la nueva
+      // cuenta (el stock físico es central; solo cambia qué publicaciones se listan).
+      if (invVisible && S.invRefiltrarPorCuenta) S.invRefiltrarPorCuenta();
+    }
+    // Si veníamos de la vista tienda, volver a las publicaciones de ML de esa cuenta.
+    if (veniaDeTienda && S.invTab) S.invTab("publicaciones");
   }
 
   // Refleja en la UI el periodo guardado (y muestra las fechas solo si es custom).
@@ -3749,7 +3768,7 @@
     clearSelectedCommerceApp, clearSelectedCommerceGroup, createCommerceSnapshot, disconnectML, ensureMLLiveDefaults, fetchCommerceData, fetchMLOrders,
     handleMlOAuthReturn, normalizeCommerceOrder, normalizeMLOrder,
     populateCommerceConfigForm, readCommerceConfigFromForm, renderCommerceDashboard, renderCommerceSwitcher,
-    applyPeriodChange, getPeriodRange, loadMLListings, markPendingStock, openSaleDeepLink, renderPeriodBar, saveMLListingChanges, selectMLAccount, toggleListingExpand, toggleListingStatus,
+    applyPeriodChange, getPeriodRange, loadMLListings, markPendingStock, openSaleDeepLink, renderPeriodBar, renderMLAccountSelect, saveMLListingChanges, selectMLAccount, toggleListingExpand, toggleListingStatus,
     scheduleCommerceRefresh, scheduleMLRefresh, selectCommerceApp, setCommerceMessage, setMlMessage,
     startMLOAuth, syncCommerce, syncMercadoLibre,
     renderMercadoPago, resumenMercadoPago, guardarTokenMP,

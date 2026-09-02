@@ -58,7 +58,12 @@
     if (acts) acts.classList.toggle("is-hidden", currentTab !== "publicaciones");
     // Al entrar a "Tienda web" la primera vez, traer el catálogo (best-effort).
     if (currentTab === "tienda" && !storeCatalogCargado) storeCargarCatalogo();
+    // Mantener el selector superior en sync: "Alpha Fitness Web" cuando estamos en la
+    // vista tienda; la cuenta de ML cuando estamos en las pestañas de ML.
+    if (S.renderMLAccountSelect) S.renderMLAccountSelect();
   }
+  // ¿la vista activa del Inventario es la de la tienda propia (Alpha Fitness Web)?
+  function invEnTienda() { return currentTab === "tienda"; }
 
   function activeML() { return S.state.commerce.selectedApp || S.state.commerce.activeApp || "mercadolibre"; }
   function dormir(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
@@ -1507,7 +1512,7 @@
   }
 
   Object.assign(S, {
-    abrirInventario, invActualizar, renderInventory, invTab, detenerInvTiempoReal,
+    abrirInventario, invActualizar, renderInventory, invTab, invEnTienda, detenerInvTiempoReal,
     cogsUnit: cogsUnit, getInventory: getInventory, ensureInventoryLoaded: ensureInventoryLoaded,
     invShowStock: invShowStock, invLimpiarStockFiltro: invLimpiarStockFiltro,
     invAddProduct, invGuardarProductos, invDeleteProduct,
