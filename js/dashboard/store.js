@@ -659,6 +659,7 @@
     ventaVariacion: document.getElementById("ventaVariacion"),
     ventaUnidades: document.getElementById("ventaUnidades"),
     ventaProductoExtra: document.getElementById("ventaProductoExtra"),
+    ventaMLBox: document.getElementById("ventaMLBox"),
     ventaCobroEstado: document.getElementById("ventaCobroEstado"),
     ventaPagoId: document.getElementById("ventaPagoId"),
     ventaPrecio: document.getElementById("ventaPrecio"),

@@ -1543,6 +1543,27 @@
 
   function txtVenta(el, value) { if (el) el.textContent = value; }
 
+  // Enlaces a Mercado Libre de una venta, derivados del itemId (publicación) y el id
+  // de la orden. El sitio se detecta por el prefijo del itemId (MLU=Uruguay,
+  // MLB=Brasil, MLA=Argentina, ...). Devuelve { itemUrl, ventaUrl }.
+  function mlLinksDeVenta(o) {
+    var itemId = String((o && o.itemId) || "");
+    var orderId = String((o && o.id) || "");
+    var pre = itemId.slice(0, 3).toUpperCase();
+    var sites = {
+      MLU: { host: "mercadolibre.com.uy", art: "articulo.mercadolibre.com.uy", ventas: "ventas" },
+      MLA: { host: "mercadolibre.com.ar", art: "articulo.mercadolibre.com.ar", ventas: "ventas" },
+      MLM: { host: "mercadolibre.com.mx", art: "articulo.mercadolibre.com.mx", ventas: "ventas" },
+      MLC: { host: "mercadolibre.cl",     art: "articulo.mercadolibre.cl",     ventas: "ventas" },
+      MCO: { host: "mercadolibre.com.co", art: "articulo.mercadolibre.com.co", ventas: "ventas" },
+      MLB: { host: "mercadolivre.com.br", art: "produto.mercadolivre.com.br",  ventas: "vendas" }
+    };
+    var s = sites[pre] || sites.MLU;
+    var itemUrl = (itemId.length > 3) ? ("https://" + s.art + "/" + pre + "-" + itemId.slice(3)) : "";
+    var ventaUrl = orderId ? ("https://www." + s.host + "/" + s.ventas + "/" + orderId + "/detalle") : "";
+    return { itemUrl: itemUrl, ventaUrl: ventaUrl };
+  }
+
   function renderVentaDetail(orderId, preOrder) {
     if (!elements.ventaDetail) return;
     ocultarSplashVenta();
@@ -1611,6 +1632,31 @@
       ];
       if (o.itemId) lineas.push("<span>Publicación <b>" + escapeHtml(o.itemId) + "</b></span>");
       elements.ventaProductoExtra.innerHTML = lineas.join("");
+    }
+
+    // Enlaces a Mercado Libre (publicación + venta en el panel del vendedor). Llena el
+    // espacio libre bajo la tarjeta del producto. Se abren en una pestaña nueva.
+    if (elements.ventaMLBox) {
+      var mll = mlLinksDeVenta(o);
+      if (mll.itemUrl || mll.ventaUrl) {
+        var filas = "";
+        if (mll.itemUrl) {
+          filas += '<a class="venta-ml-link" href="' + mll.itemUrl + '" target="_blank" rel="noopener noreferrer">' +
+            '<span class="venta-ml-link-tx"><b>Ver la publicación</b><small>' + (o.itemId ? escapeHtml(String(o.itemId)) : "en Mercado Libre") + '</small></span>' +
+            '<span class="venta-ml-link-go">↗</span></a>';
+        }
+        if (mll.ventaUrl) {
+          filas += '<a class="venta-ml-link" href="' + mll.ventaUrl + '" target="_blank" rel="noopener noreferrer">' +
+            '<span class="venta-ml-link-tx"><b>Abrir la venta</b><small>Venta #' + escapeHtml(String(o.id)) + ' · panel de ventas</small></span>' +
+            '<span class="venta-ml-link-go">↗</span></a>';
+        }
+        elements.ventaMLBox.innerHTML =
+          '<div class="venta-ml-head"><span class="venta-ml-badge">ML</span> Enlaces de Mercado Libre</div>' + filas;
+        elements.ventaMLBox.style.display = "";
+      } else {
+        elements.ventaMLBox.innerHTML = "";
+        elements.ventaMLBox.style.display = "none";
+      }
     }
 
     // Derecha: desglose (a cuanto vendiste, cargos, lucro liquido)

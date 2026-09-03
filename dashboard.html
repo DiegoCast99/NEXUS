@@ -1261,7 +1261,8 @@
                 </div>
 
                 <div class="venta-detail-grid">
-                  <!-- Izquierda: foto + producto + unidades -->
+                  <!-- Izquierda: foto + producto + unidades, y debajo el link a ML -->
+                  <div class="venta-col-izq">
                   <div class="venta-producto-card">
                     <span class="venta-foto-wrap">
                       <img id="ventaFoto" class="venta-foto" alt="" onerror="this.style.display='none'" />
@@ -1272,6 +1273,9 @@
                       <small id="ventaUnidades" class="venta-quiet"></small>
                       <div id="ventaProductoExtra" class="venta-prod-extra"></div>
                     </div>
+                  </div>
+                  <!-- Enlaces a Mercado Libre (llena el espacio bajo la tarjeta del producto) -->
+                  <div id="ventaMLBox" class="venta-ml-card" style="display:none"></div>
                   </div>
 
                   <!-- Derecha: desglose (a cuánto vendiste, cargos, lucro) -->
