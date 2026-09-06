@@ -404,21 +404,50 @@
     //    Es lo que define el conteo "Todas". Se pagina COMPLETA (no un cap chico) y
     //    se reintenta cada página una vez → el número es CERTERO y no depende de qué
     //    fetch de detalle falló. searchOk = se pudo traer la lista entera.
-    var ids = [], offset = 0, total = Infinity, searchOk = true;
-    for (var pg = 0; pg < 60 && offset < total; pg++) {   // cap de seguridad = 3000 pubs
-      var r = null;
-      for (var intento = 0; intento < 2 && !r; intento++) {
-        try { r = await api.mlApi("/users/" + userId + "/items/search?limit=50&offset=" + offset, "GET", null, cuenta); }
-        catch (e) { r = null; }
+    var ids = [], searchOk = true;
+    // 1a) PRIMERO con search_type=scan: devuelve TODAS las publicaciones de la cuenta
+    //     SIN IMPORTAR EL ESTADO (active, paused, under_review, inactive, closed...).
+    //     El search por offset por defecto OMITE algunos estados (p.ej. una variante en
+    //     revisión) → faltaban sabores/publicaciones. scan pagina por scroll_id.
+    var okScan = false, scanTotal = null;
+    try {
+      var scrollId = "";
+      for (var sp = 0; sp < 120; sp++) {   // cap alto (120 * 100 = 12.000 pubs)
+        var su = "/users/" + userId + "/items/search?search_type=scan&limit=100" +
+          (scrollId ? "&scroll_id=" + encodeURIComponent(scrollId) : "");
+        var sr = null;
+        for (var si = 0; si < 2 && !sr; si++) { try { sr = await api.mlApi(su, "GET", null, cuenta); } catch (e) { sr = null; } }
+        if (!sr) throw new Error("scan-page-fail");
+        var sres = sr.payload || {}, slote = sres.results || [];
+        if (scanTotal == null && sres.paging && typeof sres.paging.total === "number") scanTotal = sres.paging.total;
+        scrollId = sres.scroll_id || scrollId;
+        if (slote.length) ids = ids.concat(slote);
+        if (!slote.length || !scrollId) break;
       }
-      if (!r) { searchOk = false; break; }   // una página no vino: NO reconciliar (evita borrar de más)
-      var res = r.payload || {}, lote = res.results || [];
-      ids = ids.concat(lote);
-      total = (res.paging && typeof res.paging.total === "number") ? res.paging.total : ids.length;
-      offset += 50;
-      if (!lote.length) break;
+      okScan = ids.length > 0;
+      // Si scan no trajo el total informado, la lista quedó incompleta → NO reconciliar.
+      if (okScan && scanTotal != null && ids.length < scanTotal) searchOk = false;
+    } catch (eScan) { okScan = false; }
+
+    // 1b) Fallback: paginado clásico por offset (si la cuenta/endpoint no soporta scan).
+    if (!okScan) {
+      ids = []; searchOk = true;
+      var offset = 0, total = Infinity;
+      for (var pg = 0; pg < 60 && offset < total; pg++) {   // cap de seguridad = 3000 pubs
+        var r = null;
+        for (var intento = 0; intento < 2 && !r; intento++) {
+          try { r = await api.mlApi("/users/" + userId + "/items/search?limit=50&offset=" + offset, "GET", null, cuenta); }
+          catch (e) { r = null; }
+        }
+        if (!r) { searchOk = false; break; }   // una página no vino: NO reconciliar (evita borrar de más)
+        var res = r.payload || {}, lote = res.results || [];
+        ids = ids.concat(lote);
+        total = (res.paging && typeof res.paging.total === "number") ? res.paging.total : ids.length;
+        offset += 50;
+        if (!lote.length) break;
+      }
     }
-    ids = ids.map(String);
+    ids = Array.from(new Set(ids.map(String)));   // dedup (scan puede repetir entre páginas)
     var idsSet = {}; ids.forEach(function (id) { idsSet[id] = true; });
 
     // 2) Asegurar UNA entrada por publicación ANTES de traer el detalle: así el
