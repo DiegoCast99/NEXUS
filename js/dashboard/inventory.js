@@ -964,9 +964,9 @@
       : allSynced ? '<span class="type-pill income">Sincronizado</span>'
       : '<span class="type-pill pub-warn">Pendiente</span>';
 
-    var subtitulo = listFilter === "all"
-      ? (todosIds.length + " sabores")
-      : (visibles.length + " de " + todosIds.length + " sabores");
+    // Siempre mostramos el total real de sabores de la familia: al desplegar aparecen
+    // TODOS (no solo los del filtro), así se pueden ver/configurar todas las variantes.
+    var subtitulo = todosIds.length + " sabores";
 
     var arrow = "<button class='inv-expand' type='button' data-fam-expand='" + escapeHtml(enc) + "' aria-expanded='" + exp + "' aria-label='Ver sabores'>" +
       "<svg viewBox='0 0 24 24' width='13' height='13' fill='none' stroke='currentColor' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M9 6l6 6-6 6'/></svg></button>";
@@ -982,7 +982,10 @@
       "<td></td>" +
     "</tr>";
     if (exp) {
-      visibles.forEach(function (id) {
+      // Mostrar TODOS los sabores reales de la familia (cada uno es su verdadera
+      // publicación de ML, configurable), sin importar el filtro activo. Antes solo
+      // se listaban los `visibles` → una familia con filtro puesto abría con 1-2 de N.
+      todosIds.forEach(function (id) {
         out += renderSimpleRow(id, { sabor: (descDe[id] && descDe[id].sabor) || "Variante" });
       });
     }
