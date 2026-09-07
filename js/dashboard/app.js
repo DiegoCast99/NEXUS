@@ -166,9 +166,18 @@
       event.preventDefault();
       state.commerce.configs[state.commerce.activeApp] = readCommerceConfigFromForm();
       saveCommerceConfigs();
-      scheduleCommerceRefresh();
-      setCommerceMessage(`${getCommerceApp().name} guardado en este navegador.`, "success");
-      renderCommerceDashboard();
+      const cfg = S.getCommerceConfig();
+      // Si es una tienda propia con endpoint + token, CONECTAR de una: syncCommerce
+      // persiste el token (cifrado server-side) y trae los datos. Antes "Guardar" solo
+      // guardaba en el navegador y NO persistía el token → el proxy no lo encontraba y
+      // no figuraba ningún dato hasta apretar "Sincronizar ahora". Ahora Guardar = conectar.
+      if (!S.isMLApp() && cfg.apiUrl && (cfg.apiToken || cfg.hasToken)) {
+        syncCommerce();   // fromForm:true → persiste token + fetch + render
+      } else {
+        scheduleCommerceRefresh();
+        setCommerceMessage(`${getCommerceApp().name} guardado en este navegador.`, "success");
+        renderCommerceDashboard();
+      }
     });
     elements.commerceSyncButton?.addEventListener("click", () => {
       syncCommerce();
