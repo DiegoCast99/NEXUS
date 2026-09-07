@@ -455,6 +455,13 @@
     ["#ff77c8", "#ff4da6"],
     ["#3dd7ff", "#7cf0ff"]
   ];
+  // Alpha Fitness (tienda propia) tiene color FIJO verde (pedido del titular), sin
+  // importar su posición en la dona. El resto de canales usan la paleta neón de arriba.
+  var ALPHA_COLOR = "#22c55e";
+  var ALPHA_GRAD = ["#16a34a", "#4ade80"];
+  function chColorFor(c, realIdx) {
+    return (c && c.id === "alphaweb") ? ALPHA_COLOR : CH_COLORS[realIdx % CH_COLORS.length];
+  }
   function renderChannels(ml) {
     var box = el("homeChannels"); if (!box) return;
     // Cada cuenta de Mercado Libre es su PROPIO canal (ML1, ML2 y ML Brasil por
@@ -518,15 +525,17 @@
         var frac = c.value / total, len = frac * C;
         var draw = Math.max(1.6, len - GAP);   // arco visible (deja el hueco entre segmentos)
         var rest = C - draw;
-        var gi = i % CH_GRAD.length;
+        // Alpha Fitness usa el gradiente verde fijo; el resto, la paleta neón.
+        var gradId = c.id === "alphaweb" ? "chgAlpha" : ("chg" + (i % CH_GRAD.length));
         var cls = animD ? ' class="hn-arc"' : "";
         var av = animD ? ' style="--dlen:' + draw.toFixed(2) + ';--dgap:' + rest.toFixed(2) + ';--ddur:' + Math.max(360, Math.round((len / C) * 1050)) + 'ms;--ddelay:' + Math.round((off / C) * 1050) + 'ms"' : "";
-        segs += '<circle' + cls + av + ' cx="21" cy="21" r="15.9155" fill="none" stroke="url(#chg' + gi + ')" stroke-width="5" stroke-dasharray="' + draw.toFixed(2) + ' ' + rest.toFixed(2) + '" stroke-dashoffset="' + (-(off + GAP / 2)).toFixed(2) + '" stroke-linecap="round" transform="rotate(-90 21 21)"/>';
+        segs += '<circle' + cls + av + ' cx="21" cy="21" r="15.9155" fill="none" stroke="url(#' + gradId + ')" stroke-width="5" stroke-dasharray="' + draw.toFixed(2) + ' ' + rest.toFixed(2) + '" stroke-dashoffset="' + (-(off + GAP / 2)).toFixed(2) + '" stroke-linecap="round" transform="rotate(-90 21 21)"/>';
         off += len;
       });
       var chDefs = '<defs>' +
         '<filter id="donutGlow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="0.85" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>' +
         CH_GRAD.map(function (g, gi) { return '<linearGradient id="chg' + gi + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' + g[0] + '"/><stop offset="1" stop-color="' + g[1] + '"/></linearGradient>'; }).join("") +
+        '<linearGradient id="chgAlpha" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="' + ALPHA_GRAD[0] + '"/><stop offset="1" stop-color="' + ALPHA_GRAD[1] + '"/></linearGradient>' +
         '</defs>';
       donut = '<div class="home-donut"><svg' + svgCls + ' viewBox="0 0 42 42" aria-hidden="true">' + chDefs +
         '<circle cx="21" cy="21" r="15.9155" fill="none" stroke="rgba(255,255,255,0.045)" stroke-width="5"/>' +
@@ -538,9 +547,13 @@
 
     var legend = channels.map(function (c, i) {
       var isReal = !c.soon && c.value > 0;   // punto de color solo si aporta a la dona
-      var p = total > 0 ? Math.round((c.value / total) * 100) : 0;
-      var right = c.soon ? '<span class="home-ch-soon">Proximamente</span>' : '<b>' + p + '%</b>';
-      var dot = isReal ? '<i style="background:' + CH_COLORS[real.findIndex(function (r) { return r.id === c.id; }) % CH_COLORS.length] + '"></i>' : '';
+      var pRaw = total > 0 ? (c.value / total) * 100 : 0;
+      // Si es una venta REAL pero su parte es <1% (ej. una venta chica frente a ML),
+      // mostrar "<1%" en vez de "0%" — así se ve que el canal SÍ tiene ventas.
+      var pTxt = c.value > 0 ? (pRaw >= 0.95 ? Math.round(pRaw) + "%" : "<1%") : "0%";
+      var right = c.soon ? '<span class="home-ch-soon">Proximamente</span>' : '<b>' + pTxt + '</b>';
+      var realIdx = real.findIndex(function (r) { return r.id === c.id; });
+      var dot = isReal ? '<i style="background:' + chColorFor(c, realIdx) + '"></i>' : '';
       return '<div class="home-ch' + (c.soon ? ' is-soon' : '') + '">' + bizLogo(c.photoId || c.slug, c.slug, 24) +
         '<span class="home-ch-name">' + esc(c.name) + '</span>' + dot + right + '</div>';
     }).join("");
