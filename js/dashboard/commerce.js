@@ -224,9 +224,9 @@
 
   // ---- Fetch genérico (commerce proxy) -----------------------
 
-  async function fetchCommerceData(config) {
+  async function fetchCommerceData(config, appId) {
     const result = await S.requireSecureApi().commerceFetch({
-      provider: "commerce:" + state.commerce.activeApp,
+      provider: "commerce:" + (appId || state.commerce.activeApp),
       apiUrl: config.apiUrl,
       pixelId: config.pixelId
     });
@@ -2768,7 +2768,7 @@
           saveConfig: saveCommerceConfigs,
           populateForm: populateCommerceConfigForm
         });
-        const fetched = await fetchCommerceData(config);
+        const fetched = await fetchCommerceData(config, appId);
         const orders = fetched.orders;
         state.commerce.snapshots[appId] = createCommerceSnapshot(orders, "live", (fetched.visits != null ? { visits: fetched.visits } : undefined));
         saveCommerceSnapshots();
@@ -2777,6 +2777,44 @@
           : "El endpoint respondio sin pedidos para este periodo.";
       }
     });
+  }
+
+  // Sincroniza una tienda propia ESPECÍFICA (conector genérico) por id, SIN cambiar
+  // la app activa ni leer el formulario. Se usa al ARRANCAR el dashboard para que el
+  // Inicio (Ventas por canal, KPIs) muestre las tiendas conectadas sin tener que abrir
+  // su panel. Silencioso y a prueba de fallos (no rompe el boot si el endpoint falla).
+  async function syncCommerceStore(appId, { silent = true } = {}) {
+    if (!appId || isMLApp(appId)) return;
+    const config = getCommerceConfig(appId);
+    if (!hasCommerceConnection(config)) return;
+    // No usa el flag global state.commerce.syncing (ese es del sync activo/ML): escribe
+    // su propio snapshot[appId], así puede correr en paralelo con el sync de ML al boot.
+    try {
+      const fetched = await fetchCommerceData(config, appId);
+      const snap = createCommerceSnapshot(fetched.orders, "live", (fetched.visits != null ? { visits: fetched.visits } : undefined));
+      snap.appId = appId;   // createCommerceSnapshot usa activeApp; acá lo fijamos al real
+      state.commerce.snapshots[appId] = snap;
+      saveCommerceSnapshots();
+      renderCommerceDashboard();
+      if (typeof S.renderAll === "function") S.renderAll();   // repinta el Inicio (canal Alpha)
+    } catch (e) {
+      if (!silent) setCommerceMessage((e && e.message) || "No se pudo sincronizar la tienda.", "error");
+      console.warn("[commerce] sync tienda", appId, "fallo:", e && e.message);
+    }
+  }
+
+  // Al arrancar: traer de una todas las tiendas propias YA conectadas (no-ML), para
+  // que el Inicio las muestre sin abrir cada panel. Corren en paralelo, best-effort.
+  function syncConnectedStoresOnBoot() {
+    try {
+      (S.commerceApps || []).forEach(function (app) {
+        if (isMLApp(app.id)) return;
+        if (S.isCommerceGroup && S.isCommerceGroup(app.id)) return;
+        if (hasCommerceConnection(getCommerceConfig(app.id))) {
+          syncCommerceStore(app.id, { silent: true });
+        }
+      });
+    } catch (e) { console.warn("[commerce] boot stores sync fallo:", e && e.message); }
   }
 
   // ---- Sync Mercado Libre ------------------------------------
@@ -3831,7 +3869,7 @@
     populateCommerceConfigForm, readCommerceConfigFromForm, renderCommerceDashboard, renderCommerceSwitcher,
     applyPeriodChange, getPeriodRange, loadMLListings, markPendingStock, openSaleDeepLink, renderPeriodBar, renderMLAccountSelect, saveMLListingChanges, selectMLAccount, toggleListingExpand, toggleListingStatus,
     scheduleCommerceRefresh, scheduleMLRefresh, selectCommerceApp, setCommerceMessage, setMlMessage,
-    startMLOAuth, syncCommerce, syncMercadoLibre,
+    startMLOAuth, syncCommerce, syncCommerceStore, syncConnectedStoresOnBoot, syncMercadoLibre,
     renderMercadoPago, resumenMercadoPago, guardarTokenMP,
     renderVentaDetail, cerrarVentaDetail,
     renderAdsPanel, cargarAds, reloadAds,

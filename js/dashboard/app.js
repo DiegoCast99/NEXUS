@@ -486,6 +486,9 @@
         if (S.getCommerceConfig("mercadolibre").hasToken) {
           syncMercadoLibre({ silent: true });
         }
+        // Tiendas propias conectadas (conector genérico): traerlas al arrancar para
+        // que el Inicio las muestre sin abrir su panel (mismo criterio que ML).
+        if (S.syncConnectedStoresOnBoot) S.syncConnectedStoresOnBoot();
       }
     } catch (error) {
       console.error("Nexus dashboard init error:", error);
@@ -582,6 +585,10 @@
                     syncMercadoLibre({ silent: true });
                   }
                 } catch (e) {}
+                // Tiendas propias (Alpha Fitness Web, etc.) YA conectadas: traerlas de
+                // una para que el Inicio (Ventas por canal / KPIs) las muestre sin abrir
+                // cada panel. Corre tras aplicar la nube (config con hasToken ya presente).
+                try { if (S.syncConnectedStoresOnBoot) S.syncConnectedStoresOnBoot(); } catch (e) {}
               }
             });
             // Fallback para la app del Dock (WKWebView "standalone"): si el listener en
