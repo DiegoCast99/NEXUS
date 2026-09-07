@@ -1095,14 +1095,15 @@
     };
   }
 
-  // Endpoint de datos por defecto por app (para tiendas propias con URL fija).
-  // Alpha Fitness Web expone su feed en /.netlify/functions/nexus-feed → lo
-  // pre-cargamos para que el titular solo tenga que pegar el token y guardar.
-  const COMMERCE_DEFAULT_APIURL = {
-    alphaweb: "https://alphafitnessuy.com/.netlify/functions/nexus-feed"
-  };
-
   function loadCommerceConfigs() {
+    // Endpoint por defecto por app (tiendas propias con URL fija). DEBE vivir DENTRO de
+    // la función: loadCommerceConfigs() se llama en la init del estado (arriba en este
+    // módulo), ANTES de cualquier const a nivel de módulo → si estuviera afuera daba
+    // "Cannot access COMMERCE_DEFAULT_APIURL before initialization" (temporal dead zone)
+    // y rompía TODO el dashboard (S incompleto → botones muertos, no cargaba nada).
+    const COMMERCE_DEFAULT_APIURL = {
+      alphaweb: "https://alphafitnessuy.com/.netlify/functions/nexus-feed"
+    };
     try {
       const parsed = JSON.parse(localStorage.getItem(COMMERCE_CONFIG_KEY) || "null");
       const configs = parsed && typeof parsed === "object" ? parsed : {};
