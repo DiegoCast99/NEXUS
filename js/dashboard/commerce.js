@@ -2719,7 +2719,11 @@
 
   // ---- Sync genérico -----------------------------------------
 
-  async function syncCommerce({ demo = false, silent = false } = {}) {
+  // `fromForm`: true = leer la config desde el formulario (cuando el titular aprieta
+  // "Sincronizar ahora" o guarda). false = usar la config YA guardada, sin tocar el
+  // form (auto-sync al abrir el panel y ticks del scheduler). Sin esto, un auto-sync
+  // leía inputs vacíos/de otra app y podía pisar la conexión guardada de la tienda.
+  async function syncCommerce({ demo = false, silent = false, fromForm = true } = {}) {
     const appId = state.commerce.activeApp;
 
     if (demo) {
@@ -2736,8 +2740,10 @@
       return;
     }
 
-    state.commerce.configs[appId] = readCommerceConfigFromForm();
-    saveCommerceConfigs();
+    if (fromForm) {
+      state.commerce.configs[appId] = readCommerceConfigFromForm();
+      saveCommerceConfigs();
+    }
 
     const config = getCommerceConfig(appId);
     if (!hasCommerceConnection(config)) {
@@ -2878,7 +2884,9 @@
     // ML queda afuera a proposito: tiene su propio scheduler (scheduleMLRefresh).
     // Si no, al entrar al panel de ML habria dos timers pidiendo lo mismo.
     isEnabled: () => !isMLApp() && hasCommerceConnection(getCommerceConfig()),
-    sync: (options) => syncCommerce(options)
+    // fromForm:false → el tick usa la config guardada, nunca lee el formulario
+    // (podría estar vacío/de otra app y borraría la conexión de la tienda).
+    sync: (options) => syncCommerce({ ...(options || {}), fromForm: false })
   });
 
   // Mercado Libre "en vivo": scheduler propio, atado SIEMPRE a la config de
@@ -2936,6 +2944,13 @@
     // sin esperar el proximo tick ni que el titular apriete Sincronizar.
     if (isMLApp(id) && getCommerceConfig(id).hasToken && !state.commerce.syncing) {
       syncMercadoLibre({ silent: true });
+    }
+    // Tienda propia (conector genérico, ej. Alpha Fitness Web): mismo comportamiento
+    // que ML — al abrir el panel, si está conectada, traer las ventas al instante
+    // (con la config GUARDADA, sin leer el form). Antes NO fetcheaba al entrar y la
+    // vista quedaba en $0 hasta apretar "Sincronizar ahora" o que corriera el timer.
+    else if (!isMLApp(id) && hasCommerceConnection(getCommerceConfig(id)) && !state.commerce.syncing) {
+      syncCommerce({ silent: true, fromForm: false });
     }
   }
 

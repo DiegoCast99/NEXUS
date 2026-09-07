@@ -1095,17 +1095,27 @@
     };
   }
 
+  // Endpoint de datos por defecto por app (para tiendas propias con URL fija).
+  // Alpha Fitness Web expone su feed en /.netlify/functions/nexus-feed → lo
+  // pre-cargamos para que el titular solo tenga que pegar el token y guardar.
+  const COMMERCE_DEFAULT_APIURL = {
+    alphaweb: "https://alphafitnessuy.com/.netlify/functions/nexus-feed"
+  };
+
   function loadCommerceConfigs() {
     try {
       const parsed = JSON.parse(localStorage.getItem(COMMERCE_CONFIG_KEY) || "null");
       const configs = parsed && typeof parsed === "object" ? parsed : {};
       return commerceApps.reduce((acc, app) => {
         acc[app.id] = { ...defaultCommerceConfig(), ...(configs[app.id] || {}) };
+        // Rellena el endpoint por defecto SOLO si no hay uno guardado (no pisa lo del titular).
+        if (!acc[app.id].apiUrl && COMMERCE_DEFAULT_APIURL[app.id]) acc[app.id].apiUrl = COMMERCE_DEFAULT_APIURL[app.id];
         return acc;
       }, {});
     } catch (error) {
       return commerceApps.reduce((acc, app) => {
         acc[app.id] = defaultCommerceConfig();
+        if (COMMERCE_DEFAULT_APIURL[app.id]) acc[app.id].apiUrl = COMMERCE_DEFAULT_APIURL[app.id];
         return acc;
       }, {});
     }
