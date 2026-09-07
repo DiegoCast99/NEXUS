@@ -73,6 +73,7 @@
     const margin = Number(order.margin ?? order.profit ?? (cost ? total - cost : total * 0.36)) || 0;
     return {
       id: String(order.id || order.orderId || order.name || `ORD-${Date.now()}-${index}`),
+      numeroOrden: String(order.numeroOrden || ""),   // AF-xxxxx en ventas de tienda propia (para el enlace a la web)
       customer: String(order.customer || order.customerName || order.email || "Cliente"),
       product: String(order.product || order.productName || order.item || "Producto"),
       status: String(order.status || order.paymentStatus || "Pagado"),
@@ -1634,9 +1635,19 @@
       elements.ventaProductoExtra.innerHTML = lineas.join("");
     }
 
-    // Enlaces a Mercado Libre (publicación + venta en el panel del vendedor). Llena el
-    // espacio libre bajo la tarjeta del producto. Se abren en una pestaña nueva.
-    if (elements.ventaMLBox) {
+    // VENTA DE TIENDA PROPIA (Alpha Fitness Web): el enlace NO va a Mercado Libre sino
+    // al detalle del pedido en el panel admin de la tienda. Se detecta por numeroOrden
+    // (AF-xxxxx), que solo traen las ventas del conector de tienda propia.
+    var esTiendaWeb = /^AF-/i.test(o.numeroOrden || "");
+    if (elements.ventaMLBox && esTiendaWeb) {
+      var alphaUrl = "https://alphafitnessuy.com/?admin_pedido=" + encodeURIComponent(o.numeroOrden);
+      elements.ventaMLBox.innerHTML =
+        '<div class="venta-ml-head"><span class="venta-ml-badge" style="background:#c9a961;color:#1a1408;">AF</span> Enlace a Alpha Fitness Web</div>' +
+        '<a class="venta-ml-link" href="' + alphaUrl + '" target="_blank" rel="noopener noreferrer">' +
+          '<span class="venta-ml-link-tx"><b>Abrir la venta</b><small>Pedido ' + escapeHtml(o.numeroOrden) + ' · panel de la tienda</small></span>' +
+          '<span class="venta-ml-link-go">↗</span></a>';
+      elements.ventaMLBox.style.display = "";
+    } else if (elements.ventaMLBox) {
       var mll = mlLinksDeVenta(o);
       if (mll.itemUrl || mll.ventaUrl) {
         var filas = "";
