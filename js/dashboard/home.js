@@ -106,6 +106,22 @@
         out.push({ o: o, acc: acc.id, accName: acc.name });
       });
     });
+    // Tiendas propias conectadas (conector genérico, ej. Alpha Fitness Web): sus ventas
+    // TAMBIÉN cuentan en los KPIs, el gráfico y los pedidos del Inicio (antes solo
+    // alimentaban la dona "Ventas por canal" → figuraban 0% y no sumaban al total).
+    (S.commerceApps || []).forEach(function (app) {
+      if (!app || (S.isMLApp && S.isMLApp(app.id))) return;
+      if (S.isCommerceGroup && S.isCommerceGroup(app.id)) return;
+      var snap = S.getCommerceSnapshot && S.getCommerceSnapshot(app.id);
+      var orders = snap && (snap.allOrders || snap.orders);
+      if (!orders) return;
+      orders.forEach(function (o) {
+        var oid = String(o.id || "");
+        if (oid && seen[oid]) return;
+        if (oid) seen[oid] = true;
+        out.push({ o: o, acc: app.id, accName: app.name, store: true });
+      });
+    });
     return out;
   }
 
@@ -221,12 +237,16 @@
     var topProducts = Object.keys(byName).map(function (k) { return byName[k]; }).sort(function (a, b) { return b.revenue - a.revenue; }).slice(0, 5);
     var accArr = Object.keys(perAccount).map(function (k) { return perAccount[k]; });
     // Facturación de la tienda web Alpha Fitness (conector genérico) para el canal
-    // "Alpha Fitness" de "Ventas por canal". 0 hasta que se conecte/sincronice.
+    // "Alpha Fitness" de "Ventas por canal". Se calcula de las MISMAS órdenes ya
+    // incluidas arriba, filtradas por la ventana del período, para que el canal coincida
+    // EXACTO con lo que suma en los KPIs (antes usaba asnap.totals.revenue = otra ventana).
     var alphaRevenue = 0;
-    try {
-      var asnap = S.getCommerceSnapshot ? S.getCommerceSnapshot("alphaweb") : null;
-      if (asnap && asnap.totals) alphaRevenue = Number(asnap.totals.revenue) || 0;
-    } catch (e) { alphaRevenue = 0; }
+    items.forEach(function (it) {
+      if (!it.store || it.acc !== "alphaweb") return;
+      var t = orderTime(it.o);
+      if (t !== null && (t < curFrom || t >= curTo)) return;
+      alphaRevenue += Number(it.o.total) || 0;
+    });
     return { cur: cur, prev: prev, trend: trend, topProducts: topProducts, perAccount: accArr, alphaRevenue: alphaRevenue, hasData: cur.orders > 0 };
   }
 
