@@ -14,7 +14,7 @@
    ============================================================ */
 const { adminGetDoc } = require("./_fbadmin");
 const { alphaConfig, fetchStoreOrders } = require("./_alphastore");
-const { procesarVentaInventario } = require("./ml-notifications");
+const { procesarVentaInventario, notificarVentaPush } = require("./ml-notifications");
 
 function parseLedger(fields) {
   const f = fields && fields.ml_inventory_processed;
@@ -44,11 +44,38 @@ exports.handler = async function () {
   const ledger = parseLedger(fields);
   const procesadas = {}; ledger.forEach(function (k) { procesadas[k] = true; });
 
-  let nuevas = 0;
+  // Pre-filtro de ventas ya NOTIFICADAS (para no reclamar el push por cada orden vieja en
+  // cada corrida). notificarVentaPush igual re-chequea fresco (doble seguro, idempotente).
+  const yaNotificadas = {};
+  try {
+    const nraw = fields.ml_notified_ids && fields.ml_notified_ids.stringValue;
+    (JSON.parse(nraw || "[]") || []).forEach(function (k) { yaNotificadas[k] = true; });
+  } catch (e) { /* noop */ }
+
+  let nuevas = 0, avisadas = 0;
   for (const o of orders) {
     if (!o || !o.id) continue;
     if (o.cancelled || o.status === "cancelado") continue;
     const orderKey = "store:" + o.id;
+
+    // (1) PUSH "¡Vendiste!" al celular del titular. Independiente del inventario: la venta
+    //     se avisa aunque no tenga items mapeables al stock central. Idempotente por
+    //     ml_notified_ids (misma dedup que las ventas de ML) → un solo push por venta.
+    if (!yaNotificadas[orderKey]) {
+      try {
+        const total = Number(o.total) || 0;
+        const prod = o.product || "Pedido";
+        const r = await notificarVentaPush(uid, orderKey, {
+          title: "¡Vendiste!",
+          body: "Alpha Fitness · " + prod + (total ? " · $" + Math.round(total) : ""),
+          tag: "store-" + o.id,
+          url: "/dashboard.html#venta-alphaweb-" + o.id
+        });
+        if (r && r.sent) avisadas += r.sent;
+      } catch (e) { console.error("[alpha-store-poll] push " + o.id + ":", e && e.message); }
+    }
+
+    // (2) INVENTARIO: descontar stock central (solo órdenes nuevas con items mapeables).
     if (procesadas[orderKey]) continue;
 
     // Items de la tienda → formato order_items de ML con id "store:<pid>" y sabor.
@@ -69,6 +96,6 @@ exports.handler = async function () {
     } catch (e) { console.error("[alpha-store-poll] orden " + o.id + ":", e && e.message); }
   }
 
-  console.log("[alpha-store-poll] ordenes nuevas procesadas: " + nuevas);
-  return { statusCode: 200, body: "ok " + nuevas };
+  console.log("[alpha-store-poll] ordenes nuevas: " + nuevas + " · push enviados: " + avisadas);
+  return { statusCode: 200, body: "ok " + nuevas + " push " + avisadas };
 };

@@ -186,19 +186,32 @@
   function setNotifSeen(ts) { try { localStorage.setItem(NOTIF_SEEN_KEY, String(ts)); } catch (e) {} }
 
   function allSales() {
-    var accounts = (S.mlAccounts && S.mlAccounts()) || [];
     var all = [], seen = {};
-    accounts.forEach(function (acc) {
-      var snap = S.getCommerceSnapshot && S.getCommerceSnapshot(acc.id);
-      (snap && snap.allOrders ? snap.allOrders : []).forEach(function (o) {
+    function agregar(accId, accName, orders) {
+      (orders || []).forEach(function (o) {
         // Dedup por id de orden: si la misma cuenta está conectada en dos slots
         // (ML1 y ML2), la venta viene en ambos snapshots y aparecería duplicada
         // (una con foto, otra sin). Nos quedamos con la primera (ML1, ya enriquecida).
         var oid = String(o.id || "");
         if (oid && seen[oid]) return;
         if (oid) seen[oid] = true;
-        all.push({ acc: acc.id, accName: acc.name, product: o.product, total: o.total, createdAt: o.createdAt || o.date, id: o.id, thumbnail: o.thumbnail || "", itemId: o.itemId || "" });
+        all.push({ acc: accId, accName: accName, product: o.product, total: o.total, createdAt: o.createdAt || o.date, id: o.id, thumbnail: o.thumbnail || "", itemId: o.itemId || "" });
       });
+    }
+    // 1) Slots de Mercado Libre (ML1, ML2, ML Livre...).
+    ((S.mlAccounts && S.mlAccounts()) || []).forEach(function (acc) {
+      var snap = S.getCommerceSnapshot && S.getCommerceSnapshot(acc.id);
+      agregar(acc.id, acc.name, snap && snap.allOrders);
+    });
+    // 2) Tiendas propias conectadas (Alpha Fitness Web, etc.). Antes la campana SOLO
+    //    miraba mlAccounts() → las ventas de la tienda web aparecían en el gráfico y en
+    //    la dona de canales (que usan collectOrders con commerceApps) pero NO en las
+    //    notificaciones. Ahora se incluyen acá igual que en home.js/collectOrders.
+    (S.commerceApps || []).forEach(function (app) {
+      if (!app || (S.isMLApp && S.isMLApp(app.id))) return;
+      if (S.isCommerceGroup && S.isCommerceGroup(app.id)) return;
+      var snap = S.getCommerceSnapshot && S.getCommerceSnapshot(app.id);
+      agregar(app.id, app.name, snap && (snap.allOrders || snap.orders));
     });
     all.sort(function (a, b) { return new Date(b.createdAt || 0) - new Date(a.createdAt || 0); });
     return all;

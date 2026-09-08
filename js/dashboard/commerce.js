@@ -891,6 +891,16 @@
         }).catch(function () {});
       }));
       if (cambios) { try { saveCommerceSnapshots(); } catch (e) {} }
+      // Tiendas propias conectadas (Alpha Fitness Web, etc.): refrescar su snapshot para
+      // que la campana muestre sus ventas al día (antes solo se refrescaba ML → una venta
+      // nueva de la tienda no aparecía en notificaciones hasta recargar).
+      var tiendas = (S.commerceApps || []).filter(function (app) {
+        return app && !isMLApp(app.id) && !(S.isCommerceGroup && S.isCommerceGroup(app.id)) &&
+          hasCommerceConnection(getCommerceConfig(app.id));
+      });
+      await Promise.all(tiendas.map(function (app) {
+        return Promise.resolve(syncCommerceStore(app.id, { silent: true })).catch(function () {});
+      }));
     } catch (e) { /* best-effort */ }
     finally { _notifRefreshBusy = false; }
   }

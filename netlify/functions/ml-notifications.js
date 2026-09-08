@@ -191,6 +191,33 @@ async function reclamarNotificacion(uid, orderId) {
   return { claimed: false, subs: [] };
 }
 
+// Envía el push "¡Vendiste!" a los dispositivos del usuario para UNA venta, reclamándola
+// primero (idempotente vía ml_notified_ids: una sola notif aunque se llame varias veces).
+// Reusa la MISMA dedup + sendPush que las ventas de ML. La usa el poller de la tienda
+// propia (alpha-store-poll) para que una venta en la web también notifique al celular.
+async function notificarVentaPush(uid, orderId, payload) {
+  if (!uid || !orderId || !payload) return { sent: 0 };
+  const claim = await reclamarNotificacion(uid, orderId);
+  if (!claim.claimed) return { sent: 0 };   // ya notificada por otra invocación
+  const subs = claim.subs;
+  if (!subs.length) return { sent: 0 };     // sin dispositivos suscriptos
+  const alive = [];
+  let sent = 0;
+  for (const sub of subs) {
+    try {
+      const result = await sendPush(sub, payload);
+      if (!result.gone) { alive.push(sub); sent++; }
+    } catch (e) {
+      alive.push(sub);
+      console.warn("notificarVentaPush push error:", e && e.message);
+    }
+  }
+  if (alive.length !== subs.length) {
+    await adminPatchDoc("users/" + uid, { push_subs: { stringValue: JSON.stringify(alive) } }, ["push_subs"]);
+  }
+  return { sent };
+}
+
 /* ---------- verificacion de la orden contra ML ---------- */
 
 // Devuelve { verificada, esVenta, status, orden, accessToken } — o
@@ -513,3 +540,4 @@ async function syncListingToML(accessToken, inv, mlbId) {
 exports._test = { descontarStockPorVenta, procesarVentaInventario, syncListingToML, reclamarNotificacion };
 // Export para el poller de la tienda (Netlify solo invoca `handler`).
 exports.procesarVentaInventario = procesarVentaInventario;
+exports.notificarVentaPush = notificarVentaPush;
