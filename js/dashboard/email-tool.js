@@ -196,6 +196,8 @@
       '<button class="et-btn" type="button" id="etNew">+ Nueva plantilla</button>' +
       '<button class="et-btn" type="button" id="etSeed">Restaurar semilla</button>' +
       '<span style="flex:1"></span>' +
+      '<input class="et-input" id="etTestEmail" placeholder="tu@email.com" style="max-width:180px;padding:8px 10px;">' +
+      '<button class="et-btn" type="button" id="etTest" title="Envía esta plantilla (con datos de ejemplo) a ese correo, usando tu sesión de Nexus">Enviar prueba</button>' +
       '<button class="et-btn danger" type="button" id="etDel">Eliminar</button>' +
       '<button class="et-btn primary" type="button" id="etSave">Guardar</button>' +
       "</div></div>";
@@ -207,6 +209,7 @@
     el("etSeed").addEventListener("click", restaurarSemilla);
     el("etDel").addEventListener("click", eliminarPlantilla);
     el("etSave").addEventListener("click", guardar);
+    el("etTest").addEventListener("click", enviarPrueba);
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && ov.classList.contains("open")) close(); });
   }
 
@@ -312,9 +315,44 @@
     } finally { if (btn) { btn.disabled = false; btn.textContent = "Guardar"; } }
   }
 
+  // Envía la plantilla ACTUAL (con datos de ejemplo) a un correo, autenticando con el
+  // ID token de Firebase del titular (el server lo verifica). NUNCA manda secretos.
+  async function enviarPrueba() {
+    var t = STATE.templates[STATE.sel];
+    if (!t) { toast("Elegí una plantilla primero", "error"); return; }
+    var email = ((el("etTestEmail") || {}).value || "").trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast("Poné un email válido para la prueba", "error"); return; }
+    var btn = el("etTest"); if (btn) { btn.disabled = true; btn.textContent = "Enviando…"; }
+    try {
+      var user = window.NexusFirebaseAuth && window.NexusFirebaseAuth.getCurrentUser();
+      if (!user || !user.getIdToken) throw new Error("Sin sesión de Nexus");
+      var idToken = await user.getIdToken();
+      var sample = (EVENTOS[t.evento] || EVENTOS.otro).sample;
+      var res = await fetch("/.netlify/functions/nexus-email", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + idToken, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          evento: t.evento, to: { email: email }, data: sample,
+          template: { evento: t.evento, asunto: t.asunto, cuerpoHtml: t.cuerpoHtml }
+        })
+      });
+      var j = await res.json().catch(function () { return {}; });
+      if (res.ok && j.ok) toast("Correo de prueba enviado a " + email + " (revisá spam si no llega)", "ok");
+      else toast("No se pudo enviar: " + (j.error || ("HTTP " + res.status)), "error");
+    } catch (e) {
+      toast("Error enviando la prueba: " + (e && e.message || e), "error");
+    } finally { if (btn) { btn.disabled = false; btn.textContent = "Enviar prueba"; } }
+  }
+
   async function open() {
     buildModal();
     el("emailToolOv").classList.add("open");
+    // Prefill del email de prueba con el del titular (si hay sesión).
+    try {
+      var u = window.NexusFirebaseAuth && window.NexusFirebaseAuth.getCurrentUser();
+      var inp = el("etTestEmail");
+      if (u && u.email && inp && !inp.value) inp.value = u.email;
+    } catch (e) { /* noop */ }
     el("etList").innerHTML = '<div style="color:#8b8fa3;font-size:12px;padding:8px;">Cargando…</div>';
     STATE.templates = await loadTemplates();
     STATE.sel = STATE.templates.length ? 0 : -1;
